@@ -13,6 +13,18 @@
                 <flux:navbar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                     {{ __('Dashboard') }}
                 </flux:navbar.item>
+                <flux:navbar.item icon="shopping-bag" :href="route('dashboard.sales.index')" :current="request()->routeIs('dashboard.sales.*')" wire:navigate>
+                    {{ __('Ventas') }}
+                </flux:navbar.item>
+                <flux:navbar.item icon="book-open" :href="route('dashboard.beverages.index')" :current="request()->routeIs('dashboard.beverages.*') || request()->routeIs('dashboard.products.*') || request()->routeIs('dashboard.categories.*') || request()->routeIs('dashboard.sizes.*')" wire:navigate>
+                    {{ __('Catálogo') }}
+                </flux:navbar.item>
+                <flux:navbar.item icon="cog-6-tooth" :href="route('dashboard.branches.index')" :current="request()->routeIs('dashboard.branches.*') || request()->routeIs('dashboard.team.*') || request()->routeIs('dashboard.customizations.*')" wire:navigate>
+                    {{ __('Configuración') }}
+                </flux:navbar.item>
+                <flux:navbar.item icon="users" :href="route('dashboard.customers.index')" :current="request()->routeIs('dashboard.customers.*')" wire:navigate>
+                    {{ __('Clientes') }}
+                </flux:navbar.item>
             </flux:navbar>
 
             <flux:spacer />
@@ -21,22 +33,22 @@
                 <flux:tooltip :content="__('Search')" position="bottom">
                     <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Search')" />
                 </flux:tooltip>
-                <flux:tooltip :content="__('Repository')" position="bottom">
+                <flux:tooltip :content="__('Turno')" position="bottom">
                     <flux:navbar.item
                         class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="folder-git-2"
-                        href="https://github.com/laravel/livewire-starter-kit"
-                        target="_blank"
-                        :label="__('Repository')"
+                        icon="clock"
+                        :href="route('dashboard.work-session.check-in')"
+                        wire:navigate
+                        :label="__('Turno')"
                     />
                 </flux:tooltip>
-                <flux:tooltip :content="__('Documentation')" position="bottom">
+                <flux:tooltip :content="__('Reportes')" position="bottom">
                     <flux:navbar.item
                         class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="book-open-text"
-                        href="https://laravel.com/docs/starter-kits#livewire"
-                        target="_blank"
-                        :label="__('Documentation')"
+                        icon="chart-bar-square"
+                        :href="route('dashboard.reports.index')"
+                        wire:navigate
+                        :label="__('Reportes')"
                     />
                 </flux:tooltip>
             </flux:navbar>
@@ -56,17 +68,31 @@
                     <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard')  }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="shopping-bag" :href="route('dashboard.sales.index')" :current="request()->routeIs('dashboard.sales.*')" wire:navigate>
+                        {{ __('Ventas')  }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="users" :href="route('dashboard.customers.index')" :current="request()->routeIs('dashboard.customers.*')" wire:navigate>
+                        {{ __('Clientes')  }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.group expandable :heading="__('Personalizaciones')" class="grid">
+                        <flux:sidebar.item icon="squares-2x2" :href="route('dashboard.customizations.types.index')" :current="request()->routeIs('dashboard.customizations.types.*') || request()->routeIs('dashboard.customizations.index') || request()->routeIs('dashboard.customizations.create')" wire:navigate>
+                            {{ __('Tipos') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="sparkles" :href="route('dashboard.customizations.options.index')" :current="request()->routeIs('dashboard.customizations.options.*')" wire:navigate>
+                            {{ __('Opciones') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
             <flux:spacer />
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
+                <flux:sidebar.item icon="clock" :href="route('dashboard.work-session.check-in')" wire:navigate>
+                    {{ __('Turno') }}
                 </flux:sidebar.item>
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
+                <flux:sidebar.item icon="chart-bar-square" :href="route('dashboard.reports.index')" wire:navigate>
+                    {{ __('Reportes') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
         </flux:sidebar>

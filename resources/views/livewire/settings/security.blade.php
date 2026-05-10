@@ -1,13 +1,13 @@
 <section class="w-full">
     @include('partials.settings-heading')
 
-    <flux:heading class="sr-only">{{ __('Security settings') }}</flux:heading>
+    <flux:heading class="sr-only">{{ __('Configuración de seguridad') }}</flux:heading>
 
-    <x-settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
+    <x-settings.layout :heading="__('Actualizar contraseña')" :subheading="__('Asegúrate de usar una contraseña larga y segura para proteger tu cuenta')">
         <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
             <flux:input
                 wire:model="current_password"
-                :label="__('Current password')"
+                :label="__('Contraseña actual')"
                 type="password"
                 required
                 autocomplete="current-password"
@@ -15,7 +15,7 @@
             />
             <flux:input
                 wire:model="password"
-                :label="__('New password')"
+                :label="__('Nueva contraseña')"
                 type="password"
                 required
                 autocomplete="new-password"
@@ -23,7 +23,7 @@
             />
             <flux:input
                 wire:model="password_confirmation"
-                :label="__('Confirm password')"
+                :label="__('Confirmar contraseña')"
                 type="password"
                 required
                 autocomplete="new-password"
@@ -31,20 +31,20 @@
             />
 
             <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-password-button">{{ __('Save') }}</flux:button>
+                <flux:button variant="primary" type="submit" data-test="update-password-button">{{ __('Guardar') }}</flux:button>
             </div>
         </form>
 
         @if ($canManageTwoFactor)
             <section class="mt-12">
-                <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your two-factor authentication settings') }}</flux:subheading>
+                <flux:heading>{{ __('Autenticación de dos factores') }}</flux:heading>
+                <flux:subheading>{{ __('Administra la configuración de autenticación de dos factores') }}</flux:subheading>
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     @if ($twoFactorEnabled)
                         <div class="space-y-4">
                             <flux:text>
-                                {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
+                                {{ __('Durante el inicio de sesión se te solicitará un código seguro generado por tu aplicación autenticadora compatible con TOTP.') }}
                             </flux:text>
 
                             <div class="flex justify-start">
@@ -52,7 +52,7 @@
                                     variant="danger"
                                     wire:click="disable"
                                 >
-                                    {{ __('Disable 2FA') }}
+                                    {{ __('Desactivar 2FA') }}
                                 </flux:button>
                             </div>
 
@@ -61,14 +61,14 @@
                     @else
                         <div class="space-y-4">
                             <flux:text variant="subtle">
-                                {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
+                                {{ __('Al activar la autenticación de dos factores, durante el inicio de sesión se te solicitará un código seguro generado por tu aplicación autenticadora compatible con TOTP.') }}
                             </flux:text>
 
                             <flux:button
                                 variant="primary"
                                 wire:click="enable"
                             >
-                                {{ __('Enable 2FA') }}
+                                {{ __('Activar 2FA') }}
                             </flux:button>
                         </div>
                     @endif
@@ -118,7 +118,7 @@
                                     name="code"
                                     wire:model="code"
                                     length="6"
-                                    label="OTP Code"
+                                    label="Código OTP"
                                     label:sr-only
                                     class="mx-auto"
                                 />
@@ -130,7 +130,7 @@
                                     class="flex-1"
                                     wire:click="resetVerification"
                                 >
-                                    {{ __('Back') }}
+                                    {{ __('Volver') }}
                                 </flux:button>
 
                                 <flux:button
@@ -139,7 +139,7 @@
                                     wire:click="confirmTwoFactor"
                                     x-bind:disabled="$wire.code.length < 6"
                                 >
-                                    {{ __('Confirm') }}
+                                    {{ __('Confirmar') }}
                                 </flux:button>
                             </div>
                         </div>
@@ -182,7 +182,7 @@
                             <div class="relative flex items-center justify-center w-full">
                                 <div class="absolute inset-0 w-full h-px top-1/2 bg-stone-200 dark:bg-stone-600"></div>
                                 <span class="relative px-2 text-sm bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400">
-                                    {{ __('or, enter the code manually') }}
+                                    {{ __('o ingresa el código manualmente') }}
                                 </span>
                             </div>
 

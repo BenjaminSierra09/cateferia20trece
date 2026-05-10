@@ -1,4 +1,4 @@
-<x-layouts::auth :title="__('Two-factor authentication')">
+<x-layouts::auth :title="__('Autenticación de dos factores')">
     <div class="flex flex-col gap-6">
         <div
             class="relative w-full h-auto"
@@ -31,15 +31,15 @@
         >
             <div x-show="!showRecoveryInput">
                 <x-auth-header
-                    :title="__('Authentication code')"
-                    :description="__('Enter the authentication code provided by your authenticator application.')"
+                    :title="__('Código de autenticación')"
+                    :description="__('Ingresa el código generado por tu aplicación autenticadora.')"
                 />
             </div>
 
             <div x-show="showRecoveryInput">
                 <x-auth-header
-                    :title="__('Recovery code')"
-                    :description="__('Please confirm access to your account by entering one of your emergency recovery codes.')"
+                    :title="__('Código de recuperación')"
+                    :description="__('Confirma el acceso a tu cuenta ingresando uno de tus códigos de recuperación.')"
                 />
             </div>
 
@@ -53,7 +53,7 @@
                                 x-model="code"
                                 length="6"
                                 name="code"
-                                label="OTP Code"
+                                label="Código OTP"
                                 label:sr-only
                                 class="mx-auto"
                              />
@@ -84,15 +84,15 @@
                         type="submit"
                         class="w-full"
                     >
-                        {{ __('Continue') }}
+                        {{ __('Continuar') }}
                     </flux:button>
                 </div>
 
                 <div class="mt-5 space-x-0.5 text-sm leading-5 text-center">
-                    <span class="opacity-50">{{ __('or you can') }}</span>
+                    <span class="opacity-50">{{ __('o puedes') }}</span>
                     <div class="inline font-medium underline cursor-pointer opacity-80">
-                        <span x-show="!showRecoveryInput" @click="toggleInput()">{{ __('login using a recovery code') }}</span>
-                        <span x-show="showRecoveryInput" @click="toggleInput()">{{ __('login using an authentication code') }}</span>
+                        <span x-show="!showRecoveryInput" @click="toggleInput()">{{ __('ingresar con un código de recuperación') }}</span>
+                        <span x-show="showRecoveryInput" @click="toggleInput()">{{ __('ingresar con un código de autenticación') }}</span>
                     </div>
                 </div>
             </form>

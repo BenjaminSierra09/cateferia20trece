@@ -1,11 +1,72 @@
 <?php
 
+use App\Livewire\Beverages\Create as BeverageCreate;
+use App\Livewire\Beverages\Manager as BeverageManager;
+use App\Livewire\Branches\Create as BranchCreate;
+use App\Livewire\Branches\Manager as BranchManager;
+use App\Livewire\Categories\Create as CategoryCreate;
+use App\Livewire\Categories\Manager as CategoryManager;
+use App\Livewire\Customers\Form as CustomerForm;
+use App\Livewire\Customers\Manager as CustomerManager;
+use App\Livewire\Customizations\OptionForm as CustomizationOptionForm;
+use App\Livewire\Customizations\OptionManager as CustomizationOptionManager;
+use App\Livewire\Customizations\TypeForm as CustomizationTypeForm;
+use App\Livewire\Customizations\TypeManager as CustomizationTypeManager;
+use App\Livewire\Dashboard;
+use App\Livewire\Products\Create as ProductCreate;
+use App\Livewire\Products\Manager as ProductManager;
+use App\Livewire\Reports\Overview as ReportsOverview;
+use App\Livewire\Sales\Index as SalesIndex;
+use App\Livewire\Sales\Pos as SalesPos;
+use App\Livewire\Sales\RegisterSale;
+use App\Livewire\Sizes\Create as SizeCreate;
+use App\Livewire\Sizes\Manager as SizeManager;
+use App\Livewire\Team\Create as TeamCreate;
+use App\Livewire\Team\Manager as TeamManager;
+use App\Livewire\WorkSession\CheckIn;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+Route::prefix('dashboard')->middleware(['auth'])->group(function () {
+    Route::livewire('work-session/check-in', CheckIn::class)->name('dashboard.work-session.check-in');
+});
+
+Route::prefix('dashboard')->middleware(['auth', 'verified', 'work.session'])->group(function () {
+    Route::livewire('/', Dashboard::class)->name('dashboard');
+    Route::livewire('branches', BranchManager::class)->name('dashboard.branches.index');
+    Route::livewire('branches/create', BranchCreate::class)->name('dashboard.branches.create');
+    Route::livewire('branches/{branch}/edit', BranchCreate::class)->name('dashboard.branches.edit');
+    Route::livewire('categories', CategoryManager::class)->name('dashboard.categories.index');
+    Route::livewire('categories/create', CategoryCreate::class)->name('dashboard.categories.create');
+    Route::livewire('categories/{category}/edit', CategoryCreate::class)->name('dashboard.categories.edit');
+    Route::livewire('sizes', SizeManager::class)->name('dashboard.sizes.index');
+    Route::livewire('sizes/create', SizeCreate::class)->name('dashboard.sizes.create');
+    Route::livewire('sizes/{size}/edit', SizeCreate::class)->name('dashboard.sizes.edit');
+    Route::livewire('beverages', BeverageManager::class)->name('dashboard.beverages.index');
+    Route::livewire('beverages/create', BeverageCreate::class)->name('dashboard.beverages.create');
+    Route::livewire('beverages/{beverage}/edit', BeverageCreate::class)->name('dashboard.beverages.edit');
+    Route::livewire('products', ProductManager::class)->name('dashboard.products.index');
+    Route::livewire('products/create', ProductCreate::class)->name('dashboard.products.create');
+    Route::livewire('products/{product}/edit', ProductCreate::class)->name('dashboard.products.edit');
+    Route::livewire('customizations', CustomizationTypeManager::class)->name('dashboard.customizations.index');
+    Route::livewire('customizations/types', CustomizationTypeManager::class)->name('dashboard.customizations.types.index');
+    Route::livewire('customizations/types/create', CustomizationTypeForm::class)->name('dashboard.customizations.types.create');
+    Route::livewire('customizations/types/{customizationType}/edit', CustomizationTypeForm::class)->name('dashboard.customizations.types.edit');
+    Route::livewire('customizations/options', CustomizationOptionManager::class)->name('dashboard.customizations.options.index');
+    Route::livewire('customizations/options/create', CustomizationOptionForm::class)->name('dashboard.customizations.options.create');
+    Route::livewire('customizations/options/{customizationOption}/edit', CustomizationOptionForm::class)->name('dashboard.customizations.options.edit');
+    Route::get('customizations/create', fn () => redirect()->route('dashboard.customizations.types.create'))->name('dashboard.customizations.create');
+    Route::livewire('customers', CustomerManager::class)->name('dashboard.customers.index');
+    Route::livewire('customers/create', CustomerForm::class)->name('dashboard.customers.create');
+    Route::livewire('customers/{customer}/edit', CustomerForm::class)->name('dashboard.customers.edit');
+    Route::livewire('sales', SalesIndex::class)->name('dashboard.sales.index');
+    Route::livewire('sales/create', RegisterSale::class)->name('dashboard.sales.create');
+    Route::livewire('sales/pos', SalesPos::class)->name('dashboard.sales.pos');
+    Route::livewire('team', TeamManager::class)->name('dashboard.team.index');
+    Route::livewire('team/create', TeamCreate::class)->name('dashboard.team.create');
+    Route::livewire('team/{user}/edit', TeamCreate::class)->name('dashboard.team.edit');
+    Route::livewire('reports', ReportsOverview::class)->name('dashboard.reports.index');
 });
 
 require __DIR__.'/settings.php';

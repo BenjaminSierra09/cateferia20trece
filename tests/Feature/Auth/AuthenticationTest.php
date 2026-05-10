@@ -6,14 +6,35 @@ use Laravel\Fortify\Features;
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
-    $response->assertOk();
+    $response->assertOk()
+        ->assertSee('Inicia sesión en tu cuenta')
+        ->assertSee('Usuario')
+        ->assertSee('Contraseña')
+        ->assertDontSee('Sign up');
 });
 
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'username' => $user->username,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('dashboard', absolute: false));
+
+    $this->assertAuthenticated();
+});
+
+test('users can authenticate even if they type uppercase characters in username', function () {
+    $user = User::factory()->create([
+        'username' => 'Cafe-Admin',
+    ]);
+
+    $response = $this->post(route('login.store'), [
+        'username' => 'CAFE-ADMIN',
         'password' => 'password',
     ]);
 
@@ -28,11 +49,11 @@ test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'username' => $user->username,
         'password' => 'wrong-password',
     ]);
 
-    $response->assertSessionHasErrorsIn('email');
+    $response->assertSessionHasErrorsIn('username');
 
     $this->assertGuest();
 });
@@ -48,7 +69,7 @@ test('users with two factor enabled are redirected to two factor challenge', fun
     $user = User::factory()->withTwoFactor()->create();
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'username' => $user->username,
         'password' => 'password',
     ]);
 
