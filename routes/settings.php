@@ -18,8 +18,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('settings/security', Security::class)
         ->middleware(
             when(
-                Features::canManageTwoFactorAuthentication()
-                && Features::optionEnabled(Features::twoFactorAuthentication(), 'confirmPassword'),
+                (Features::canManageTwoFactorAuthentication()
+                && Features::optionEnabled(Features::twoFactorAuthentication(), 'confirmPassword'))
+                || (Features::canManagePasskeys()
+                && Features::optionEnabled(Features::passkeys(), 'confirmPassword')),
                 ['password.confirm'],
                 [],
             ),

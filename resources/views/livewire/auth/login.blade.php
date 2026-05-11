@@ -5,7 +5,7 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6" x-data="{ passkeyError: '', loadingPasskey: false }">
             @csrf
 
             <!-- Username -->
@@ -16,7 +16,7 @@
                 type="text"
                 required
                 autofocus
-                autocomplete="username"
+                autocomplete="username webauthn"
                 placeholder="cafeteria20trece"
             />
 
@@ -47,6 +47,29 @@
                     {{ __('Entrar') }}
                 </flux:button>
             </div>
+
+            <flux:separator text="o" />
+
+            <flux:button
+                variant="outline"
+                type="button"
+                class="w-full"
+                x-bind:disabled="loadingPasskey"
+                x-on:click="
+                    passkeyError = '';
+                    loadingPasskey = true;
+                    window.passkeysLogin()
+                        .catch((error) => passkeyError = error?.message ?? 'No se pudo iniciar sesión con passkey.')
+                        .finally(() => loadingPasskey = false);
+                "
+            >
+                <span x-show="!loadingPasskey">Entrar con passkey</span>
+                <span x-show="loadingPasskey">Verificando passkey...</span>
+            </flux:button>
+
+            <template x-if="passkeyError !== ''">
+                <flux:callout color="red" icon="x-circle" x-text="passkeyError"></flux:callout>
+            </template>
         </form>
     </div>
 </x-layouts::auth>

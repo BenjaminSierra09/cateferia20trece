@@ -6,6 +6,7 @@ use App\Models\BeverageCategory;
 use App\Models\Branch;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\WorkSession;
 use App\Services\WorkSessionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -23,7 +24,29 @@ test('reports page renders chart sections for active staff sessions', function (
         ->assertOk()
         ->assertSee('Ingresos por día')
         ->assertSee('Bebidas con mayor ingreso')
-        ->assertSee('Por sucursal');
+        ->assertSee('Por sucursal')
+        ->assertSee('Turnos de empleados');
+});
+
+test('reports page shows employee shift details with branch and closing time', function () {
+    $branch = Branch::factory()->create(['name' => 'Matriz Centro']);
+    $user = User::factory()->assignedToBranch($branch)->create(['name' => 'Caja Uno']);
+    $workSession = WorkSession::factory()->create([
+        'user_id' => $user->id,
+        'branch_id' => $branch->id,
+        'work_date' => '2026-05-11',
+        'clock_in_at' => '2026-05-11 08:00:00',
+        'clock_out_at' => '2026-05-11 16:30:00',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard.reports.index'))
+        ->assertOk()
+        ->assertSee('Caja Uno')
+        ->assertSee('Matriz Centro')
+        ->assertSee($workSession->work_date->format('d/m/Y'))
+        ->assertSee('08:00')
+        ->assertSee('16:30');
 });
 
 test('category form stores an uploaded image', function () {

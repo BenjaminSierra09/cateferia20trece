@@ -22,6 +22,8 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 
 test('v1 api exposes metadata and catalog endpoints', function () {
+    Sanctum::actingAs(User::factory()->create());
+
     $branch = Branch::factory()->create(['name' => 'Centro']);
     $category = BeverageCategory::factory()->create(['name' => 'Café caliente']);
     $size = Size::factory()->create(['name' => 'Grande', 'capacity_label' => '16 oz']);
@@ -33,6 +35,11 @@ test('v1 api exposes metadata and catalog endpoints', function () {
     $beverage = Beverage::factory()->create([
         'beverage_category_id' => $category->id,
         'name' => 'Latte',
+        'image_path' => 'catalog/latte.png',
+    ]);
+    $product = Product::factory()->create([
+        'name' => 'Brownie',
+        'image_path' => 'catalog/brownie.png',
     ]);
 
     $beverage->sizePrices()->create([
@@ -54,7 +61,15 @@ test('v1 api exposes metadata and catalog endpoints', function () {
         ->assertSuccessful()
         ->assertJsonFragment(['name' => $branch->name])
         ->assertJsonFragment(['name' => $beverage->name])
-        ->assertJsonFragment(['name' => $option->name]);
+        ->assertJsonFragment(['name' => $option->name])
+        ->assertJsonPath('beverages.0.image_url', url('/storage/catalog/latte.png'));
+
+    $this->getJson('/api/v1/products')
+        ->assertSuccessful()
+        ->assertJsonFragment([
+            'name' => 'Brownie',
+            'image_url' => url('/storage/catalog/brownie.png'),
+        ]);
 });
 
 test('v1 api protects private endpoints and authenticates users with sanctum tokens', function () {

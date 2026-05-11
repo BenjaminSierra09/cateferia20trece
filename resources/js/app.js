@@ -1,5 +1,6 @@
 import intlTelInput from 'intl-tel-input';
 import 'intl-tel-input/styles';
+import { Passkeys } from '@laravel/passkeys';
 
 window.qrScanner = (field) => ({
     field,
@@ -188,3 +189,81 @@ window.phoneInput = (config = {}) => {
         },
     };
 };
+
+const csrfHeader = () => {
+    const cookie = document.cookie
+        .split('; ')
+        .find((entry) => entry.startsWith('XSRF-TOKEN='));
+
+    if (! cookie) {
+        return {};
+    }
+
+    return {
+        'X-XSRF-TOKEN': decodeURIComponent(cookie.slice('XSRF-TOKEN='.length)),
+    };
+};
+
+window.passkeysLogin = async () => {
+    const response = await Passkeys.verify();
+
+    if (response?.redirect) {
+        window.location.href = response.redirect;
+    }
+
+    return response;
+};
+
+window.passkeysManager = () => ({
+    name: '',
+    error: '',
+    isRegistering: false,
+    isDeletingId: null,
+
+    async register($wire) {
+        this.error = '';
+
+        if (this.name.trim() === '') {
+            return;
+        }
+
+        this.isRegistering = true;
+
+        try {
+            await Passkeys.register({ name: this.name.trim() });
+            this.name = '';
+            await $wire.$refresh();
+        } catch (error) {
+            this.error = error?.message ?? 'No se pudo registrar la passkey.';
+        } finally {
+            this.isRegistering = false;
+        }
+    },
+
+    async destroy(passkeyId, $wire) {
+        this.error = '';
+        this.isDeletingId = passkeyId;
+
+        try {
+            const response = await fetch(`/user/passkeys/${passkeyId}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    ...csrfHeader(),
+                },
+            });
+
+            if (! response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body?.message ?? 'No se pudo eliminar la passkey.');
+            }
+
+            await $wire.$refresh();
+        } catch (error) {
+            this.error = error?.message ?? 'No se pudo eliminar la passkey.';
+        } finally {
+            this.isDeletingId = null;
+        }
+    },
+});

@@ -255,4 +255,46 @@
             </flux:table>
         </flux:card>
     </div>
+
+    <flux:card class="space-y-3">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <flux:heading>Turnos de empleados</flux:heading>
+                <flux:text>Hora de inicio, sucursal asignada y cierre de turno.</flux:text>
+            </div>
+
+            <flux:badge color="zinc" icon="clock" inset="top bottom">
+                {{ $employeeSessions->count() }} registros
+            </flux:badge>
+        </div>
+
+        <flux:table>
+            <flux:table.columns>
+                <flux:table.column>Empleado</flux:table.column>
+                <flux:table.column>Sucursal</flux:table.column>
+                <flux:table.column>Fecha</flux:table.column>
+                <flux:table.column>Inició</flux:table.column>
+                <flux:table.column>Cerró</flux:table.column>
+                <flux:table.column>Estatus</flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @forelse ($employeeSessions as $session)
+                    <flux:table.row wire:key="report-session-{{ $session->id }}">
+                        <flux:table.cell>{{ $session->user?->name ?? 'Sin empleado' }}</flux:table.cell>
+                        <flux:table.cell>{{ $session->branch?->name ?? 'Sin sucursal' }}</flux:table.cell>
+                        <flux:table.cell>{{ $session->work_date?->format('d/m/Y') ?? 'Sin fecha' }}</flux:table.cell>
+                        <flux:table.cell>{{ $session->clock_in_at?->format('H:i') ?? 'Sin apertura' }}</flux:table.cell>
+                        <flux:table.cell>{{ $session->clock_out_at?->format('H:i') ?? 'Abierto' }}</flux:table.cell>
+                        <flux:table.cell>{{ $session->status?->label() ?? 'Sin estatus' }}</flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell colspan="6">
+                            No hay turnos de empleados para los filtros actuales.
+                        </flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
+    </flux:card>
 </div>

@@ -233,5 +233,73 @@
                 </div>
             </flux:modal>
         @endif
+
+        @if ($canManagePasskeys)
+            <section class="mt-12" x-data="passkeysManager()">
+                <flux:heading>{{ __('Passkeys') }}</flux:heading>
+                <flux:subheading>
+                    {{ __('Registra claves de acceso para iniciar sesión con Face ID, Touch ID, Windows Hello o llaves físicas de seguridad.') }}
+                </flux:subheading>
+
+                <div class="mt-6 space-y-4">
+                    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <flux:input
+                            x-model="name"
+                            :label="__('Nombre del dispositivo')"
+                            :placeholder="__('Ej. MacBook de caja')"
+                        />
+
+                        <div class="flex items-end">
+                            <flux:button
+                                variant="primary"
+                                type="button"
+                                x-bind:disabled="isRegistering || name.trim() === ''"
+                                x-on:click="register($wire)"
+                            >
+                                <span x-show="!isRegistering">{{ __('Registrar passkey') }}</span>
+                                <span x-show="isRegistering">{{ __('Registrando...') }}</span>
+                            </flux:button>
+                        </div>
+                    </div>
+
+                    <template x-if="error !== ''">
+                        <flux:callout color="red" icon="x-circle" x-text="error"></flux:callout>
+                    </template>
+                </div>
+
+                <div class="mt-6 space-y-3">
+                    @forelse ($this->passkeys as $passkey)
+                        <div class="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div>
+                                <div class="font-medium">{{ $passkey['name'] }}</div>
+                                <div class="text-sm text-zinc-500">
+                                    {{ $passkey['authenticator'] ?: __('Autenticador desconocido') }}
+                                </div>
+                                <div class="text-xs text-zinc-400 mt-1">
+                                    {{ __('Creada: :date', ['date' => $passkey['created_at'] ?: __('Sin fecha')]) }}
+                                    ·
+                                    {{ __('Último uso: :date', ['date' => $passkey['last_used_at'] ?: __('Sin uso')]) }}
+                                </div>
+                            </div>
+
+                            <flux:button
+                                variant="danger"
+                                size="sm"
+                                type="button"
+                                x-on:click="destroy({{ $passkey['id'] }}, $wire)"
+                                x-bind:disabled="isDeletingId === {{ $passkey['id'] }}"
+                            >
+                                <span x-show="isDeletingId !== {{ $passkey['id'] }}">{{ __('Eliminar') }}</span>
+                                <span x-show="isDeletingId === {{ $passkey['id'] }}">{{ __('Eliminando...') }}</span>
+                            </flux:button>
+                        </div>
+                    @empty
+                        <flux:callout color="sky" icon="information-circle">
+                            {{ __('Aún no tienes passkeys registradas.') }}
+                        </flux:callout>
+                    @endforelse
+                </div>
+            </section>
+        @endif
     </x-settings.layout>
 </section>

@@ -5,6 +5,7 @@ namespace App\Livewire\Settings;
 use App\Concerns\PasswordValidationRules;
 use Exception;
 use Flux\Flux;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
@@ -39,6 +40,9 @@ class Security extends Component
     public bool $requiresConfirmation;
 
     #[Locked]
+    public bool $canManagePasskeys;
+
+    #[Locked]
     public string $qrCodeSvg = '';
 
     #[Locked]
@@ -57,6 +61,7 @@ class Security extends Component
     public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
     {
         $this->canManageTwoFactor = Features::canManageTwoFactorAuthentication();
+        $this->canManagePasskeys = Features::canManagePasskeys();
 
         if ($this->canManageTwoFactor) {
             if (Fortify::confirmsTwoFactorAuthentication() && is_null(auth()->user()->two_factor_confirmed_at)) {
@@ -223,5 +228,35 @@ class Security extends Component
             'description' => __('To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app.'),
             'buttonText' => __('Continue'),
         ];
+    }
+
+    /**
+     * Return passkeys registered by the authenticated user.
+     *
+     * @return array<int, array{id:int,name:string,authenticator:?string,last_used_at:?string,created_at:?string}>
+     */
+    #[Computed]
+    public function passkeys(): array
+    {
+        if (! $this->canManagePasskeys) {
+            return [];
+        }
+
+        return auth()->user()->passkeys()
+            ->latest()
+            ->get()
+            ->map(fn ($passkey): array => [
+                'id' => $passkey->id,
+                'name' => $passkey->name,
+                'authenticator' => $passkey->authenticator,
+                'last_used_at' => $passkey->last_used_at instanceof Carbon
+                    ? $passkey->last_used_at->format('d/m/Y H:i')
+                    : null,
+                'created_at' => $passkey->created_at instanceof Carbon
+                    ? $passkey->created_at->format('d/m/Y H:i')
+                    : null,
+            ])
+            ->values()
+            ->all();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Livewire\Reports;
 
 use App\Enums\PaymentMethod;
 use App\Models\Branch;
+use App\Models\WorkSession;
 use App\Services\ReportService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
@@ -76,6 +77,15 @@ class Overview extends Component
         return view('livewire.reports.overview', [
             'overview' => $overview,
             'branches' => Branch::query()->where('is_active', true)->orderBy('name')->get(),
+            'employeeSessions' => WorkSession::query()
+                ->with(['user', 'branch'])
+                ->when($this->branch_id, fn ($query) => $query->where('branch_id', $this->branch_id))
+                ->when($this->date_from !== '', fn ($query) => $query->whereDate('work_date', '>=', $this->date_from))
+                ->when($this->date_to !== '', fn ($query) => $query->whereDate('work_date', '<=', $this->date_to))
+                ->orderByDesc('work_date')
+                ->orderByDesc('clock_in_at')
+                ->limit(50)
+                ->get(),
             'paymentMethods' => PaymentMethod::cases(),
         ])->layout('layouts.app');
     }

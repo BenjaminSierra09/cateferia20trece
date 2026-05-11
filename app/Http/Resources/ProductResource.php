@@ -10,6 +10,21 @@ use Illuminate\Support\Facades\Storage;
 /** @mixin Product */
 class ProductResource extends JsonResource
 {
+    protected function resolveImageUrl(): ?string
+    {
+        if (! $this->image_path) {
+            return null;
+        }
+
+        $storageUrl = Storage::url($this->image_path);
+
+        if (str_starts_with($storageUrl, 'http://') || str_starts_with($storageUrl, 'https://')) {
+            return $storageUrl;
+        }
+
+        return url($storageUrl);
+    }
+
     /**
      * Transform the resource into an array.
      *
@@ -23,7 +38,7 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'description' => $this->description,
             'image_path' => $this->image_path,
-            'image_url' => $this->image_path ? Storage::url($this->image_path) : null,
+            'image_url' => $this->resolveImageUrl(),
             'unit_type' => $this->unit_type,
             'base_price' => $this->base_price,
             'is_active' => $this->is_active,
