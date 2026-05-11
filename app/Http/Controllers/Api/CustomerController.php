@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\RewardTier;
 use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
+use App\Models\CustomerQrCode;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -39,9 +43,19 @@ class CustomerController extends Controller
             'birthday' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
+            'qr_codes' => ['sometimes', 'array'],
+            'qr_codes.*.uuid' => ['required', 'uuid', 'distinct'],
+            'qr_codes.*.is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $customer = Customer::create($validated);
+        $customer = Customer::create([
+            'reward_balance' => 0,
+            'reward_year' => (int) now()->format('Y'),
+            'annual_drink_count' => 0,
+            'reward_tier' => RewardTier::Bronze,
+            ...collect($validated)->except('qr_codes')->all(),
+        ]);
+        $this->syncQrCodes($customer, collect($validated['qr_codes'] ?? []));
 
         return new CustomerResource($customer->load('qrCodes', 'rewardTransactions')->loadCount('sales'));
     }
@@ -59,9 +73,16 @@ class CustomerController extends Controller
             'birthday' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
+            'qr_codes' => ['sometimes', 'array'],
+            'qr_codes.*.uuid' => ['required', 'uuid', 'distinct'],
+            'qr_codes.*.is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $customer->update($validated);
+        $customer->update(collect($validated)->except('qr_codes')->all());
+
+        if (array_key_exists('qr_codes', $validated)) {
+            $this->syncQrCodes($customer, collect($validated['qr_codes']));
+        }
 
         return new CustomerResource($customer->fresh()->load('qrCodes', 'rewardTransactions')->loadCount('sales'));
     }
@@ -71,5 +92,38 @@ class CustomerController extends Controller
         $customer->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * @param  Collection<int, array{uuid:string,is_active?:bool}>  $qrCodes
+     */
+    protected function syncQrCodes(Customer $customer, Collection $qrCodes): void
+    {
+        $normalizedQrCodes = $qrCodes
+            ->map(fn (array $qrCode): array => [
+                'uuid' => Str::lower(trim($qrCode['uuid'])),
+                'is_active' => (bool) ($qrCode['is_active'] ?? true),
+            ])
+            ->unique('uuid')
+            ->values();
+
+        $submittedUuids = $normalizedQrCodes->pluck('uuid')->all();
+
+        $customer->qrCodes()
+            ->whereNotIn('uuid', $submittedUuids)
+            ->update([
+                'customer_id' => null,
+                'is_active' => false,
+            ]);
+
+        $normalizedQrCodes->each(function (array $qrCode) use ($customer): void {
+            CustomerQrCode::query()->updateOrCreate(
+                ['uuid' => $qrCode['uuid']],
+                [
+                    'customer_id' => $customer->id,
+                    'is_active' => $qrCode['is_active'],
+                ],
+            );
+        });
     }
 }

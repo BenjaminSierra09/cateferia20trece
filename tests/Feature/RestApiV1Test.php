@@ -123,6 +123,51 @@ test('v1 api can manage branches', function () {
         ->assertNoContent();
 });
 
+test('v1 api can create update and deassign customer qr uuids', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $firstUuid = 'c56a4180-65aa-42ec-a945-5fd21dec0538';
+    $secondUuid = 'c56a4180-65aa-42ec-a945-5fd21dec0539';
+
+    $storeResponse = $this->postJson('/api/v1/customers', [
+        'name' => 'Citlali Rivera',
+        'phone' => '+524151234567',
+        'birthday' => '1996-02-09',
+        'email' => 'citlali@cafeteria20trece.com',
+        'qr_codes' => [
+            ['uuid' => $firstUuid, 'is_active' => true],
+            ['uuid' => $secondUuid, 'is_active' => true],
+        ],
+    ]);
+
+    $customerId = $storeResponse->json('data.id');
+
+    $storeResponse->assertSuccessful()
+        ->assertJsonPath('data.name', 'Citlali Rivera')
+        ->assertJsonPath('data.birthday', '1996-02-09')
+        ->assertJsonCount(2, 'data.qr_codes');
+
+    expect(CustomerQrCode::query()->where('customer_id', $customerId)->count())->toBe(2);
+
+    $this->patchJson("/api/v1/customers/{$customerId}", [
+        'name' => 'Citlali Rivera López',
+        'qr_codes' => [
+            ['uuid' => $secondUuid, 'is_active' => true],
+        ],
+    ])
+        ->assertSuccessful()
+        ->assertJsonPath('data.name', 'Citlali Rivera López')
+        ->assertJsonCount(1, 'data.qr_codes')
+        ->assertJsonPath('data.qr_codes.0.uuid', $secondUuid);
+
+    $deassignedQrCode = CustomerQrCode::query()->where('uuid', $firstUuid)->firstOrFail();
+    $activeQrCode = CustomerQrCode::query()->where('uuid', $secondUuid)->firstOrFail();
+
+    expect($deassignedQrCode->customer_id)->toBeNull();
+    expect($deassignedQrCode->is_active)->toBeFalse();
+    expect($activeQrCode->customer_id)->toBe($customerId);
+});
+
 test('v1 api can create and update beverages with sizes and customizations', function () {
     Sanctum::actingAs(User::factory()->create());
 

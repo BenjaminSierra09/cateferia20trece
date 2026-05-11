@@ -66,7 +66,7 @@ class GenerateCatalogImage implements ShouldBeUnique, ShouldQueue
         try {
             $generatedImage = Image::of($catalogImageManager->promptFor($model))
                 ->square()
-                ->quality('medium')
+                ->quality('low')
                 ->timeout(180)
                 ->generate(provider: count($providers) === 1 ? $providers[0] : $providers);
         } catch (Throwable $exception) {
