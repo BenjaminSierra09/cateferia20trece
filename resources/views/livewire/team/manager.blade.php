@@ -2,7 +2,7 @@
         <flux:card class="space-y-4">
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <flux:heading>Colaboradores</flux:heading>
+                    <flux:heading size="xl">Colaboradores</flux:heading>
                     <flux:text>Gestiona al equipo activo de la cafetería.</flux:text>
                 </div>
 

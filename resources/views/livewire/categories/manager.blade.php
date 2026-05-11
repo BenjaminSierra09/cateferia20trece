@@ -3,7 +3,7 @@
         <div>
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <flux:heading>Categorías</flux:heading>
+                    <flux:heading size="xl">Categorías</flux:heading>
                     <flux:text>Organiza el menú por familias de bebidas.</flux:text>
                 </div>
 

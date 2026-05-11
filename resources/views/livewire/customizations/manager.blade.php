@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between gap-4">
         <div>
-            <flux:heading>Personalizaciones</flux:heading>
+            <flux:heading size="xl">Personalizaciones</flux:heading>
             <flux:text>Consulta tipos y opciones disponibles para el menú.</flux:text>
         </div>
 
@@ -18,7 +18,7 @@
     <div class="grid gap-6 xl:grid-cols-2">
         <flux:card class="space-y-4">
             <div>
-                <flux:heading>Tipos de personalización</flux:heading>
+                <flux:heading size="xl">Tipos de personalización</flux:heading>
                 <flux:text>{{ $customizationTypes->count() }} configurados.</flux:text>
             </div>
 
@@ -75,7 +75,7 @@
 
         <flux:card class="space-y-4">
             <div>
-                <flux:heading>Opciones disponibles</flux:heading>
+                <flux:heading size="xl">Opciones disponibles</flux:heading>
                 <flux:text>{{ $customizationOptions->count() }} opciones registradas.</flux:text>
             </div>
 

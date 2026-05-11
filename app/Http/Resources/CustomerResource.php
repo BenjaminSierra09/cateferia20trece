@@ -27,6 +27,7 @@ class CustomerResource extends JsonResource
             'annual_drink_count' => $this->annual_drink_count,
             'reward_tier' => $this->reward_tier->value,
             'reward_tier_label' => $this->reward_tier->label(),
+            'tonalpohualli' => $this->birthday ? $this->tonalpohualli() : null,
             'is_active' => $this->is_active,
             'sales_count' => $this->whenCounted('sales'),
             'qr_codes' => CustomerQrCodeResource::collection($this->whenLoaded('qrCodes')),

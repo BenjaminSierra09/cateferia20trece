@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between gap-4">
         <div>
-            <flux:heading>Opciones de personalización</flux:heading>
+            <flux:heading size="xl">Opciones de personalización</flux:heading>
             <flux:text>Administra cada variante disponible y su precio adicional.</flux:text>
         </div>
 

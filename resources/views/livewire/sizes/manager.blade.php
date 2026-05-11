@@ -3,7 +3,7 @@
         <div>
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <flux:heading>Tamaños</flux:heading>
+                    <flux:heading size="xl">Tamaños</flux:heading>
                     <flux:text>Define capacidad y disponibilidad de cada presentación.</flux:text>
                 </div>
 
@@ -41,7 +41,7 @@
                             </flux:badge>
                         </flux:table.cell>
                         <flux:table.cell>
-                            <div class="flex justify-end gap-2">
+                            <div class="flex gap-2">
                                 <flux:button :href="route('dashboard.sizes.edit', $size)" variant="ghost" size="sm" wire:navigate>Editar</flux:button>
                                 <flux:button type="button" variant="danger" size="sm" wire:click="toggleActive({{ $size->id }})">
                                     {{ $size->is_active ? 'Eliminar' : 'Reactivar' }}

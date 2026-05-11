@@ -110,8 +110,19 @@
                             <flux:table.cell class="max-lg:hidden">
                                 @if ($customer->birthday && filled($tonalliByCustomerId[$customer->id]['tonalli'] ?? null))
                                     <div class="space-y-1">
-                                        <div class="font-medium">{{ $tonalliByCustomerId[$customer->id]['tonalli'] }}</div>
+                                        <div class="font-medium">
+                                            @if(! empty($tonalliByCustomerId[$customer->id]['icon']))
+                                                <img src="{{ $tonalliByCustomerId[$customer->id]['icon'] }}" alt="" class="inline-block w-4 h-4 mr-1 align-text-bottom" />
+                                            @endif
+                                            {{ $tonalliByCustomerId[$customer->id]['tonalli'] }}
+                                        </div>
                                         <div class="text-sm text-zinc-500">{{ $tonalliByCustomerId[$customer->id]['espanol'] }}</div>
+                                        <div class="text-xs text-zinc-400">
+                                            @if(! empty($tonalliByCustomerId[$customer->id]['trecena_icon']))
+                                                <img src="{{ $tonalliByCustomerId[$customer->id]['trecena_icon'] }}" alt="" class="inline-block w-3 h-3 mr-1 align-text-bottom" />
+                                            @endif
+                                            Trecena líder: {{ $tonalliByCustomerId[$customer->id]['trecena'] }}
+                                        </div>
                                     </div>
                                 @else
                                     <span class="text-sm text-zinc-500">Sin cumpleaños</span>
@@ -210,8 +221,19 @@
 
                         <div class="space-y-1 text-sm text-zinc-600 dark:text-zinc-300">
                             @if ($customer->birthday && filled($tonalliByCustomerId[$customer->id]['tonalli'] ?? null))
-                                <div class="font-medium">{{ $tonalliByCustomerId[$customer->id]['tonalli'] }}</div>
+                                <div class="font-medium">
+                                    @if(! empty($tonalliByCustomerId[$customer->id]['icon']))
+                                        <img src="{{ $tonalliByCustomerId[$customer->id]['icon'] }}" alt="" class="inline-block w-5 h-5 mr-1 align-text-bottom" />
+                                    @endif
+                                    {{ $tonalliByCustomerId[$customer->id]['tonalli'] }}
+                                </div>
                                 <div>{{ $tonalliByCustomerId[$customer->id]['espanol'] }}</div>
+                                <div class="text-sm text-zinc-500">
+                                    @if(! empty($tonalliByCustomerId[$customer->id]['trecena_icon']))
+                                        <img src="{{ $tonalliByCustomerId[$customer->id]['trecena_icon'] }}" alt="" class="inline-block w-4 h-4 mr-1 align-text-bottom" />
+                                    @endif
+                                    Trecena líder: {{ $tonalliByCustomerId[$customer->id]['trecena'] }}
+                                </div>
                             @else
                                 <div>Sin cumpleaños registrado</div>
                             @endif

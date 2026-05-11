@@ -150,7 +150,7 @@ class Manager extends Component
         return view('livewire.customers.manager', [
             'customers' => $customers,
             'tonalliByCustomerId' => $customers->getCollection()->mapWithKeys(fn (Customer $customer): array => [
-                $customer->id => $customer->birthday ? $calendar->resolve($customer->birthday->toImmutable()) : [],
+                $customer->id => $customer->tonalpohualli(),
             ]),
         ])->layout('layouts.app');
     }

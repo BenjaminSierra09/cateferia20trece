@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between gap-4">
         <div>
-            <flux:heading>Tipos de personalización</flux:heading>
+            <flux:heading size="xl">Tipos de personalización</flux:heading>
             <flux:text>Define familias como leche, azúcar, temperatura o toppings.</flux:text>
         </div>
 

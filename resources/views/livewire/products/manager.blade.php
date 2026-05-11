@@ -24,7 +24,7 @@
     <flux:card class="space-y-4">
         <div class="flex items-center justify-between">
             <div>
-                <flux:heading>Productos</flux:heading>
+                <flux:heading size="xl">Productos</flux:heading>
                 <flux:text>Administra pan, café en grano y otros artículos que no son bebidas.</flux:text>
             </div>
         </div>

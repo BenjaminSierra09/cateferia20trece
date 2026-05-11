@@ -8,6 +8,7 @@ use App\Models\WorkSession;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 class WorkSessionController extends Controller
@@ -38,7 +39,18 @@ class WorkSessionController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $session = WorkSession::query()->create($validated);
+        $session = WorkSession::query()
+            ->where('user_id', $validated['user_id'])
+            ->whereDate('work_date', $validated['work_date'])
+            ->first();
+
+        if ($session) {
+            $session->fill(Arr::except($validated, ['user_id', 'work_date']));
+            $session->work_date = $validated['work_date'];
+            $session->save();
+        } else {
+            $session = WorkSession::query()->create($validated);
+        }
 
         return new WorkSessionResource($session->load(['user.branch', 'branch'])->loadCount('sales'));
     }

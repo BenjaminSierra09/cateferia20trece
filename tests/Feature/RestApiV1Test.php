@@ -7,12 +7,14 @@ use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\CustomerQrCode;
 use App\Models\CustomizationOption;
 use App\Models\CustomizationType;
 use App\Models\Product;
 use App\Models\RewardTransaction;
 use App\Models\Size;
 use App\Models\User;
+use App\Models\WorkSession;
 use App\Services\SaleService;
 use App\Services\WorkSessionService;
 use Illuminate\Testing\Fluent\AssertableJson;
@@ -169,6 +171,43 @@ test('v1 api can create and update beverages with sizes and customizations', fun
         ->assertJsonPath('data.sizes.1.price', 78);
 });
 
+test('v1 api reuses an existing work session when syncing the same user and date', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+
+    $firstResponse = $this->postJson('/api/v1/work-sessions', [
+        'user_id' => $user->id,
+        'branch_id' => $branch->id,
+        'work_date' => '2026-05-10',
+        'clock_in_at' => '2026-05-10T09:00:00Z',
+        'status' => WorkSessionStatus::Open->value,
+    ]);
+
+    $firstResponse->assertSuccessful();
+
+    $workSessionId = $firstResponse->json('data.id');
+
+    $secondResponse = $this->postJson('/api/v1/work-sessions', [
+        'user_id' => $user->id,
+        'branch_id' => $branch->id,
+        'work_date' => '2026-05-10',
+        'clock_in_at' => '2026-05-10T09:15:00Z',
+        'status' => WorkSessionStatus::Open->value,
+    ]);
+
+    $secondResponse->assertSuccessful()
+        ->assertJsonPath('data.id', $workSessionId);
+
+    expect($secondResponse->json('data.clock_in_at'))->toStartWith('2026-05-10T09:15:00');
+
+    expect(WorkSession::query()
+        ->where('user_id', $user->id)
+        ->whereDate('work_date', '2026-05-10')
+        ->count())->toBe(1);
+});
+
 test('v1 api exposes operational resources for users sessions sales and reward transactions', function () {
     Sanctum::actingAs(User::factory()->create());
 
@@ -235,4 +274,31 @@ test('v1 api exposes operational resources for users sessions sales and reward t
     $this->getJson('/api/v1/reward-transactions')
         ->assertSuccessful()
         ->assertJsonFragment(['id' => $rewardTransaction->id]);
+});
+
+test('v1 api exposes tonalpohualli data for customer search and qr lookup', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $customer = Customer::factory()->create([
+        'name' => 'Citlali Rivera',
+        'birthday' => '1996-02-09',
+    ]);
+
+    $qrCode = CustomerQrCode::factory()->create([
+        'customer_id' => $customer->id,
+        'uuid' => 'customer-qr-tonalpohualli',
+    ]);
+    $reading = $customer->tonalpohualli();
+
+    $this->getJson('/api/v1/customers?search=Citlali')
+        ->assertSuccessful()
+        ->assertJsonPath('data.0.name', 'Citlali Rivera')
+        ->assertJsonPath('data.0.tonalpohualli.nahua', $reading['nahua'])
+        ->assertJsonPath('data.0.tonalpohualli.espanol', $reading['espanol']);
+
+    $this->getJson("/api/v1/qr/{$qrCode->uuid}")
+        ->assertSuccessful()
+        ->assertJsonPath('customer.id', $customer->id)
+        ->assertJsonPath('customer.tonalpohualli.nahua', $reading['nahua'])
+        ->assertJsonPath('customer.tonalpohualli.trecena', $reading['trecena']);
 });

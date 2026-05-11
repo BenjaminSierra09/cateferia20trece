@@ -86,7 +86,6 @@
                     <flux:table.column>Bebida</flux:table.column>
                     <flux:table.column>Categoría</flux:table.column>
                     <flux:table.column class="max-lg:hidden">Tamaños</flux:table.column>
-                    <flux:table.column class="max-xl:hidden">Extras</flux:table.column>
                     <flux:table.column>Base</flux:table.column>
                     <flux:table.column>Estado</flux:table.column>
                     <flux:table.column></flux:table.column>
@@ -125,9 +124,6 @@
                             </flux:table.cell>
                             <flux:table.cell class="max-lg:hidden">
                                 {{ $beverage->sizePrices->map(fn ($price) => $price->size?->name)->filter()->implode(', ') ?: 'Sin tamaños' }}
-                            </flux:table.cell>
-                            <flux:table.cell class="max-xl:hidden">
-                                {{ $beverage->customizationOptions->map(fn ($option) => $option->name)->implode(', ') ?: 'Sin extras' }}
                             </flux:table.cell>
                             <flux:table.cell variant="strong">${{ number_format($beverage->base_price, 2) }}</flux:table.cell>
                             <flux:table.cell>
