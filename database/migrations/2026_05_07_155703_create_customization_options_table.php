@@ -13,20 +13,35 @@ return new class extends Migration
     {
         Schema::create('customization_options', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('customization_type_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('customization_type_id');
             $table->string('name');
             $table->decimal('price', 10, 2)->default(0);
             $table->boolean('is_available')->default(true);
             $table->timestamps();
+
+            $table->foreign('customization_type_id', 'co_type_fk')
+                ->references('id')
+                ->on('customization_types')
+                ->onDelete('cascade');
         });
 
         Schema::create('beverage_customization_option', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('beverage_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('customization_option_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('beverage_id');
+            $table->unsignedBigInteger('customization_option_id');
             $table->timestamps();
 
-            $table->unique(['beverage_id', 'customization_option_id'], 'beverage_customization_unique');
+            $table->foreign('beverage_id', 'bco_beverage_fk')
+                ->references('id')
+                ->on('beverages')
+                ->onDelete('cascade');
+            
+            $table->foreign('customization_option_id', 'bco_option_fk')
+                ->references('id')
+                ->on('customization_options')
+                ->onDelete('cascade');
+
+            $table->unique(['beverage_id', 'customization_option_id'], 'bco_unique');
         });
     }
 

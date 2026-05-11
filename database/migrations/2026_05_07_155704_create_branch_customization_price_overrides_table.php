@@ -13,12 +13,22 @@ return new class extends Migration
     {
         Schema::create('branch_customization_price_overrides', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('customization_option_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('branch_id');
+            $table->unsignedBigInteger('customization_option_id');
             $table->decimal('price', 10, 2);
             $table->timestamps();
 
-            $table->unique(['branch_id', 'customization_option_id']);
+            $table->foreign('branch_id', 'bcpo_branch_fk')
+                ->references('id')
+                ->on('branches')
+                ->onDelete('cascade');
+            
+            $table->foreign('customization_option_id', 'bcpo_option_fk')
+                ->references('id')
+                ->on('customization_options')
+                ->onDelete('cascade');
+
+            $table->unique(['branch_id', 'customization_option_id'], 'bcpo_unique');
         });
     }
 
