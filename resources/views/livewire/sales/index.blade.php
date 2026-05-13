@@ -1,28 +1,4 @@
 <div class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-3">
-            <flux:select wire:model.live="perPage" size="sm" class="w-28">
-                <option value="10">10 por página</option>
-                <option value="25">25 por página</option>
-                <option value="50">50 por página</option>
-            </flux:select>
-
-            <flux:subheading class="max-md:hidden whitespace-nowrap">Filtrar por:</flux:subheading>
-
-            <flux:badge rounded color="zinc" icon="magnifying-glass" size="lg">Búsqueda</flux:badge>
-            <flux:badge rounded color="zinc" icon="credit-card" size="lg">Pago</flux:badge>
-        </div>
-
-        <div class="flex items-center gap-3">
-            <flux:button :href="route('dashboard.sales.create')" variant="ghost" wire:navigate>Venta manual</flux:button>
-            <flux:button :href="route('dashboard.sales.pos')" variant="primary" wire:navigate>POS</flux:button>
-
-            <flux:tabs variant="segmented" class="w-auto!" size="sm">
-                <flux:tab wire:click="$set('viewMode', 'list')" icon="list-bullet" icon:variant="outline" :data-current="$viewMode === 'list'" />
-                <flux:tab wire:click="$set('viewMode', 'compact')" icon="squares-2x2" icon:variant="outline" :data-current="$viewMode === 'compact'" />
-            </flux:tabs>
-        </div>
-    </div>
 
     <div class="grid gap-4 md:grid-cols-4">
         @foreach ($stats as $stat)
@@ -41,19 +17,30 @@
         <div class="flex items-center justify-between gap-4">
             <div>
                 <flux:heading>Ventas</flux:heading>
-                <flux:text>Consulta el historial y entra rápido al flujo manual o al POS.</flux:text>
+                <flux:text>Consulta el historial.</flux:text>
             </div>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-            <flux:input wire:model.live.debounce.300ms="search" label="Buscar" placeholder="Cliente, sucursal, colaborador o descuento" />
-            <flux:select wire:model.live="paymentMethod" label="Método de pago">
-                <option value="">Todos</option>
-                @foreach ($paymentMethods as $method)
-                    <option value="{{ $method->value }}">{{ $method->label() }}</option>
-                @endforeach
-            </flux:select>
-        </div>
+<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px_140px] items-end">
+    <flux:input
+        wire:model.live.debounce.300ms="search"
+        label="Buscar"
+        placeholder="Cliente, sucursal, colaborador o descuento"
+    />
+
+    <flux:select wire:model.live="paymentMethod" label="Método de pago">
+        <option value="">Todos</option>
+        @foreach ($paymentMethods as $method)
+            <option value="{{ $method->value }}">{{ $method->label() }}</option>
+        @endforeach
+    </flux:select>
+
+    <flux:select wire:model.live="perPage" size="sm">
+        <option value="10">10 por página</option>
+        <option value="25">25 por página</option>
+        <option value="50">50 por página</option>
+    </flux:select>
+</div>
 
         <flux:table :paginate="$sales">
             <flux:table.columns>
@@ -90,14 +77,7 @@
                         </flux:table.cell>
                         <flux:table.cell variant="strong">${{ number_format($sale->total, 2) }}</flux:table.cell>
                         <flux:table.cell>
-                            <flux:dropdown position="bottom" align="end" offset="-15">
-                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom"></flux:button>
-
-                                <flux:menu>
-                                    <flux:menu.item :href="route('dashboard.sales.create')" icon="plus" wire:navigate>Nueva venta manual</flux:menu.item>
-                                    <flux:menu.item :href="route('dashboard.sales.pos')" icon="credit-card" wire:navigate>Abrir POS</flux:menu.item>
-                                </flux:menu>
-                            </flux:dropdown>
+                            <flux:button :href="route('dashboard.sales.show', $sale->id)" icon="eye" wire:navigate>Ver detalles</flux:button>
                         </flux:table.cell>
                     </flux:table.row>
                 @empty

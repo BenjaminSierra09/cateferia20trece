@@ -19,7 +19,7 @@ class CustomerController extends Controller
         $search = $request->string('search')->toString();
 
         $customers = Customer::query()
-            ->with('qrCodes')
+            ->with(['qrCodes', 'debtMovements'])
             ->withCount('sales')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($innerQuery) use ($search) {
@@ -57,12 +57,12 @@ class CustomerController extends Controller
         ]);
         $this->syncQrCodes($customer, collect($validated['qr_codes'] ?? []));
 
-        return new CustomerResource($customer->load('qrCodes', 'rewardTransactions')->loadCount('sales'));
+        return new CustomerResource($customer->load('qrCodes', 'rewardTransactions', 'debtMovements')->loadCount('sales'));
     }
 
     public function show(Customer $customer): CustomerResource
     {
-        return new CustomerResource($customer->load('qrCodes', 'rewardTransactions')->loadCount('sales'));
+        return new CustomerResource($customer->load('qrCodes', 'rewardTransactions', 'debtMovements')->loadCount('sales'));
     }
 
     public function update(Request $request, Customer $customer): CustomerResource
@@ -84,7 +84,7 @@ class CustomerController extends Controller
             $this->syncQrCodes($customer, collect($validated['qr_codes']));
         }
 
-        return new CustomerResource($customer->fresh()->load('qrCodes', 'rewardTransactions')->loadCount('sales'));
+        return new CustomerResource($customer->fresh()->load('qrCodes', 'rewardTransactions', 'debtMovements')->loadCount('sales'));
     }
 
     public function destroy(Customer $customer): Response

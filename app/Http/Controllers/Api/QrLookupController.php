@@ -14,7 +14,7 @@ class QrLookupController extends Controller
     public function __invoke(string $uuid): JsonResponse
     {
         $qrCode = CustomerQrCode::query()
-            ->with('customer.qrCodes')
+            ->with(['customer.qrCodes', 'customer.debtMovements'])
             ->where('uuid', $uuid)
             ->first();
 
@@ -31,7 +31,7 @@ class QrLookupController extends Controller
         return response()->json([
             'uuid' => $qrCode->uuid,
             'is_active' => $qrCode->is_active,
-            'customer' => $qrCode->customer ? new CustomerResource($qrCode->customer->load('rewardTransactions')) : null,
+            'customer' => $qrCode->customer ? new CustomerResource($qrCode->customer->load('rewardTransactions', 'debtMovements')) : null,
         ]);
     }
 }

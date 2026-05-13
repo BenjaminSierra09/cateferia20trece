@@ -15,6 +15,7 @@
                 <flux:badge rounded color="zinc" icon="sparkles" size="lg">Tonalpohualli</flux:badge>
                 <flux:badge rounded color="zinc" icon="qr-code" size="lg">QR UUID</flux:badge>
                 <flux:badge rounded color="zinc" icon="gift" size="lg">Recompensas</flux:badge>
+                <flux:badge rounded color="zinc" icon="banknotes" size="lg">Cuenta corriente</flux:badge>
             </div>
         </div>
 
@@ -81,6 +82,7 @@
                     <flux:table.column class="max-lg:hidden">Tonalpohualli</flux:table.column>
                     <flux:table.column class="max-md:hidden">Nivel</flux:table.column>
                     <flux:table.column>Saldo</flux:table.column>
+                    <flux:table.column>Adeudo</flux:table.column>
                     <flux:table.column class="max-md:hidden">QR</flux:table.column>
                     <flux:table.column>Estado</flux:table.column>
                     <flux:table.column></flux:table.column>
@@ -144,6 +146,14 @@
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell variant="strong">${{ number_format($customer->reward_balance, 2) }}</flux:table.cell>
+                            <flux:table.cell>
+                                <div class="space-y-1">
+                                    <div class="font-medium">${{ number_format($customer->debtBalance(), 2) }}</div>
+                                    <flux:badge :color="$customer->hasDebt() ? 'rose' : 'emerald'" inset="top bottom">
+                                        {{ $customer->hasDebt() ? 'Debe' : 'Al corriente' }}
+                                    </flux:badge>
+                                </div>
+                            </flux:table.cell>
                             <flux:table.cell class="max-md:hidden">
                                 <flux:badge color="zinc" icon="qr-code" inset="top bottom">
                                     {{ $customer->qrCodes->count() }}
@@ -172,7 +182,7 @@
                         </flux:table.row>
                     @empty
                         <flux:table.row>
-                            <flux:table.cell colspan="8">
+                            <flux:table.cell colspan="9">
                                 <flux:callout icon="information-circle" color="sky">Todavía no hay clientes registrados.</flux:callout>
                             </flux:table.cell>
                         </flux:table.row>
@@ -217,6 +227,9 @@
                             <flux:badge color="emerald" inset="top bottom">${{ number_format($customer->reward_balance, 2) }}</flux:badge>
                             <flux:badge color="zinc" icon="gift" inset="top bottom">{{ $customer->reward_tier->label() }}</flux:badge>
                             <flux:badge color="sky" icon="qr-code" inset="top bottom">{{ $customer->qrCodes->count() }} QR</flux:badge>
+                            <flux:badge :color="$customer->hasDebt() ? 'rose' : 'emerald'" icon="banknotes" inset="top bottom">
+                                ${{ number_format($customer->debtBalance(), 2) }}
+                            </flux:badge>
                         </div>
 
                         <div class="space-y-1 text-sm text-zinc-600 dark:text-zinc-300">

@@ -57,6 +57,36 @@ class Customer extends Model
     }
 
     /**
+     * Get debt movements for the customer.
+     */
+    public function debtMovements(): HasMany
+    {
+        return $this->hasMany(CustomerDebtMovement::class)
+            ->orderByDesc('recorded_at')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * Get the current debt balance for the customer.
+     */
+    public function debtBalance(): float
+    {
+        $balance = $this->relationLoaded('debtMovements')
+            ? $this->debtMovements->first()?->balance_after
+            : $this->debtMovements()->value('balance_after');
+
+        return round((float) ($balance ?? 0), 2);
+    }
+
+    /**
+     * Determine if the customer currently owes money.
+     */
+    public function hasDebt(): bool
+    {
+        return $this->debtBalance() > 0;
+    }
+
+    /**
      * Resolve the customer's Tonalpohualli reading.
      *
      * Returns an array compatible with the existing view mapping:

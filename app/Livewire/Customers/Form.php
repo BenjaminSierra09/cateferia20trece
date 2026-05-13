@@ -2,12 +2,15 @@
 
 namespace App\Livewire\Customers;
 
+use App\Enums\CustomerDebtMovementType;
 use App\Models\Customer;
 use App\Models\CustomerQrCode;
+use App\Services\CustomerDebtService;
 use App\Support\TonalpohualliCalendar;
 use Carbon\CarbonImmutable;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -27,6 +30,10 @@ class Form extends Component
     public string $email = '';
 
     public string $qr_uuid = '';
+
+    public string $debt_amount = '';
+
+    public string $debt_notes = '';
 
     public function mount(?Customer $customer = null): void
     {
@@ -79,10 +86,21 @@ class Form extends Component
         Flux::toast(variant: 'success', text: 'QR vinculado.');
     }
 
+    public function registerDebt(): void
+    {
+        $this->registerDebtMovement(CustomerDebtMovementType::Debt);
+    }
+
+    public function registerPayment(): void
+    {
+        $this->registerDebtMovement(CustomerDebtMovementType::Payment);
+    }
+
     public function render(): View
     {
         return view('livewire.customers.form', [
             'linkedQrCodes' => $this->customer?->qrCodes()->latest()->get() ?? collect(),
+            'debtMovements' => $this->customer?->debtMovements()->with(['user', 'branch'])->get() ?? collect(),
             'tonalpohualli' => $this->birthday !== ''
                 ? app(TonalpohualliCalendar::class)->resolve(CarbonImmutable::parse($this->birthday, config('app.timezone')))
                 : null,
@@ -110,6 +128,41 @@ class Form extends Component
     {
         return [
             'phone' => 'teléfono',
+            'debt_amount' => 'monto',
         ];
+    }
+
+    protected function registerDebtMovement(CustomerDebtMovementType $type): void
+    {
+        abort_if($this->customer === null, 422, 'Primero guarda el cliente.');
+
+        $validated = $this->validate([
+            'debt_amount' => ['required', 'numeric', 'gt:0'],
+            'debt_notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        try {
+            app(CustomerDebtService::class)->register(
+                customer: $this->customer,
+                type: $type,
+                amount: (float) $validated['debt_amount'],
+                notes: $validated['debt_notes'] !== '' ? $validated['debt_notes'] : null,
+                user: auth()->user(),
+                branchId: auth()->user()?->branch_id,
+            );
+        } catch (\InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([
+                'debt_amount' => [$exception->getMessage()],
+            ]);
+        }
+
+        $this->customer = $this->customer->fresh();
+        $this->debt_amount = '';
+        $this->debt_notes = '';
+
+        Flux::toast(
+            variant: 'success',
+            text: $type === CustomerDebtMovementType::Debt ? 'Adeudo registrado.' : 'Abono registrado.',
+        );
     }
 }

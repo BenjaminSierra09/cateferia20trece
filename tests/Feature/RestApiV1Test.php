@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CustomerDebtMovementType;
 use App\Enums\PaymentMethod;
 use App\Enums\RewardTransactionType;
 use App\Enums\WorkSessionStatus;
@@ -361,4 +362,215 @@ test('v1 api exposes tonalpohualli data for customer search and qr lookup', func
         ->assertJsonPath('customer.id', $customer->id)
         ->assertJsonPath('customer.tonalpohualli.nahua', $reading['nahua'])
         ->assertJsonPath('customer.tonalpohualli.trecena', $reading['trecena']);
+});
+
+test('v1 api records customer debts and payments and exposes debt balances', function () {
+    $branch = Branch::factory()->create(['name' => 'Centro']);
+    $user = User::factory()->assignedToBranch($branch)->create();
+
+    Sanctum::actingAs($user);
+
+    $customer = Customer::factory()->create([
+        'name' => 'Benjamín Flores',
+        'birthday' => '1994-10-21',
+    ]);
+
+    $qrCode = CustomerQrCode::factory()->create([
+        'customer_id' => $customer->id,
+        'uuid' => '0d4b1cb2-98b5-41b5-9976-a98bb2452332',
+    ]);
+
+    $debtResponse = $this->postJson("/api/v1/customers/{$customer->id}/debt-movements", [
+        'type' => CustomerDebtMovementType::Debt->value,
+        'amount' => 120.50,
+        'notes' => 'Pago pendiente de ayer',
+        'branch_id' => $branch->id,
+        'recorded_at' => '2026-05-13T09:00:00-06:00',
+    ]);
+
+    $debtResponse->assertSuccessful()
+        ->assertJsonPath('data.type', CustomerDebtMovementType::Debt->value)
+        ->assertJsonPath('data.balance_after', '120.50');
+
+    $paymentResponse = $this->postJson("/api/v1/customers/{$customer->id}/debt-movements", [
+        'type' => CustomerDebtMovementType::Payment->value,
+        'amount' => 20.50,
+        'notes' => 'Abono parcial',
+        'branch_id' => $branch->id,
+        'recorded_at' => '2026-05-13T09:30:00-06:00',
+    ]);
+
+    $paymentResponse->assertSuccessful()
+        ->assertJsonPath('data.type', CustomerDebtMovementType::Payment->value)
+        ->assertJsonPath('data.balance_after', '100.00');
+
+    $this->getJson('/api/v1/customers?search=Benjam')
+        ->assertSuccessful()
+        ->assertJsonPath('data.0.name', 'Benjamín Flores')
+        ->assertJsonPath('data.0.debt_balance', 100)
+        ->assertJsonPath('data.0.has_debt', true)
+        ->assertJsonCount(2, 'data.0.debt_movements');
+
+    $this->getJson("/api/v1/qr/{$qrCode->uuid}")
+        ->assertSuccessful()
+        ->assertJsonPath('customer.debt_balance', 100)
+        ->assertJsonPath('customer.has_debt', true)
+        ->assertJsonPath('customer.debt_movements.0.type', CustomerDebtMovementType::Payment->value);
+
+    $this->getJson("/api/v1/customers/{$customer->id}/debt-movements")
+        ->assertSuccessful()
+        ->assertJsonCount(2, 'data');
+});
+
+test('v1 api exposes a customers top favorite beverages with frequent customizations', function () {
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $customer = Customer::factory()->create([
+        'name' => 'Valeria Campos',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $category = BeverageCategory::factory()->create(['name' => 'Café caliente']);
+    $small = Size::factory()->create(['name' => 'Chico', 'capacity_label' => '8 oz']);
+    $medium = Size::factory()->create(['name' => 'Mediano', 'capacity_label' => '12 oz']);
+    $large = Size::factory()->create(['name' => 'Grande', 'capacity_label' => '16 oz']);
+
+    $milkType = CustomizationType::factory()->create(['name' => 'Tipo de leche']);
+    $extrasType = CustomizationType::factory()->create(['name' => 'Extras']);
+
+    $almondMilk = CustomizationOption::factory()->create([
+        'customization_type_id' => $milkType->id,
+        'name' => 'Almendra',
+    ]);
+    $vanilla = CustomizationOption::factory()->create([
+        'customization_type_id' => $extrasType->id,
+        'name' => 'Vainilla',
+    ]);
+    $shot = CustomizationOption::factory()->create([
+        'customization_type_id' => $extrasType->id,
+        'name' => 'Shot extra',
+    ]);
+    $caramel = CustomizationOption::factory()->create([
+        'customization_type_id' => $extrasType->id,
+        'name' => 'Caramelo',
+    ]);
+
+    $latte = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Latte',
+        'image_path' => 'catalog/latte.png',
+    ]);
+    $americano = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Americano',
+    ]);
+    $mocha = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Moka',
+    ]);
+    $chai = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Chai',
+    ]);
+
+    foreach ([$latte, $americano, $mocha, $chai] as $beverage) {
+        $beverage->sizePrices()->createMany([
+            ['size_id' => $small->id, 'price' => 48],
+            ['size_id' => $medium->id, 'price' => 58],
+            ['size_id' => $large->id, 'price' => 68],
+        ]);
+    }
+
+    $workSession = app(WorkSessionService::class)->start($user, $branch);
+
+    app(SaleService::class)->register([
+        'customer_id' => $customer->id,
+        'payment_method' => PaymentMethod::Cash->value,
+        'items' => [
+            [
+                'beverage_id' => $latte->id,
+                'size_id' => $medium->id,
+                'quantity' => 2,
+                'customization_option_ids' => [$almondMilk->id, $vanilla->id],
+            ],
+        ],
+    ], $user, $workSession);
+
+    app(SaleService::class)->register([
+        'customer_id' => $customer->id,
+        'payment_method' => PaymentMethod::Card->value,
+        'items' => [
+            [
+                'beverage_id' => $latte->id,
+                'size_id' => $medium->id,
+                'quantity' => 2,
+                'customization_option_ids' => [$almondMilk->id],
+            ],
+            [
+                'beverage_id' => $americano->id,
+                'size_id' => $large->id,
+                'quantity' => 3,
+                'customization_option_ids' => [$shot->id],
+            ],
+        ],
+    ], $user, $workSession);
+
+    app(SaleService::class)->register([
+        'customer_id' => $customer->id,
+        'payment_method' => PaymentMethod::Transfer->value,
+        'items' => [
+            [
+                'beverage_id' => $mocha->id,
+                'size_id' => $small->id,
+                'quantity' => 2,
+                'customization_option_ids' => [$caramel->id],
+            ],
+            [
+                'beverage_id' => $chai->id,
+                'size_id' => $small->id,
+                'quantity' => 1,
+            ],
+        ],
+    ], $user, $workSession);
+
+    $this->getJson("/api/v1/customers/{$customer->id}/favorite-beverages")
+        ->assertSuccessful()
+        ->assertJsonCount(3, 'data')
+        ->assertJsonPath('data.0.beverage_name', 'Latte')
+        ->assertJsonPath('data.0.beverage_image_url', url('/storage/catalog/latte.png'))
+        ->assertJsonPath('data.0.total_quantity', 4)
+        ->assertJsonPath('data.0.top_size.size_name', 'Mediano')
+        ->assertJsonPath('data.0.frequent_customizations.0.name', 'Almendra')
+        ->assertJsonPath('data.0.frequent_customizations.0.selection_count', 4)
+        ->assertJsonPath('data.0.frequent_customizations.1.name', 'Vainilla')
+        ->assertJsonPath('data.0.frequent_customizations.1.selection_count', 2)
+        ->assertJsonPath('data.1.beverage_name', 'Americano')
+        ->assertJsonPath('data.1.top_size.size_name', 'Grande')
+        ->assertJsonPath('data.1.frequent_customizations.0.name', 'Shot extra')
+        ->assertJsonPath('data.2.beverage_name', 'Moka')
+        ->assertJsonMissingPath('data.3');
+});
+
+test('v1 api prevents a customer payment from exceeding the current debt', function () {
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $customer = Customer::factory()->create();
+
+    Sanctum::actingAs($user);
+
+    $this->postJson("/api/v1/customers/{$customer->id}/debt-movements", [
+        'type' => CustomerDebtMovementType::Debt->value,
+        'amount' => 40,
+        'branch_id' => $branch->id,
+    ])->assertSuccessful();
+
+    $this->postJson("/api/v1/customers/{$customer->id}/debt-movements", [
+        'type' => CustomerDebtMovementType::Payment->value,
+        'amount' => 60,
+        'branch_id' => $branch->id,
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['amount'])
+        ->assertJsonPath('errors.amount.0', 'El abono no puede ser mayor a la deuda actual.');
 });

@@ -108,7 +108,7 @@ class Manager extends Component
     protected function customerQuery(): Builder
     {
         return Customer::query()
-            ->with('qrCodes')
+            ->with(['qrCodes', 'debtMovements'])
             ->when($this->search !== '', function ($query) {
                 $query->where(function ($customerQuery) {
                     $customerQuery->where('name', 'like', '%'.$this->search.'%')

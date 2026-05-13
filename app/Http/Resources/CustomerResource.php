@@ -27,10 +27,13 @@ class CustomerResource extends JsonResource
             'annual_drink_count' => $this->annual_drink_count,
             'reward_tier' => $this->reward_tier->value,
             'reward_tier_label' => $this->reward_tier->label(),
+            'debt_balance' => $this->debtBalance(),
+            'has_debt' => $this->hasDebt(),
             'tonalpohualli' => $this->birthday ? $this->tonalpohualli() : null,
             'is_active' => $this->is_active,
             'sales_count' => $this->whenCounted('sales'),
             'qr_codes' => CustomerQrCodeResource::collection($this->whenLoaded('qrCodes')),
+            'debt_movements' => CustomerDebtMovementResource::collection($this->whenLoaded('debtMovements')),
             'reward_transactions' => $this->whenLoaded('rewardTransactions', function () {
                 return $this->rewardTransactions->map(fn ($transaction) => [
                     'id' => $transaction->id,

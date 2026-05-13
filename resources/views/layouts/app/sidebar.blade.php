@@ -58,26 +58,23 @@
                     <flux:sidebar.item icon="building-storefront" :href="route('dashboard.branches.index')" :current="request()->routeIs('dashboard.branches.*')" wire:navigate>
                         {{ __('Sucursales') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.group expandable :heading="__('Bebidas')" class="grid">
+                    <flux:sidebar.item icon="sparkles" :href="route('dashboard.beverages.index')" :current="request()->routeIs('dashboard.beverages.*')" wire:navigate>
+                        {{ __('Bebidas') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="tag" :href="route('dashboard.categories.index')" :current="request()->routeIs('dashboard.categories.*')" wire:navigate>
                         {{ __('Categorías') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="beaker" :href="route('dashboard.sizes.index')" :current="request()->routeIs('dashboard.sizes.*')" wire:navigate>
                         {{ __('Tamaños') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="sparkles" :href="route('dashboard.beverages.index')" :current="request()->routeIs('dashboard.beverages.*')" wire:navigate>
-                        {{ __('Bebidas') }}
-                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="squares-2x2" :href="route('dashboard.customizations.types.index')" :current="request()->routeIs('dashboard.customizations.types.*') || request()->routeIs('dashboard.customizations.index') || request()->routeIs('dashboard.customizations.create')" wire:navigate>
+                            {{ __('Complementos') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
                     <flux:sidebar.item icon="cube" :href="route('dashboard.products.index')" :current="request()->routeIs('dashboard.products.*')" wire:navigate>
                         {{ __('Productos') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.group expandable :heading="__('Personalizaciones')" class="grid">
-                        <flux:sidebar.item icon="squares-2x2" :href="route('dashboard.customizations.types.index')" :current="request()->routeIs('dashboard.customizations.types.*') || request()->routeIs('dashboard.customizations.index') || request()->routeIs('dashboard.customizations.create')" wire:navigate>
-                            {{ __('Tipos') }}
-                        </flux:sidebar.item>
-                        <flux:sidebar.item icon="sparkles" :href="route('dashboard.customizations.options.index')" :current="request()->routeIs('dashboard.customizations.options.*')" wire:navigate>
-                            {{ __('Opciones') }}
-                        </flux:sidebar.item>
-                    </flux:sidebar.group>
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Relaciones')" class="grid">

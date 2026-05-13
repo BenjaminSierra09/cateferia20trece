@@ -44,19 +44,14 @@
                     <div class="text-sm text-zinc-500">{{ $tonalpohualli['espanol'] }}</div>
                 </div>
                 <div class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
-                    <div class="text-sm text-zinc-500">Deidad patrona</div>
-                    <div class="mt-2 text-lg font-semibold">{{ $tonalpohualli['deidad'] }}</div>
+                    <div class="text-sm text-zinc-500">Trecena</div>
+                    <div class="mt-2 text-lg font-semibold">{{ $tonalpohualli['trecena'] }}</div>
+                                        <div class="text-sm text-zinc-500">{{ $tonalpohualli['significado'] }}</div>
                 </div>
                 <div class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
                     <div class="text-sm text-zinc-500">Zona del cuerpo</div>
                     <div class="mt-2 text-lg font-semibold">{{ $tonalpohualli['cuerpo'] }}</div>
                 </div>
-            </div>
-
-            <div class="rounded-2xl border border-orange-100 bg-orange-50 p-4 dark:border-orange-500/20 dark:bg-orange-500/10">
-                <div class="text-sm font-medium text-zinc-600 dark:text-zinc-300">Significado oracular</div>
-                <div class="mt-2 text-zinc-800 dark:text-zinc-100">{{ $tonalpohualli['significado'] }}</div>
-                <div class="mt-3 text-sm text-zinc-500">Trecena lider: {{ $tonalpohualli['trecena'] }}</div>
             </div>
         </flux:card>
     @endif
@@ -111,6 +106,88 @@
                             <flux:table.row>
                                 <flux:table.cell colspan="3">
                                     <flux:callout icon="information-circle" color="sky">Este cliente todavía no tiene QR vinculados.</flux:callout>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </flux:card>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-1">
+            <flux:card class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <flux:heading>Cuenta corriente</flux:heading>
+                        <flux:text>Registra adeudos y abonos manuales de este cliente.</flux:text>
+                    </div>
+
+                    <flux:badge :color="$customer->hasDebt() ? 'rose' : 'emerald'" inset="top bottom">
+                        {{ $customer->hasDebt() ? 'Debe' : 'Al corriente' }}
+                    </flux:badge>
+                </div>
+
+                <div class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="text-sm text-zinc-500">Saldo actual</div>
+                    <div class="mt-2 text-3xl font-semibold">
+                        ${{ number_format($customer->debtBalance(), 2) }}
+                    </div>
+                </div>
+
+                <div class="grid gap-4">
+                    <flux:input wire:model="debt_amount" label="Monto" type="number" min="0" step="0.01" />
+                    <flux:textarea wire:model="debt_notes" label="Notas" rows="3" placeholder="Motivo del adeudo o referencia del abono" />
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-3">
+                    <flux:button variant="ghost" icon="arrow-down-circle" wire:click="registerPayment">
+                        Abonar
+                    </flux:button>
+                    <flux:button variant="primary" icon="plus-circle" wire:click="registerDebt">
+                        Adeudar
+                    </flux:button>
+                </div>
+            </flux:card>
+
+            <flux:card class="space-y-4">
+                <div>
+                    <flux:heading>Movimientos</flux:heading>
+                    <flux:text>{{ $debtMovements->count() }} registros de adeudos y abonos.</flux:text>
+                </div>
+
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>Tipo</flux:table.column>
+                        <flux:table.column>Monto</flux:table.column>
+                        <flux:table.column>Saldo</flux:table.column>
+                        <flux:table.column class="max-md:hidden">Sucursal</flux:table.column>
+                        <flux:table.column class="max-lg:hidden">Registró</flux:table.column>
+                        <flux:table.column>Fecha</flux:table.column>
+                    </flux:table.columns>
+
+                    <flux:table.rows>
+                        @forelse ($debtMovements as $movement)
+                            <flux:table.row wire:key="customer-debt-movement-{{ $movement->id }}">
+                                <flux:table.cell>
+                                    <div class="space-y-1">
+                                        <flux:badge :color="$movement->type->value === 'debt' ? 'amber' : 'emerald'" inset="top bottom">
+                                            {{ $movement->type->label() }}
+                                        </flux:badge>
+                                        @if ($movement->notes)
+                                            <div class="text-xs text-zinc-500">{{ $movement->notes }}</div>
+                                        @endif
+                                    </div>
+                                </flux:table.cell>
+                                <flux:table.cell>${{ number_format((float) $movement->amount, 2) }}</flux:table.cell>
+                                <flux:table.cell variant="strong">${{ number_format((float) $movement->balance_after, 2) }}</flux:table.cell>
+                                <flux:table.cell class="max-md:hidden">{{ $movement->branch?->name ?? 'Sin sucursal' }}</flux:table.cell>
+                                <flux:table.cell class="max-lg:hidden">{{ $movement->user?->name ?? 'Sistema' }}</flux:table.cell>
+                                <flux:table.cell>{{ $movement->recorded_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="6">
+                                    <flux:callout icon="information-circle" color="sky">Este cliente todavía no tiene movimientos de cuenta corriente.</flux:callout>
                                 </flux:table.cell>
                             </flux:table.row>
                         @endforelse

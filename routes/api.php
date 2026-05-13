@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\BeverageController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\CustomerDebtMovementController;
+use App\Http\Controllers\Api\CustomerFavoriteBeverageController;
 use App\Http\Controllers\Api\CustomizationOptionController;
 use App\Http\Controllers\Api\CustomizationTypeController;
 use App\Http\Controllers\Api\MetaController;
@@ -39,6 +41,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::apiResource('customization-types', CustomizationTypeController::class);
         Route::apiResource('customization-options', CustomizationOptionController::class);
         Route::apiResource('customers', CustomerController::class);
+        Route::get('customers/{customer}/debt-movements', [CustomerDebtMovementController::class, 'index'])
+            ->name('customers.debt-movements.index');
+        Route::post('customers/{customer}/debt-movements', [CustomerDebtMovementController::class, 'store'])
+            ->name('customers.debt-movements.store');
+        Route::get('customers/{customer}/favorite-beverages', CustomerFavoriteBeverageController::class)
+            ->name('customers.favorite-beverages');
         Route::apiResource('users', UserController::class);
         Route::apiResource('work-sessions', WorkSessionController::class)->except(['destroy']);
         Route::apiResource('sales', SaleController::class)->only(['index', 'store', 'show']);
