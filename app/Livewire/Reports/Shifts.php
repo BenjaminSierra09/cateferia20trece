@@ -6,9 +6,11 @@ use App\Enums\WorkSessionStatus;
 use App\Models\Branch;
 use App\Models\WorkSession;
 use App\Services\WorkSessionService;
+use Carbon\CarbonInterface;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -19,6 +21,8 @@ use Livewire\WithPagination;
 class Shifts extends Component
 {
     use WithPagination;
+
+    private const BUSINESS_TIMEZONE = 'America/Mexico_City';
 
     public ?int $branch_id = null;
 
@@ -98,6 +102,24 @@ class Shifts extends Component
             ->latest('work_date')
             ->latest('clock_in_at')
             ->paginate($this->perPage);
+    }
+
+    public function formatBusinessDate(?CarbonInterface $value): string
+    {
+        return $value?->timezone(self::BUSINESS_TIMEZONE)->format('d/m/Y') ?? 'Sin fecha';
+    }
+
+    public function formatBusinessTime(WorkSession $session, string $attribute, string $fallback = 'Sin apertura'): string
+    {
+        $rawTimestamp = $session->getRawOriginal($attribute);
+
+        if (blank($rawTimestamp)) {
+            return $fallback;
+        }
+
+        return Carbon::parse($rawTimestamp, 'UTC')
+            ->timezone(self::BUSINESS_TIMEZONE)
+            ->format('g:i a');
     }
 
     public function render(): View

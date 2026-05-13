@@ -39,6 +39,13 @@ class WorkSessionController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
+        if (
+            ($validated['status'] ?? null) === WorkSessionStatus::Open->value
+            && ! array_key_exists('clock_out_at', $validated)
+        ) {
+            $validated['clock_out_at'] = null;
+        }
+
         $session = WorkSession::query()
             ->where('user_id', $validated['user_id'])
             ->whereDate('work_date', $validated['work_date'])

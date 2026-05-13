@@ -269,6 +269,39 @@ test('v1 api reuses an existing work session when syncing the same user and date
         ->count())->toBe(1);
 });
 
+test('v1 api clears clock out when reopening an existing same day work session', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+
+    $session = WorkSession::factory()->create([
+        'user_id' => $user->id,
+        'branch_id' => $branch->id,
+        'work_date' => '2026-05-10',
+        'clock_in_at' => '2026-05-10 09:00:00',
+        'clock_out_at' => '2026-05-10 17:00:00',
+        'status' => WorkSessionStatus::Closed,
+    ]);
+
+    $response = $this->postJson('/api/v1/work-sessions', [
+        'user_id' => $user->id,
+        'branch_id' => $branch->id,
+        'work_date' => '2026-05-10',
+        'clock_in_at' => '2026-05-10T18:20:00Z',
+        'status' => WorkSessionStatus::Open->value,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.id', $session->id)
+        ->assertJsonPath('data.status', WorkSessionStatus::Open->value)
+        ->assertJsonPath('data.clock_out_at', null);
+
+    expect($session->fresh())
+        ->status->toBe(WorkSessionStatus::Open)
+        ->clock_out_at->toBeNull();
+});
+
 test('v1 api exposes operational resources for users sessions sales and reward transactions', function () {
     Sanctum::actingAs(User::factory()->create());
 

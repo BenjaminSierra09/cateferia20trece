@@ -28,12 +28,12 @@ test('reports page shows employee shift details with branch and closing time', f
     $branch = Branch::factory()->create(['name' => 'Matriz Centro']);
     $admin = User::factory()->admin()->create();
     $user = User::factory()->employee()->create(['name' => 'Caja Uno']);
-    $workSession = WorkSession::factory()->create([
+    WorkSession::factory()->create([
         'user_id' => $user->id,
         'branch_id' => $branch->id,
         'work_date' => '2026-05-11',
-        'clock_in_at' => '2026-05-11 08:00:00',
-        'clock_out_at' => '2026-05-11 16:30:00',
+        'clock_in_at' => '2026-05-11T14:00:00Z',
+        'clock_out_at' => '2026-05-11T22:30:00Z',
     ]);
 
     $this->actingAs($admin)
@@ -41,9 +41,9 @@ test('reports page shows employee shift details with branch and closing time', f
         ->assertOk()
         ->assertSee('Caja Uno')
         ->assertSee('Matriz Centro')
-        ->assertSee($workSession->work_date->format('d/m/Y'))
-        ->assertSee('08:00')
-        ->assertSee('16:30');
+        ->assertSee('11/05/2026')
+        ->assertSee('8:00 am')
+        ->assertSee('4:30 pm');
 });
 
 test('category form stores an uploaded image', function () {

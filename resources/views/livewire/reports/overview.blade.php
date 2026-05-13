@@ -98,7 +98,7 @@
                 </div>
 
                 <flux:badge color="orange" icon="calendar-days" inset="top bottom">
-                    {{ $date_from }} a {{ $date_to }}
+                    {{ $this->activeDateRangeLabel() }}
                 </flux:badge>
             </div>
 
@@ -134,22 +134,38 @@
                 </flux:badge>
             </div>
 
-            <flux:chart wire:model="topBeveragesChart" class="aspect-[3/1]">
-                <flux:chart.svg>
-                    <flux:chart.bar field="ingresos" class="text-sky-400 dark:text-sky-300" radius="0" width="80%" />
-                    <flux:chart.axis axis="x" field="bebida">
-                        <flux:chart.axis.tick />
-                    </flux:chart.axis>
-                    <flux:chart.axis axis="y" tick-prefix="$">
-                        <flux:chart.axis.grid />
-                        <flux:chart.axis.tick />
-                    </flux:chart.axis>
-                </flux:chart.svg>
-                <flux:chart.tooltip>
-                    <flux:chart.tooltip.heading field="bebida" />
-                    <flux:chart.tooltip.value field="ingresos" label="Ingresos" prefix="$" :format="['useGrouping' => true]" />
-                </flux:chart.tooltip>
-            </flux:chart>
+            @php
+                $maxTopRevenue = max(array_column($overview['top_beverages'], 'revenue') ?: [1]);
+            @endphp
+
+            <div class="space-y-3">
+                @foreach ($overview['top_beverages'] as $item)
+                    @php
+                        $width = $maxTopRevenue > 0 ? max(($item['revenue'] / $maxTopRevenue) * 100, 8) : 8;
+                    @endphp
+
+                    <div wire:key="visual-top-beverage-{{ md5($item['item_name']) }}" class="space-y-2 rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-3 dark:border-white/10 dark:bg-white/5">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="truncate text-sm font-semibold text-zinc-900 dark:text-white">
+                                    {{ $item['item_name'] }}
+                                </div>
+                                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {{ $item['quantity'] }} ventas
+                                </div>
+                            </div>
+
+                            <div class="shrink-0 text-sm font-semibold text-sky-600 dark:text-sky-300">
+                                ${{ number_format($item['revenue'], 2) }}
+                            </div>
+                        </div>
+
+                        <div class="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-white/10">
+                            <div class="h-full rounded-full bg-sky-400 dark:bg-sky-300" style="width: {{ $width }}%"></div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </flux:card>
     </div>
     @endif
@@ -187,10 +203,10 @@
                 <flux:text>Comparativo entre tiendas.</flux:text>
             </div>
 
-            <flux:chart wire:model="branchChart" class="aspect-[3/1]">
+            <flux:chart wire:model="branchChart" class="h-64">
                 <flux:chart.svg>
                     <flux:chart.bar field="total" class="text-emerald-400 dark:text-emerald-300" radius="0" width="80%" />
-                    <flux:chart.axis axis="x" field="branch">
+                    <flux:chart.axis axis="x" field="branch_corta">
                         <flux:chart.axis.tick />
                     </flux:chart.axis>
                     <flux:chart.axis axis="y" tick-prefix="$">
@@ -224,18 +240,38 @@
                 <flux:text>Comportamiento del cobro en el periodo.</flux:text>
             </div>
 
-            <flux:chart wire:model="paymentChart" class="aspect-[3/1]">
-                <flux:chart.svg>
-                    <flux:chart.bar field="total" class="text-violet-400 dark:text-violet-300" radius="0" width="80%" />
-                    <flux:chart.axis axis="x" field="metodo">
-                        <flux:chart.axis.tick />
-                    </flux:chart.axis>
-                    <flux:chart.axis axis="y" tick-prefix="$">
-                        <flux:chart.axis.grid />
-                        <flux:chart.axis.tick />
-                    </flux:chart.axis>
-                </flux:chart.svg>
-            </flux:chart>
+            @php
+                $maxPaymentTotal = max(array_column($overview['sales_by_payment_method'], 'total') ?: [1]);
+            @endphp
+
+            <div class="space-y-3">
+                @foreach ($overview['sales_by_payment_method'] as $item)
+                    @php
+                        $width = $maxPaymentTotal > 0 ? max(($item['total'] / $maxPaymentTotal) * 100, 8) : 8;
+                    @endphp
+
+                    <div wire:key="visual-payment-method-{{ md5($item['payment_method']) }}" class="space-y-2 rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-3 dark:border-white/10 dark:bg-white/5">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="truncate text-sm font-semibold text-zinc-900 dark:text-white">
+                                    {{ $item['payment_method'] }}
+                                </div>
+                                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {{ $item['count'] }} ventas
+                                </div>
+                            </div>
+
+                            <div class="shrink-0 text-sm font-semibold text-violet-600 dark:text-violet-300">
+                                ${{ number_format($item['total'], 2) }}
+                            </div>
+                        </div>
+
+                        <div class="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-white/10">
+                            <div class="h-full rounded-full bg-violet-400 dark:bg-violet-300" style="width: {{ $width }}%"></div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
 
             <flux:table>
                 <flux:table.columns>

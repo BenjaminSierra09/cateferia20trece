@@ -90,13 +90,13 @@
                     <flux:card wire:key="active-session-{{ $session->id }}" class="space-y-4">
                         <div class="space-y-1">
                             <flux:heading size="lg">{{ $session->user?->name ?? 'Sin empleado' }}</flux:heading>
-                            <flux:text>{{ $session->branch?->name ?? 'Sin sucursal' }} · {{ $session->work_date?->format('d/m/Y') ?? 'Sin fecha' }}</flux:text>
+                            <flux:text>{{ $session->branch?->name ?? 'Sin sucursal' }} · {{ $this->formatBusinessDate($session->work_date) }}</flux:text>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-3">
                             <div>
                                 <flux:subheading>Inició</flux:subheading>
-                                <flux:text>{{ $session->clock_in_at?->format('H:i') ?? 'Sin apertura' }}</flux:text>
+                                <flux:text>{{ $this->formatBusinessTime($session, 'clock_in_at') }}</flux:text>
                             </div>
                             <div>
                                 <flux:subheading>Ventas</flux:subheading>
@@ -151,9 +151,9 @@
                         <flux:table.row wire:key="session-history-{{ $session->id }}">
                             <flux:table.cell>{{ $session->user?->name ?? 'Sin empleado' }}</flux:table.cell>
                             <flux:table.cell>{{ $session->branch?->name ?? 'Sin sucursal' }}</flux:table.cell>
-                            <flux:table.cell>{{ $session->work_date?->format('d/m/Y') ?? 'Sin fecha' }}</flux:table.cell>
-                            <flux:table.cell>{{ $session->clock_in_at?->format('H:i') ?? 'Sin apertura' }}</flux:table.cell>
-                            <flux:table.cell>{{ $session->clock_out_at?->format('H:i') ?? 'Abierto' }}</flux:table.cell>
+                            <flux:table.cell>{{ $this->formatBusinessDate($session->work_date) }}</flux:table.cell>
+                            <flux:table.cell>{{ $this->formatBusinessTime($session, 'clock_in_at') }}</flux:table.cell>
+                            <flux:table.cell>{{ $this->formatBusinessTime($session, 'clock_out_at', 'Abierto') }}</flux:table.cell>
                             <flux:table.cell>{{ $session->sales_count }}</flux:table.cell>
                             <flux:table.cell>
                                 <flux:badge color="{{ $session->status === \App\Enums\WorkSessionStatus::Open ? 'amber' : 'emerald' }}" inset="top bottom">
