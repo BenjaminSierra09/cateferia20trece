@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Sale;
 use App\Services\ReportService;
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -22,9 +23,30 @@ class Dashboard extends Component
     /**
      * Get available branches for filtering.
      */
-    public function getBranches()
+    #[Computed]
+    public function branches()
     {
         return Branch::query()->where('is_active', true)->orderBy('name')->get();
+    }
+
+    /**
+     * Get normalized filters for all dashboard widgets.
+     *
+     * @return array<string, int|string|null>
+     */
+    protected function dashboardFilters(): array
+    {
+        return [
+            'branch_id' => $this->selectedBranch,
+            'date_from' => $this->dateFrom,
+            'date_to' => $this->dateTo,
+        ];
+    }
+
+    #[Computed]
+    public function overview(): array
+    {
+        return app(ReportService::class)->overview($this->dashboardFilters());
     }
 
     /**
@@ -67,8 +89,11 @@ class Dashboard extends Component
     /**
      * Prepare sales timeline data for Flux line chart.
      */
-    public function getSalesTimelineChartData(array $overview): array
+    #[Computed]
+    public function salesTimelineChartData(): array
     {
+        $overview = $this->overview;
+
         return array_map(fn ($item) => [
             'date' => $item['date'],
             'ventas' => $item['ventas'],
@@ -79,8 +104,11 @@ class Dashboard extends Component
     /**
      * Prepare branch sales data for Flux bar chart.
      */
-    public function getBranchSalesChartData(array $overview): array
+    #[Computed]
+    public function branchSalesChartData(): array
     {
+        $overview = $this->overview;
+
         return array_map(fn ($item) => [
             'branch' => $item['branch'],
             'total' => $item['total'],
@@ -91,8 +119,11 @@ class Dashboard extends Component
     /**
      * Prepare payment method data for Flux stacked bar chart.
      */
-    public function getPaymentMethodChartData(array $overview): array
+    #[Computed]
+    public function paymentMethodChartData(): array
     {
+        $overview = $this->overview;
+
         return array_map(fn ($item) => [
             'method' => $item['payment_method'],
             'count' => $item['count'],
@@ -103,15 +134,10 @@ class Dashboard extends Component
     /**
      * Prepare top beverages data for sparklines.
      */
-    public function getTopBeveragesSparklineData(): array
+    #[Computed]
+    public function topBeveragesSparklineData(): array
     {
-        $filters = [
-            'branch_id' => $this->selectedBranch,
-            'date_from' => $this->dateFrom,
-            'date_to' => $this->dateTo,
-        ];
-
-        $overview = app(ReportService::class)->overview($filters);
+        $overview = $this->overview;
 
         return array_map(fn ($item) => [
             'name' => $item['item_name'],
@@ -121,36 +147,30 @@ class Dashboard extends Component
         ], $overview['top_beverages']);
     }
 
+    #[Computed]
+    public function recentSales()
+    {
+        return Sale::query()
+            ->with(['branch', 'customer'])
+            ->when($this->selectedBranch, fn ($q) => $q->where('branch_id', $this->selectedBranch))
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('sold_at', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn ($q) => $q->whereDate('sold_at', '<=', $this->dateTo))
+            ->latest('sold_at')
+            ->limit(8)
+            ->get();
+    }
+
+    #[Computed]
+    public function recentCustomers()
+    {
+        return Customer::query()->latest()->limit(5)->get();
+    }
+
     /**
      * Render the dashboard page.
      */
     public function render(): View
     {
-        $filters = [
-            'branch_id' => $this->selectedBranch,
-            'date_from' => $this->dateFrom,
-            'date_to' => $this->dateTo,
-        ];
-
-        $reportService = app(ReportService::class);
-        $overview = $reportService->overview($filters);
-
-        return view('livewire.dashboard', [
-            'branches' => $this->getBranches(),
-            'overview' => $overview,
-            'salesTimelineChartData' => $this->getSalesTimelineChartData($overview),
-            'branchSalesChartData' => $this->getBranchSalesChartData($overview),
-            'paymentMethodChartData' => $this->getPaymentMethodChartData($overview),
-            'topBeveragesSparklineData' => $this->getTopBeveragesSparklineData(),
-            'recentSales' => Sale::query()
-                ->with(['branch', 'customer'])
-                ->when($this->selectedBranch, fn ($q) => $q->where('branch_id', $this->selectedBranch))
-                ->when($this->dateFrom, fn ($q) => $q->whereDate('sold_at', '>=', $this->dateFrom))
-                ->when($this->dateTo, fn ($q) => $q->whereDate('sold_at', '<=', $this->dateTo))
-                ->latest('sold_at')
-                ->limit(8)
-                ->get(),
-            'recentCustomers' => Customer::query()->latest()->limit(5)->get(),
-        ])->layout('layouts.app');
+        return view('livewire.dashboard')->layout('layouts.app');
     }
 }

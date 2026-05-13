@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between gap-4">
         <div>
             <flux:heading size="xl">{{ $user ? 'Editar colaborador' : 'Nuevo colaborador' }}</flux:heading>
-            <flux:text>{{ $user ? 'Actualiza los datos del colaborador y su acceso.' : 'Registra al equipo con su rol y sucursal principal.' }}</flux:text>
+            <flux:text>{{ $user ? 'Actualiza los datos del colaborador y su acceso.' : 'Registra al equipo con su rol y acceso.' }}</flux:text>
         </div>
 
         <flux:button :href="route('dashboard.team.index')" variant="ghost" wire:navigate>Volver</flux:button>
@@ -18,12 +18,6 @@
             <flux:select wire:model="role" label="Rol">
                 @foreach ($roles as $roleOption)
                     <option value="{{ $roleOption->value }}">{{ $roleOption->label() }}</option>
-                @endforeach
-            </flux:select>
-            <flux:select wire:model="branch_id" label="Sucursal principal">
-                <option value="">Sin asignar</option>
-                @foreach ($branches as $branch)
-                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                 @endforeach
             </flux:select>
             <flux:field variant="inline" class="self-end">

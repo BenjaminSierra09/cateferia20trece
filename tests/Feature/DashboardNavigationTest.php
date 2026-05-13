@@ -9,13 +9,9 @@ use App\Models\CustomizationType;
 use App\Models\Product;
 use App\Models\Size;
 use App\Models\User;
-use App\Services\WorkSessionService;
 
 it('renders dashboard modules under the dashboard prefix', function (string $routeName) {
-    $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
-
-    app(WorkSessionService::class)->start($user, $branch);
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->get(route($routeName))
@@ -34,13 +30,11 @@ it('renders dashboard modules under the dashboard prefix', function (string $rou
     'dashboard.sales.index',
     'dashboard.team.index',
     'dashboard.reports.index',
+    'dashboard.reports.shifts',
 ]);
 
 it('renders dashboard create screens under the dashboard prefix', function (string $routeName) {
-    $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
-
-    app(WorkSessionService::class)->start($user, $branch);
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->get(route($routeName))
@@ -54,17 +48,12 @@ it('renders dashboard create screens under the dashboard prefix', function (stri
     'dashboard.customizations.types.create',
     'dashboard.customizations.options.create',
     'dashboard.customers.create',
-    'dashboard.sales.create',
-    'dashboard.sales.pos',
     'dashboard.team.create',
 ]);
 
 it('renders dashboard customer edit screen under the dashboard prefix', function () {
-    $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
+    $user = User::factory()->admin()->create();
     $customer = Customer::factory()->create();
-
-    app(WorkSessionService::class)->start($user, $branch);
 
     $this->actingAs($user)
         ->get(route('dashboard.customers.edit', $customer))
@@ -73,16 +62,14 @@ it('renders dashboard customer edit screen under the dashboard prefix', function
 
 it('renders dashboard edit screens under the dashboard prefix', function () {
     $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
+    $user = User::factory()->admin()->create();
     $category = BeverageCategory::factory()->create();
     $size = Size::factory()->create();
     $beverage = Beverage::factory()->create(['beverage_category_id' => $category->id]);
     $product = Product::factory()->create();
     $customizationType = CustomizationType::factory()->create();
     $customizationOption = CustomizationOption::factory()->create(['customization_type_id' => $customizationType->id]);
-    $teammate = User::factory()->assignedToBranch($branch)->create();
-
-    app(WorkSessionService::class)->start($user, $branch);
+    $teammate = User::factory()->employee()->create();
 
     $this->actingAs($user)->get(route('dashboard.branches.edit', $branch))->assertOk();
     $this->actingAs($user)->get(route('dashboard.categories.edit', $category))->assertOk();
@@ -95,10 +82,7 @@ it('renders dashboard edit screens under the dashboard prefix', function () {
 });
 
 it('redirects legacy customization create route to customization types create', function () {
-    $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
-
-    app(WorkSessionService::class)->start($user, $branch);
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->get(route('dashboard.customizations.create'))
@@ -115,6 +99,5 @@ it('uses dashboard prefixes in generated urls', function () {
     expect(route('dashboard.customers.index'))->toContain('/dashboard/customers');
     expect(route('dashboard.customers.create'))->toContain('/dashboard/customers/create');
     expect(route('dashboard.sales.index'))->toContain('/dashboard/sales');
-    expect(route('dashboard.sales.create'))->toContain('/dashboard/sales/create');
-    expect(route('dashboard.sales.pos'))->toContain('/dashboard/sales/pos');
+    expect(route('dashboard.reports.shifts'))->toContain('/dashboard/reports/shifts');
 });

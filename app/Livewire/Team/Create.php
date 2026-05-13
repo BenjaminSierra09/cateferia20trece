@@ -3,7 +3,6 @@
 namespace App\Livewire\Team;
 
 use App\Enums\UserRole;
-use App\Models\Branch;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -26,9 +25,7 @@ class Create extends Component
 
     public string $password_confirmation = '';
 
-    public string $role = 'cashier';
-
-    public ?int $branch_id = null;
+    public string $role = 'employee';
 
     public bool $is_active = true;
 
@@ -41,7 +38,6 @@ class Create extends Component
             $this->username = $this->user->username;
             $this->email = $this->user->email;
             $this->role = $this->user->role->value;
-            $this->branch_id = $this->user->branch_id;
             $this->is_active = $this->user->is_active;
         }
     }
@@ -55,7 +51,6 @@ class Create extends Component
             'password' => $this->password,
             'password_confirmation' => $this->password_confirmation,
             'role' => $this->role,
-            'branch_id' => $this->branch_id,
             'is_active' => $this->is_active,
         ];
 
@@ -64,8 +59,7 @@ class Create extends Component
             'username' => ['required', 'string', 'max:100', 'alpha_dash:ascii', Rule::unique('users', 'username')->ignore($this->user?->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->user?->id)],
             'password' => [$this->user ? 'nullable' : 'required', 'string', 'confirmed'],
-            'role' => ['required', 'string'],
-            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['boolean'],
         ])->validate();
 
@@ -86,7 +80,6 @@ class Create extends Component
     public function render(): View
     {
         return view('livewire.team.create', [
-            'branches' => Branch::query()->where('is_active', true)->orderBy('name')->get(),
             'roles' => UserRole::cases(),
         ])->layout('layouts.app');
     }

@@ -16,7 +16,7 @@ class WorkSessionController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $sessions = WorkSession::query()
-            ->with(['user.branch', 'branch'])
+            ->with(['user', 'branch'])
             ->withCount('sales')
             ->when($request->filled('user_id'), fn ($query) => $query->where('user_id', $request->integer('user_id')))
             ->when($request->filled('branch_id'), fn ($query) => $query->where('branch_id', $request->integer('branch_id')))
@@ -52,12 +52,12 @@ class WorkSessionController extends Controller
             $session = WorkSession::query()->create($validated);
         }
 
-        return new WorkSessionResource($session->load(['user.branch', 'branch'])->loadCount('sales'));
+        return new WorkSessionResource($session->load(['user', 'branch'])->loadCount('sales'));
     }
 
     public function show(WorkSession $workSession): WorkSessionResource
     {
-        return new WorkSessionResource($workSession->load(['user.branch', 'branch'])->loadCount('sales'));
+        return new WorkSessionResource($workSession->load(['user', 'branch'])->loadCount('sales'));
     }
 
     public function update(Request $request, WorkSession $workSession): WorkSessionResource
@@ -74,7 +74,7 @@ class WorkSessionController extends Controller
 
         $workSession->update($validated);
 
-        return new WorkSessionResource($workSession->fresh()->load(['user.branch', 'branch'])->loadCount('sales'));
+        return new WorkSessionResource($workSession->fresh()->load(['user', 'branch'])->loadCount('sales'));
     }
 
     public function destroy(WorkSession $workSession): Response

@@ -37,7 +37,7 @@ class Manager extends Component
     public function render(): View
     {
         return view('livewire.team.manager', [
-            'users' => User::query()->with('branch')->latest()->paginate($this->perPage),
+            'users' => User::query()->latest()->paginate($this->perPage),
         ])->layout('layouts.app');
     }
 }

@@ -49,9 +49,6 @@
                     <flux:sidebar.item icon="shopping-bag" :href="route('dashboard.sales.index')" :current="request()->routeIs('dashboard.sales.*')" wire:navigate>
                         {{ __('Ventas') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="clock" :href="route('dashboard.work-session.check-in')" :current="request()->routeIs('dashboard.work-session.*')" wire:navigate>
-                        {{ __('Turno') }}
-                    </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Menú')" class="grid">
@@ -87,8 +84,11 @@
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Análisis')" class="grid">
-                    <flux:sidebar.item icon="chart-bar-square" :href="route('dashboard.reports.index')" :current="request()->routeIs('dashboard.reports.*')" wire:navigate>
+                    <flux:sidebar.item icon="chart-bar-square" :href="route('dashboard.reports.index')" :current="request()->routeIs('dashboard.reports.index')" wire:navigate>
                         {{ __('Reportes') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="clock" :href="route('dashboard.reports.shifts')" :current="request()->routeIs('dashboard.reports.shifts')" wire:navigate>
+                        {{ __('Turnos') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>

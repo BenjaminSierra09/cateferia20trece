@@ -40,7 +40,7 @@ class AuthTokenController extends Controller
         return response()->json([
             'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
-            'user' => new UserResource($user->load('branch')->loadCount(['workSessions', 'sales'])),
+            'user' => new UserResource($user->loadCount(['workSessions', 'sales'])),
         ]);
     }
 
@@ -49,7 +49,7 @@ class AuthTokenController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        return new UserResource($user->load('branch')->loadCount(['workSessions', 'sales']));
+        return new UserResource($user->loadCount(['workSessions', 'sales']));
     }
 
     public function destroy(Request $request): JsonResponse

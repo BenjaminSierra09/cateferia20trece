@@ -37,7 +37,7 @@ class CreateNewUser implements CreatesNewUsers
             'username' => $normalizedInput['username'],
             'email' => $normalizedInput['email'],
             'password' => $normalizedInput['password'],
-            'role' => UserRole::Cashier,
+            'role' => UserRole::Employee,
             'is_active' => true,
         ]);
     }

@@ -18,7 +18,7 @@
                 <flux:button :href="route('dashboard.team.index')" :variant="request()->routeIs('dashboard.team.*') ? 'primary' : 'ghost'" size="sm" icon="user-group" wire:navigate>
                     Equipo
                 </flux:button>
-                <flux:button :href="route('dashboard.work-session.check-in')" :variant="request()->routeIs('dashboard.work-session.*') ? 'primary' : 'ghost'" size="sm" icon="clock" wire:navigate>
+                <flux:button :href="route('dashboard.reports.shifts')" :variant="request()->routeIs('dashboard.reports.shifts') ? 'primary' : 'ghost'" size="sm" icon="clock" wire:navigate>
                     Turnos
                 </flux:button>
             </div>
@@ -60,7 +60,7 @@
                 {{ $branches->getCollection()->sum('sales_count') }} ventas visibles
             </flux:badge>
             <flux:badge color="sky" icon="users" inset="top bottom">
-                {{ $branches->getCollection()->sum('users_count') }} colaboradores asignados
+                {{ $branches->getCollection()->sum('work_sessions_count') }} turnos registrados
             </flux:badge>
 
             @if ($selectedBranchIds !== [])
@@ -112,7 +112,7 @@
                             <flux:table.cell>{{ $branch->city ?: 'Sin ciudad' }}</flux:table.cell>
                             <flux:table.cell class="max-lg:hidden">{{ $branch->operating_hours ?: 'Sin horario' }}</flux:table.cell>
                             <flux:table.cell>
-                                <flux:badge color="zinc" icon="user-group" inset="top bottom">{{ $branch->users_count }}</flux:badge>
+                                <flux:badge color="zinc" icon="clock" inset="top bottom">{{ $branch->work_sessions_count }}</flux:badge>
                             </flux:table.cell>
                             <flux:table.cell variant="strong">{{ $branch->sales_count }}</flux:table.cell>
                             <flux:table.cell>
@@ -183,7 +183,7 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">
-                            <flux:badge color="zinc" icon="user-group" inset="top bottom">{{ $branch->users_count }} equipo</flux:badge>
+                            <flux:badge color="zinc" icon="clock" inset="top bottom">{{ $branch->work_sessions_count }} turnos</flux:badge>
                             <flux:badge color="sky" icon="signal" inset="top bottom">{{ $branch->sales_count }} ventas</flux:badge>
                             <flux:badge color="{{ $branch->is_active ? 'emerald' : 'zinc' }}" inset="top bottom">
                                 {{ $branch->is_active ? 'Activa' : 'Inactiva' }}

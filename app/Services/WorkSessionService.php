@@ -17,6 +17,7 @@ class WorkSessionService
         return WorkSession::query()
             ->whereBelongsTo($user)
             ->whereDate('work_date', today())
+            ->where('status', WorkSessionStatus::Open)
             ->first();
     }
 

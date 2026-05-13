@@ -7,17 +7,13 @@ use App\Models\Branch;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\WorkSession;
-use App\Services\WorkSessionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('reports page renders chart sections for active staff sessions', function () {
-    $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
-
-    app(WorkSessionService::class)->start($user, $branch);
+    $user = User::factory()->admin()->create();
 
     $this->actingAs($user)
         ->get(route('dashboard.reports.index'))
@@ -25,12 +21,13 @@ test('reports page renders chart sections for active staff sessions', function (
         ->assertSee('Ingresos por día')
         ->assertSee('Bebidas con mayor ingreso')
         ->assertSee('Por sucursal')
-        ->assertSee('Turnos de empleados');
+        ->assertSee('Ver reporte de turnos');
 });
 
 test('reports page shows employee shift details with branch and closing time', function () {
     $branch = Branch::factory()->create(['name' => 'Matriz Centro']);
-    $user = User::factory()->assignedToBranch($branch)->create(['name' => 'Caja Uno']);
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->employee()->create(['name' => 'Caja Uno']);
     $workSession = WorkSession::factory()->create([
         'user_id' => $user->id,
         'branch_id' => $branch->id,
@@ -39,8 +36,8 @@ test('reports page shows employee shift details with branch and closing time', f
         'clock_out_at' => '2026-05-11 16:30:00',
     ]);
 
-    $this->actingAs($user)
-        ->get(route('dashboard.reports.index'))
+    $this->actingAs($admin)
+        ->get(route('dashboard.reports.shifts'))
         ->assertOk()
         ->assertSee('Caja Uno')
         ->assertSee('Matriz Centro')

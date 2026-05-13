@@ -54,7 +54,7 @@ class CustomerDebtService
                 'balance_after' => $balanceAfter,
                 'notes' => filled($notes) ? $notes : null,
                 'recorded_at' => $recordedAt ?? now(),
-            ])->load(['user.branch', 'branch']);
+            ])->load(['user', 'branch']);
         });
     }
 }

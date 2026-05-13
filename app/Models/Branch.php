@@ -15,14 +15,6 @@ class Branch extends Model
     use HasFactory;
 
     /**
-     * Get the collaborators assigned to the branch.
-     */
-    public function users(): HasMany
-    {
-        return $this->hasMany(User::class);
-    }
-
-    /**
      * Get the work sessions for the branch.
      */
     public function workSessions(): HasMany

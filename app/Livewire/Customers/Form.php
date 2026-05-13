@@ -6,6 +6,7 @@ use App\Enums\CustomerDebtMovementType;
 use App\Models\Customer;
 use App\Models\CustomerQrCode;
 use App\Services\CustomerDebtService;
+use App\Services\WorkSessionService;
 use App\Support\TonalpohualliCalendar;
 use Carbon\CarbonImmutable;
 use Flux\Flux;
@@ -148,7 +149,7 @@ class Form extends Component
                 amount: (float) $validated['debt_amount'],
                 notes: $validated['debt_notes'] !== '' ? $validated['debt_notes'] : null,
                 user: auth()->user(),
-                branchId: auth()->user()?->branch_id,
+                branchId: app(WorkSessionService::class)->currentFor(auth()->user())?->branch_id,
             );
         } catch (\InvalidArgumentException $exception) {
             throw ValidationException::withMessages([

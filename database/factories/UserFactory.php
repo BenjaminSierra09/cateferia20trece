@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Enums\UserRole;
-use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -36,8 +35,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'role' => fake()->randomElement(UserRole::cases()),
-            'branch_id' => null,
+            'role' => UserRole::Employee,
             'is_active' => true,
             'remember_token' => Str::random(10),
             'two_factor_secret' => null,
@@ -69,12 +67,24 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the user belongs to a branch.
+     * Kept for backwards compatibility in tests where the branch is picked during shift start.
      */
-    public function assignedToBranch(?Branch $branch = null): static
+    public function assignedToBranch(mixed $branch = null): static
+    {
+        return $this->state(fn () => []);
+    }
+
+    public function admin(): static
     {
         return $this->state(fn () => [
-            'branch_id' => $branch?->id ?? Branch::factory(),
+            'role' => UserRole::Admin,
+        ]);
+    }
+
+    public function employee(): static
+    {
+        return $this->state(fn () => [
+            'role' => UserRole::Employee,
         ]);
     }
 }

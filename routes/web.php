@@ -16,6 +16,7 @@ use App\Livewire\Dashboard;
 use App\Livewire\Products\Create as ProductCreate;
 use App\Livewire\Products\Manager as ProductManager;
 use App\Livewire\Reports\Overview as ReportsOverview;
+use App\Livewire\Reports\Shifts as ReportsShifts;
 use App\Livewire\Sales\Index as SalesIndex;
 use App\Livewire\Sales\Show as SalesShow;
 use App\Livewire\Sizes\Create as SizeCreate;
@@ -27,11 +28,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
 
-Route::prefix('dashboard')->middleware(['auth'])->group(function () {
+Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])->group(function () {
     Route::livewire('work-session/check-in', CheckIn::class)->name('dashboard.work-session.check-in');
-});
-
-Route::prefix('dashboard')->middleware(['auth', 'verified', 'work.session'])->group(function () {
     Route::livewire('/', Dashboard::class)->name('dashboard');
     Route::livewire('branches', BranchManager::class)->name('dashboard.branches.index');
     Route::livewire('branches/create', BranchCreate::class)->name('dashboard.branches.create');
@@ -65,6 +63,7 @@ Route::prefix('dashboard')->middleware(['auth', 'verified', 'work.session'])->gr
     Route::livewire('team/create', TeamCreate::class)->name('dashboard.team.create');
     Route::livewire('team/{user}/edit', TeamCreate::class)->name('dashboard.team.edit');
     Route::livewire('reports', ReportsOverview::class)->name('dashboard.reports.index');
+    Route::livewire('reports/shifts', ReportsShifts::class)->name('dashboard.reports.shifts');
 });
 
 require __DIR__.'/settings.php';

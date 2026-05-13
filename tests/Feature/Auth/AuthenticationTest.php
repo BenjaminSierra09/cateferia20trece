@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Laravel\Fortify\Features;
 
@@ -13,8 +14,8 @@ test('login screen can be rendered', function () {
         ->assertDontSee('Sign up');
 });
 
-test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+test('administrators can authenticate using the login screen', function () {
+    $user = User::factory()->admin()->create();
 
     $response = $this->post(route('login.store'), [
         'username' => $user->username,
@@ -31,6 +32,7 @@ test('users can authenticate using the login screen', function () {
 test('users can authenticate even if they type uppercase characters in username', function () {
     $user = User::factory()->create([
         'username' => 'Cafe-Admin',
+        'role' => UserRole::Admin,
     ]);
 
     $response = $this->post(route('login.store'), [
@@ -43,6 +45,22 @@ test('users can authenticate even if they type uppercase characters in username'
         ->assertRedirect(route('dashboard', absolute: false));
 
     $this->assertAuthenticated();
+});
+
+test('employees are redirected away from the dashboard after web login', function () {
+    $user = User::factory()->employee()->create();
+
+    $response = $this->post(route('login.store'), [
+        'username' => $user->username,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('home', absolute: false))
+        ->assertSessionHas('status', 'Tu usuario solo puede operar desde la app de Android.');
+
+    $this->assertGuest();
 });
 
 test('users can not authenticate with invalid password', function () {

@@ -33,15 +33,6 @@
                 <flux:tooltip :content="__('Search')" position="bottom">
                     <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Search')" />
                 </flux:tooltip>
-                <flux:tooltip :content="__('Turno')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="clock"
-                        :href="route('dashboard.work-session.check-in')"
-                        wire:navigate
-                        :label="__('Turno')"
-                    />
-                </flux:tooltip>
                 <flux:tooltip :content="__('Reportes')" position="bottom">
                     <flux:navbar.item
                         class="h-10 max-lg:hidden [&>div>svg]:size-5"
@@ -88,11 +79,11 @@
             <flux:spacer />
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="clock" :href="route('dashboard.work-session.check-in')" wire:navigate>
-                    {{ __('Turno') }}
-                </flux:sidebar.item>
                 <flux:sidebar.item icon="chart-bar-square" :href="route('dashboard.reports.index')" wire:navigate>
                     {{ __('Reportes') }}
+                </flux:sidebar.item>
+                <flux:sidebar.item icon="clock" :href="route('dashboard.reports.shifts')" wire:navigate>
+                    {{ __('Turnos') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
         </flux:sidebar>

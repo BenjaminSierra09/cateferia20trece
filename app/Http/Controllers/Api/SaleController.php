@@ -19,7 +19,7 @@ class SaleController extends Controller
         $sales = Sale::query()
             ->with([
                 'branch',
-                'user.branch',
+                'user',
                 'customer.qrCodes',
                 'items.size',
                 'items.beverage',
@@ -68,7 +68,7 @@ class SaleController extends Controller
 
         return new SaleResource($sale->load([
             'branch',
-            'user.branch',
+            'user',
             'customer.qrCodes',
             'items.size',
             'items.beverage',
@@ -81,7 +81,7 @@ class SaleController extends Controller
     {
         return new SaleResource($sale->load([
             'branch',
-            'user.branch',
+            'user',
             'customer.qrCodes',
             'items.size',
             'items.beverage',

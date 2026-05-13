@@ -98,7 +98,7 @@ class Manager extends Component
     protected function branchQuery(): Builder
     {
         return Branch::query()
-            ->withCount(['sales', 'users'])
+            ->withCount(['sales', 'workSessions'])
             ->latest();
     }
 

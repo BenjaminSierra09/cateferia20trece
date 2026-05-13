@@ -24,7 +24,6 @@ class BranchResource extends JsonResource
             'phone' => $this->phone,
             'operating_hours' => $this->operating_hours,
             'is_active' => $this->is_active,
-            'users_count' => $this->whenCounted('users'),
             'work_sessions_count' => $this->whenCounted('workSessions'),
             'sales_count' => $this->whenCounted('sales'),
             'created_at' => $this->created_at?->toIso8601String(),

@@ -18,7 +18,6 @@ class UserController extends Controller
         $search = $request->string('search')->toString();
 
         $users = User::query()
-            ->with('branch')
             ->withCount(['workSessions', 'sales'])
             ->when($request->filled('role'), fn ($query) => $query->where('role', $request->string('role')->toString()))
             ->when($search !== '', function ($query) use ($search) {
@@ -43,7 +42,6 @@ class UserController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'role' => ['required', Rule::enum(UserRole::class)],
-            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
@@ -52,12 +50,12 @@ class UserController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return new UserResource($user->load('branch')->loadCount(['workSessions', 'sales']));
+        return new UserResource($user->loadCount(['workSessions', 'sales']));
     }
 
     public function show(User $user): UserResource
     {
-        return new UserResource($user->load('branch')->loadCount(['workSessions', 'sales']));
+        return new UserResource($user->loadCount(['workSessions', 'sales']));
     }
 
     public function update(Request $request, User $user): UserResource
@@ -68,7 +66,6 @@ class UserController extends Controller
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['sometimes', 'nullable', 'string', 'min:8'],
             'role' => ['sometimes', Rule::enum(UserRole::class)],
-            'branch_id' => ['sometimes', 'nullable', 'integer', 'exists:branches,id'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
@@ -80,7 +77,7 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return new UserResource($user->fresh()->load('branch')->loadCount(['workSessions', 'sales']));
+        return new UserResource($user->fresh()->loadCount(['workSessions', 'sales']));
     }
 
     public function destroy(User $user): Response

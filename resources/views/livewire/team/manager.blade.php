@@ -21,7 +21,6 @@
                     <flux:table.column>Nombre</flux:table.column>
                     <flux:table.column>Usuario</flux:table.column>
                     <flux:table.column>Rol</flux:table.column>
-                    <flux:table.column>Sucursal</flux:table.column>
                     <flux:table.column>Estado</flux:table.column>
                     <flux:table.column>Acciones</flux:table.column>
                 </flux:table.columns>
@@ -35,7 +34,6 @@
                         </flux:table.cell>
                         <flux:table.cell>{{ $user->username }}</flux:table.cell>
                         <flux:table.cell>{{ $user->role->label() }}</flux:table.cell>
-                        <flux:table.cell>{{ $user->branch?->name ?? 'Sin sucursal principal' }}</flux:table.cell>
                         <flux:table.cell>
                             <flux:badge color="{{ $user->is_active ? 'emerald' : 'zinc' }}">{{ $user->is_active ? 'Activo' : 'Inactivo' }}</flux:badge>
                         </flux:table.cell>

@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table): void {
             $table->string('username')->after('name')->unique();
-            $table->string('role')->after('password')->default(UserRole::Cashier->value);
+            $table->string('role')->after('password')->default(UserRole::Employee->value);
             $table->foreignId('branch_id')->nullable()->after('role')->constrained()->nullOnDelete();
             $table->boolean('is_active')->after('branch_id')->default(true);
         });
