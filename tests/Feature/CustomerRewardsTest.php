@@ -197,6 +197,10 @@ test('sales paid with reward balance do not earn bonus or visit progress', funct
         'customer_id' => $customer->id,
         'payment_method' => PaymentMethod::Mixed->value,
         'reward_redeemed_total' => 10,
+        'payment_breakdown' => [
+            'cash' => 10,
+            'reward_balance' => 10,
+        ],
         'items' => [[
             'beverage_id' => $beverage->id,
             'size_id' => $size->id,
@@ -210,6 +214,47 @@ test('sales paid with reward balance do not earn bonus or visit progress', funct
     expect($customer->annual_drink_count)->toBe(9)
         ->and($customer->reward_tier)->toBe(RewardTier::Bronze)
         ->and((float) $customer->reward_balance)->toBe(40.0);
+
+    expect(
+        $customer->rewardTransactions()->where('type', RewardTransactionType::Earned)->count()
+    )->toBe(0);
+});
+
+test('sales paid only as debt do not earn bonus or visit progress', function () {
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $customer = Customer::factory()->create([
+        'created_at' => now()->subDays(20),
+        'reward_balance' => 50,
+        'annual_drink_count' => 9,
+        'reward_tier' => RewardTier::Bronze,
+    ]);
+    $category = BeverageCategory::factory()->create();
+    $beverage = Beverage::factory()->create(['beverage_category_id' => $category->id]);
+    $size = Size::factory()->create();
+    $beverage->sizePrices()->create([
+        'size_id' => $size->id,
+        'price' => 20,
+    ]);
+
+    $workSession = app(WorkSessionService::class)->start($user, $branch);
+
+    app(SaleService::class)->register([
+        'customer_id' => $customer->id,
+        'payment_method' => PaymentMethod::Debt->value,
+        'items' => [[
+            'beverage_id' => $beverage->id,
+            'size_id' => $size->id,
+            'quantity' => 1,
+            'customization_option_ids' => [],
+        ]],
+    ], $user, $workSession);
+
+    $customer->refresh();
+
+    expect($customer->annual_drink_count)->toBe(9)
+        ->and($customer->reward_tier)->toBe(RewardTier::Bronze)
+        ->and((float) $customer->reward_balance)->toBe(50.0);
 
     expect(
         $customer->rewardTransactions()->where('type', RewardTransactionType::Earned)->count()

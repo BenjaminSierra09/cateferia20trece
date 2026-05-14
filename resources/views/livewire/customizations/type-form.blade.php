@@ -56,27 +56,35 @@
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <flux:heading size="sm">Bebidas vinculadas</flux:heading>
-                        <flux:text>Aquí puedes quitar la relación de este tipo con bebidas que ya lo usan.</flux:text>
+                        <flux:text>Selecciona bebidas y el sistema agregará o quitará automáticamente todas las opciones de este tipo.</flux:text>
                     </div>
 
-                    @if ($selected_beverage_ids !== [])
-                        <flux:button type="button" variant="danger" size="sm" wire:click="removeSelectedBeverages" icon="x-circle">
-                            Deseleccionar {{ count($selected_beverage_ids) }}
+                    <div class="flex flex-wrap items-center gap-2">
+                        <flux:button type="button" variant="ghost" size="sm" wire:click="selectAllBeverages" icon="check-circle">
+                            Seleccionar todas
                         </flux:button>
-                    @endif
+                        <flux:button type="button" variant="ghost" size="sm" wire:click="clearAllBeverages" icon="x-circle">
+                            Deseleccionar todas
+                        </flux:button>
+                        @if ($selected_beverage_ids !== [])
+                            <flux:button type="button" variant="danger" size="sm" wire:click="removeSelectedBeverages" icon="x-circle">
+                                Deseleccionar {{ count($selected_beverage_ids) }}
+                            </flux:button>
+                        @endif
+                    </div>
                 </div>
 
                 @if ($customizationType === null)
                     <flux:callout color="sky" icon="information-circle">
                         Guarda primero el tipo para administrar sus bebidas relacionadas.
                     </flux:callout>
-                @elseif ($relatedBeverages->isEmpty())
+                @elseif ($beverages->isEmpty())
                     <flux:callout color="zinc" icon="beaker">
-                        Este tipo todavía no está vinculado a ninguna bebida.
+                        Todavía no hay bebidas registradas.
                     </flux:callout>
                 @else
                     <div class="space-y-3">
-                        @foreach ($relatedBeverages as $beverage)
+                        @foreach ($beverages as $beverage)
                             <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
                                 <div class="flex items-start gap-3">
                                     <flux:checkbox wire:model.live="selected_beverage_ids" value="{{ $beverage->id }}" />
@@ -84,9 +92,11 @@
                                         <div class="font-medium text-zinc-900 dark:text-white">{{ $beverage->name }}</div>
                                         <div class="text-sm text-zinc-500">{{ $beverage->category?->name ?? 'Sin categoría' }}</div>
                                         <div class="mt-2 flex flex-wrap gap-2">
-                                            @foreach ($beverage->customizationOptions as $option)
+                                            @forelse ($beverage->customizationOptions as $option)
                                                 <flux:badge color="zinc">{{ $option->name }}</flux:badge>
-                                            @endforeach
+                                            @empty
+                                                <flux:badge color="amber">Sin opciones de este tipo</flux:badge>
+                                            @endforelse
                                         </div>
                                     </div>
                                 </div>

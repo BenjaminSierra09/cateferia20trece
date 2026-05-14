@@ -45,6 +45,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             ->name('customers.debt-movements.index');
         Route::post('customers/{customer}/debt-movements', [CustomerDebtMovementController::class, 'store'])
             ->name('customers.debt-movements.store');
+        Route::post('customers/{customer}/reward-transactions', [RewardTransactionController::class, 'store'])
+            ->name('customers.reward-transactions.store');
         Route::get('customers/{customer}/favorite-beverages', CustomerFavoriteBeverageController::class)
             ->name('customers.favorite-beverages');
         Route::apiResource('users', UserController::class);

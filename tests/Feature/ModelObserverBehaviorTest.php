@@ -141,6 +141,33 @@ test('catalog image manager can suppress queued generation temporarily', functio
     Queue::assertNothingPushed();
 });
 
+test('catalog image manager can regenerate an image even when one already exists', function () {
+    Storage::fake('public');
+    config()->set('ai.providers.openai.key', 'fake-openai-key');
+    config()->set('ai.providers.gemini.key', null);
+    config()->set('ai.providers.xai.key', null);
+
+    $fixture = UploadedFile::fake()->image('regenerated.png', 900, 900);
+
+    Image::fake([
+        base64_encode((string) file_get_contents($fixture->getRealPath())),
+    ])->preventStrayImages();
+
+    $product = Product::factory()->create([
+        'name' => 'Pan regenerado',
+        'image_path' => 'catalog/products/existing.png',
+    ]);
+
+    $path = app(CatalogImageManager::class)->generateImageOrFail($product, force: true);
+
+    $product->refresh();
+
+    expect($product->image_path)->toBe($path)
+        ->and($path)->not->toBe('catalog/products/existing.png');
+
+    Storage::disk('public')->assertExists($path);
+});
+
 test('user observer normalizes name username and email', function () {
     $user = User::factory()->create([
         'name' => '  Ana López  ',

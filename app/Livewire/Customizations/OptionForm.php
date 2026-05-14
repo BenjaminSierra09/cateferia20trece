@@ -11,6 +11,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use RuntimeException;
 
 #[Title('Opción de personalización')]
 class OptionForm extends Component
@@ -41,10 +42,10 @@ class OptionForm extends Component
         $wasCreating = $this->customizationOption === null;
         $option = $this->persistForImageGeneration();
 
-        $generated = app(CatalogImageManager::class)->generateImage($option);
-
-        if (! $generated) {
-            Flux::toast(variant: 'danger', text: 'No se pudo generar la imagen en este momento.');
+        try {
+            app(CatalogImageManager::class)->generateImageOrFail($option, force: true);
+        } catch (RuntimeException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
 
             return;
         }

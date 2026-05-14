@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Beverages\Create as BeverageCreate;
+use App\Livewire\Customizations\TypeForm;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\Branch;
@@ -114,4 +115,59 @@ test('beverage form can select and clear all options for a customization type', 
         ->set('selected_customization_option_ids', [...$intensityOptions->pluck('id')->all(), $milkOption->id])
         ->call('clearCustomizationOptions', $intensityType->id)
         ->assertSet('selected_customization_option_ids', [$milkOption->id]);
+});
+
+test('customization type form can select all beverages and sync all of its options', function () {
+    Queue::fake();
+
+    $category = BeverageCategory::factory()->create();
+
+    $type = CustomizationType::factory()->create([
+        'name' => 'Leches',
+        'is_active' => true,
+    ]);
+    $otherType = CustomizationType::factory()->create([
+        'name' => 'Jarabes',
+        'is_active' => true,
+    ]);
+
+    $milkOptions = CustomizationOption::factory()->count(2)->create([
+        'customization_type_id' => $type->id,
+        'is_available' => true,
+    ]);
+    $otherOption = CustomizationOption::factory()->create([
+        'customization_type_id' => $otherType->id,
+        'is_available' => true,
+    ]);
+
+    $firstBeverage = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Americano',
+    ]);
+    $secondBeverage = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Latte',
+    ]);
+
+    $firstBeverage->customizationOptions()->attach($otherOption->id);
+
+    Livewire::test(TypeForm::class, ['customizationType' => $type])
+        ->call('selectAllBeverages')
+        ->assertSet('selected_beverage_ids', [$firstBeverage->id, $secondBeverage->id]);
+
+    expect($firstBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
+        ->toEqualCanonicalizing([...$milkOptions->pluck('id')->all(), $otherOption->id]);
+
+    expect($secondBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
+        ->toEqualCanonicalizing($milkOptions->pluck('id')->all());
+
+    Livewire::test(TypeForm::class, ['customizationType' => $type])
+        ->call('clearAllBeverages')
+        ->assertSet('selected_beverage_ids', []);
+
+    expect($firstBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
+        ->toEqualCanonicalizing([$otherOption->id]);
+
+    expect($secondBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
+        ->toBeEmpty();
 });

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\CustomerDebtMovementType;
+use App\Enums\PaymentMethod;
 use App\Models\Beverage;
 use App\Models\BranchCustomizationPriceOverride;
 use App\Models\Customer;
@@ -19,6 +21,7 @@ use InvalidArgumentException;
 class SaleService
 {
     public function __construct(
+        protected CustomerDebtService $customerDebtService,
         protected RewardProgramService $rewardProgramService,
     ) {}
 
@@ -48,6 +51,20 @@ class SaleService
                 ? min(round((float) ($payload['reward_redeemed_total'] ?? 0), 2), (float) $customer->reward_balance)
                 : 0;
             $total = max(round($subtotal - $discountTotal - $rewardRedeemedTotal, 2), 0);
+            $paymentMethod = $payload['payment_method'];
+            $paymentBreakdown = $this->normalizePaymentBreakdown(
+                $payload['payment_breakdown'] ?? null,
+                $paymentMethod,
+            );
+
+            $this->ensurePaymentConfigurationIsValid(
+                paymentMethod: $paymentMethod,
+                paymentBreakdown: $paymentBreakdown,
+                customer: $customer,
+                saleSubtotalAfterDiscount: round($subtotal - $discountTotal, 2),
+                rewardRedeemedTotal: $rewardRedeemedTotal,
+                total: $total,
+            );
 
             $sale = Sale::create([
                 'branch_id' => $workSession->branch_id,
@@ -55,7 +72,8 @@ class SaleService
                 'customer_id' => $customer?->id,
                 'work_session_id' => $workSession->id,
                 'sold_at' => now(),
-                'payment_method' => $payload['payment_method'],
+                'payment_method' => $paymentMethod,
+                'payment_breakdown' => $paymentBreakdown,
                 'status' => 'completed',
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
@@ -76,6 +94,18 @@ class SaleService
 
             if ($customer !== null && $rewardRedeemedTotal > 0) {
                 $this->rewardProgramService->redeem($customer, $sale, $rewardRedeemedTotal);
+            }
+
+            if ($customer !== null && $sale->payment_method->value === PaymentMethod::Debt->value && $sale->total > 0) {
+                $this->customerDebtService->register(
+                    customer: $customer,
+                    type: CustomerDebtMovementType::Debt,
+                    amount: (float) $sale->total,
+                    notes: sprintf('Cargo automático por venta #%d', $sale->id),
+                    user: $user,
+                    branchId: $workSession->branch_id,
+                    recordedAt: $sale->sold_at?->toIso8601String(),
+                );
             }
 
             if ($customer !== null) {
@@ -193,5 +223,74 @@ class SaleService
             'special_instructions' => $specialInstructions,
             'customizations' => [],
         ];
+    }
+
+    /**
+     * Normalize the incoming payment breakdown payload.
+     *
+     * @param  array<string, mixed>|null  $paymentBreakdown
+     * @return array<string, float>|null
+     */
+    protected function normalizePaymentBreakdown(?array $paymentBreakdown, string $paymentMethod): ?array
+    {
+        if ($paymentBreakdown === null) {
+            return null;
+        }
+
+        $normalized = collect($paymentBreakdown)
+            ->mapWithKeys(fn (mixed $amount, string $method): array => [$method => round((float) $amount, 2)])
+            ->filter(fn (float $amount): bool => $amount > 0)
+            ->all();
+
+        if ($normalized === []) {
+            return $paymentMethod === PaymentMethod::Mixed->value ? [] : null;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Validate method-specific payment rules.
+     *
+     * @param  array<string, float>|null  $paymentBreakdown
+     */
+    protected function ensurePaymentConfigurationIsValid(
+        string $paymentMethod,
+        ?array $paymentBreakdown,
+        ?Customer $customer,
+        float $saleSubtotalAfterDiscount,
+        float $rewardRedeemedTotal,
+        float $total,
+    ): void {
+        if ($paymentMethod === PaymentMethod::Debt->value && $customer === null) {
+            throw new InvalidArgumentException('Debes seleccionar un cliente para registrar la venta como deuda.');
+        }
+
+        if ($paymentMethod !== PaymentMethod::Mixed->value) {
+            return;
+        }
+
+        if ($paymentBreakdown === null || $paymentBreakdown === []) {
+            throw new InvalidArgumentException('Captura el desglose del pago mixto.');
+        }
+
+        $expectedTotal = round($saleSubtotalAfterDiscount, 2);
+        $providedTotal = round(array_sum($paymentBreakdown), 2);
+
+        if ($providedTotal !== $expectedTotal) {
+            throw new InvalidArgumentException('El desglose del pago mixto debe sumar el total completo de la venta antes de descontar saldo a favor.');
+        }
+
+        $rewardComponent = round((float) ($paymentBreakdown['reward_balance'] ?? 0), 2);
+
+        if ($rewardComponent !== round($rewardRedeemedTotal, 2)) {
+            throw new InvalidArgumentException('El componente de saldo a favor debe coincidir con el saldo usado en la venta.');
+        }
+
+        $nonRewardTotal = round($providedTotal - $rewardComponent, 2);
+
+        if ($nonRewardTotal !== round($total, 2)) {
+            throw new InvalidArgumentException('Los componentes cobrados en efectivo, tarjeta o transferencia no coinciden con el total pendiente.');
+        }
     }
 }

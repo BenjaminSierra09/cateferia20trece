@@ -11,6 +11,8 @@ use App\Services\WorkSessionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class SaleController extends Controller
 {
@@ -46,6 +48,12 @@ class SaleController extends Controller
             'reward_redeemed_total' => ['nullable', 'numeric', 'min:0'],
             'discount_concept' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            'payment_breakdown' => ['nullable', 'array'],
+            'payment_breakdown.cash' => ['nullable', 'numeric', 'min:0'],
+            'payment_breakdown.card' => ['nullable', 'numeric', 'min:0'],
+            'payment_breakdown.transfer' => ['nullable', 'numeric', 'min:0'],
+            'payment_breakdown.reward_balance' => ['nullable', 'numeric', 'min:0'],
+            'payment_breakdown.debt' => ['nullable', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.beverage_id' => ['nullable', 'integer', 'exists:beverages,id'],
             'items.*.size_id' => ['nullable', 'integer', 'exists:sizes,id'],
@@ -59,12 +67,45 @@ class SaleController extends Controller
             'items.*.special_instructions' => ['nullable', 'string'],
         ]);
 
+        if (
+            in_array($validated['payment_method'], [PaymentMethod::RewardBalance->value, PaymentMethod::Debt->value], true)
+            && empty($validated['customer_id'])
+        ) {
+            throw ValidationException::withMessages([
+                'customer_id' => ['Debes seleccionar un cliente para este método de pago.'],
+            ]);
+        }
+
+        if (
+            $validated['payment_method'] === PaymentMethod::Mixed->value
+            && empty(array_filter($validated['payment_breakdown'] ?? [], fn ($amount) => (float) $amount > 0))
+        ) {
+            throw ValidationException::withMessages([
+                'payment_breakdown' => ['Captura al menos un componente del pago mixto.'],
+            ]);
+        }
+
+        if (
+            isset($validated['payment_breakdown']['reward_balance'])
+            && round((float) $validated['payment_breakdown']['reward_balance'], 2) !== round((float) ($validated['reward_redeemed_total'] ?? 0), 2)
+        ) {
+            throw ValidationException::withMessages([
+                'payment_breakdown.reward_balance' => ['El saldo usado debe coincidir con el componente de saldo del pago.'],
+            ]);
+        }
+
         $user = User::query()->findOrFail($validated['user_id']);
         $workSession = $workSessionService->currentFor($user);
 
         abort_if($workSession === null, 422, 'El colaborador no tiene sucursal confirmada hoy.');
 
-        $sale = $saleService->register($validated, $user, $workSession);
+        try {
+            $sale = $saleService->register($validated, $user, $workSession);
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([
+                'payment_method' => [$exception->getMessage()],
+            ]);
+        }
 
         return new SaleResource($sale->load([
             'branch',

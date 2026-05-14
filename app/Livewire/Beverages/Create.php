@@ -14,6 +14,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use RuntimeException;
 
 #[Title('Nueva bebida')]
 class Create extends Component
@@ -49,10 +50,10 @@ class Create extends Component
         $wasCreating = $this->beverage === null;
         $beverage = $this->persistForImageGeneration();
 
-        $generated = app(CatalogImageManager::class)->generateImage($beverage);
-
-        if (! $generated) {
-            Flux::toast(variant: 'danger', text: 'No se pudo generar la imagen en este momento.');
+        try {
+            app(CatalogImageManager::class)->generateImageOrFail($beverage, force: true);
+        } catch (RuntimeException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
 
             return;
         }

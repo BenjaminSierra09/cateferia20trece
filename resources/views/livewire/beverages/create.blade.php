@@ -24,10 +24,10 @@
 
         <form wire:submit="save" class="space-y-6">
             @if ($activeTab === 'general')
-                <div class="grid gap-4 md:grid-cols-2">
-                    <flux:input wire:model="name" label="Nombre" class="md:col-span-2" />
-                    <flux:textarea wire:model="description" label="Descripción" rows="4" class="md:col-span-2" />
-                    <div class="space-y-2 md:col-span-2">
+                <div class="grid gap-4">
+                    <flux:input wire:model="name" label="Nombre" />
+                    <flux:textarea wire:model="description" label="Descripción" rows="4" />
+                    <div class="space-y-2">
                         <flux:file-upload wire:model="image" label="Imagen" accept="image/*">
                             <flux:file-upload.dropzone inline heading="Selecciona una imagen" text="PNG o JPG de hasta 3 MB" />
                         </flux:file-upload>
@@ -53,7 +53,7 @@
                             <option value="{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:field variant="inline" class="self-end">
+                    <flux:field variant="inline">
                         <flux:label>Activa</flux:label>
                         <flux:switch wire:model.live="is_active" />
                         <flux:error name="is_active" />
@@ -131,13 +131,13 @@
             @endif
 
             @if ($activeTab === 'pricing')
-                <div class="space-y-4">
-                    <div class="flex items-start justify-between gap-4">
+                <div class="space-y-5">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <flux:heading size="sm">Precios por tamaño</flux:heading>
-                            <flux:text>Activa los tamaños que venderá esta bebida y captura el precio general. Si una sucursal cobra distinto, puedes sobrescribirlo aquí mismo.</flux:text>
+                            <flux:text>Activa solo los tamaños que realmente venderás y define un precio base sencillo de revisar.</flux:text>
                         </div>
-                        <flux:badge color="sky">{{ count($size_pricing) }} tamaños disponibles</flux:badge>
+                        <flux:badge color="sky" class="rounded-full px-3 py-1">{{ count($size_pricing) }} tamaños disponibles</flux:badge>
                     </div>
 
                     @error('size_pricing')
@@ -146,14 +146,14 @@
 
                     <div class="space-y-4">
                         @foreach ($size_pricing as $index => $pricing)
-                            <div wire:key="size-pricing-{{ $pricing['size_id'] }}" class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
-                                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                            <div wire:key="size-pricing-{{ $pricing['size_id'] }}" class="rounded-3xl border border-zinc-200 bg-white/80 p-5 shadow-sm shadow-zinc-900/5 backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/60 dark:shadow-none">
+                                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                     <div>
-                                        <div class="text-base font-medium text-zinc-900 dark:text-white">{{ $pricing['size_name'] }}</div>
-                                        <div class="text-sm text-zinc-500">{{ $pricing['capacity_label'] }}</div>
+                                        <div class="text-base font-semibold text-zinc-900 dark:text-white">{{ $pricing['size_name'] }}</div>
+                                        <div class="mt-1 text-sm text-zinc-500">{{ $pricing['capacity_label'] }}</div>
                                     </div>
 
-                                    <div class="grid gap-4 md:grid-cols-[180px_auto] md:items-end">
+                                    <div class="grid gap-4 md:grid-cols-[220px_auto] md:items-end">
                                         <flux:input
                                             wire:model="size_pricing.{{ $index }}.price"
                                             label="Precio general"
@@ -161,12 +161,13 @@
                                             step="0.01"
                                             min="0"
                                             :disabled="! $pricing['enabled']"
+                                            class="min-w-0"
                                             placeholder="0.00"
                                         />
 
-                                        <flux:field variant="inline">
-                                            <flux:label>Disponible</flux:label>
-                                            <flux:switch wire:model.live="size_pricing.{{ $index }}.enabled" />
+                                        <flux:field variant="inline" class="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                            <flux:label class="text-sm font-medium text-zinc-700 dark:text-zinc-200">Disponible</flux:label>
+                                            <flux:switch wire:model.live="size_pricing.{{ $index }}.enabled" class="shrink-0" />
                                             <flux:error name="size_pricing.{{ $index }}.enabled" />
                                         </flux:field>
                                     </div>
@@ -179,10 +180,10 @@
                                 @enderror
 
                                 @if ($pricing['enabled'])
-                                    <div class="mt-4 space-y-3 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/60">
+                                    <div class="mt-5 space-y-3 rounded-3xl bg-zinc-50/90 p-4 ring-1 ring-inset ring-zinc-200/70 dark:bg-zinc-900/50 dark:ring-zinc-700/70">
                                         <div>
-                                            <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Precios por sucursal</div>
-                                            <div class="text-xs text-zinc-500">Opcional. Si lo dejas vacío, esa sucursal usará el precio general del tamaño.</div>
+                                            <div class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Precios por sucursal</div>
+                                            <div class="text-xs text-zinc-500">Si no completas un valor, esa sucursal usará el precio general de este tamaño.</div>
                                         </div>
 
                                         <div class="grid gap-3 md:grid-cols-2">
@@ -193,6 +194,7 @@
                                                     type="number"
                                                     step="0.01"
                                                     min="0"
+                                                    class="min-w-0"
                                                     placeholder="Usar precio general"
                                                 />
                                             @endforeach

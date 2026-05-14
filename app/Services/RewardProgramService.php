@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentMethod;
 use App\Enums\RewardTier;
 use App\Enums\RewardTransactionType;
 use App\Models\Customer;
 use App\Models\RewardTransaction;
 use App\Models\Sale;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class RewardProgramService
 {
@@ -93,11 +97,45 @@ class RewardProgramService
     }
 
     /**
+     * Credit manual balance to a customer account.
+     */
+    public function creditManualBalance(
+        Customer $customer,
+        float $amount,
+        ?string $description = null,
+        ?CarbonInterface $transactedAt = null,
+    ): RewardTransaction {
+        return DB::transaction(function () use ($customer, $amount, $description, $transactedAt): RewardTransaction {
+            $normalizedAmount = round($amount, 2);
+
+            if ($normalizedAmount <= 0) {
+                throw new InvalidArgumentException('El monto debe ser mayor a cero.');
+            }
+
+            $customer->refresh();
+            $customer->forceFill([
+                'reward_balance' => round(((float) $customer->reward_balance + $normalizedAmount), 2),
+            ])->save();
+
+            return RewardTransaction::create([
+                'customer_id' => $customer->id,
+                'sale_id' => null,
+                'type' => RewardTransactionType::ManualAdjustment,
+                'amount' => $normalizedAmount,
+                'balance_after' => $customer->reward_balance,
+                'description' => filled($description) ? $description : 'Abono manual de saldo a favor',
+                'transacted_at' => $transactedAt ?? now(),
+            ]);
+        });
+    }
+
+    /**
      * Determine if the sale can earn rewards and count as a visit.
      */
     protected function qualifiesForRewards(Sale $sale): bool
     {
-        return (float) $sale->reward_redeemed_total <= 0;
+        return (float) $sale->reward_redeemed_total <= 0
+            && $sale->payment_method !== PaymentMethod::Debt;
     }
 
     /**
@@ -108,6 +146,7 @@ class RewardProgramService
         return $customer->sales()
             ->where('status', 'completed')
             ->where('reward_redeemed_total', '<=', 0)
+            ->where('payment_method', '!=', PaymentMethod::Debt->value)
             ->whereDate('sold_at', $sale->sold_at->toDateString())
             ->whereKeyNot($sale->id)
             ->exists();

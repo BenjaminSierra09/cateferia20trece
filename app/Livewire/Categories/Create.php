@@ -9,6 +9,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use RuntimeException;
 
 #[Title('Nueva categoría')]
 class Create extends Component
@@ -30,10 +31,10 @@ class Create extends Component
         $wasCreating = $this->category === null;
         $category = $this->persistForImageGeneration();
 
-        $generated = app(CatalogImageManager::class)->generateImage($category);
-
-        if (! $generated) {
-            Flux::toast(variant: 'danger', text: 'No se pudo generar la imagen en este momento.');
+        try {
+            app(CatalogImageManager::class)->generateImageOrFail($category, force: true);
+        } catch (RuntimeException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
 
             return;
         }

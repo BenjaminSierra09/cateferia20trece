@@ -47,8 +47,26 @@ class CatalogImageManager
      */
     public function generateImage(Model $model): bool
     {
-        if (! $this->shouldGenerateImage($model)) {
+        try {
+            $this->generateImageOrFail($model);
+        } catch (Throwable) {
             return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Generate and store an AI image immediately, optionally replacing an existing one.
+     */
+    public function generateImageOrFail(Model $model, bool $force = false): string
+    {
+        if (! $this->canGenerateImage($model, $force)) {
+            throw new RuntimeException(
+                $force
+                    ? 'El registro no tiene suficiente información para regenerar una imagen.'
+                    : 'El registro ya tiene una imagen. Usa la opción de regenerar para reemplazarla.',
+            );
         }
 
         $providers = $this->availableProviders();
@@ -59,7 +77,7 @@ class CatalogImageManager
                 'id' => $model->getKey(),
             ]);
 
-            return false;
+            throw new RuntimeException('No hay un proveedor de imágenes configurado. Revisa la configuración de AI en el servidor.');
         }
 
         try {
@@ -69,7 +87,7 @@ class CatalogImageManager
                 ->timeout(180)
                 ->generate(provider: count($providers) === 1 ? $providers[0] : $providers);
         } catch (Throwable $exception) {
-            Log::warning('Catalog AI image generation failed.', [
+            Log::error('Catalog AI image generation failed.', [
                 'model' => $model::class,
                 'id' => $model->getKey(),
                 'providers' => array_map(
@@ -77,16 +95,17 @@ class CatalogImageManager
                     $providers,
                 ),
                 'message' => $exception->getMessage(),
+                'exception' => $exception::class,
             ]);
 
-            return false;
+            throw new RuntimeException('La IA no pudo generar la imagen: '.$exception->getMessage(), previous: $exception);
         }
 
         $path = $this->storeGeneratedImage($model, (string) $generatedImage);
 
         $model->forceFill(['image_path' => $path])->saveQuietly();
 
-        return true;
+        return $path;
     }
 
     /**
@@ -132,7 +151,15 @@ class CatalogImageManager
      */
     public function shouldGenerateImage(Model $model): bool
     {
-        return blank($model->getAttribute('image_path'))
+        return $this->canGenerateImage($model);
+    }
+
+    /**
+     * Determine if the given model can receive an AI generated image.
+     */
+    public function canGenerateImage(Model $model, bool $force = false): bool
+    {
+        return ($force || blank($model->getAttribute('image_path')))
             && filled($this->displayName($model));
     }
 

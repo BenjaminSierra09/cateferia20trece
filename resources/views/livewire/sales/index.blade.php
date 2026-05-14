@@ -90,6 +90,5 @@
             </flux:table.rows>
         </flux:table>
 
-        <flux:pagination :paginator="$sales" />
     </flux:card>
 </div>

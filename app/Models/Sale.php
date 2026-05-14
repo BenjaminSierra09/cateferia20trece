@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['branch_id', 'user_id', 'customer_id', 'work_session_id', 'sold_at', 'payment_method', 'status', 'subtotal', 'discount_total', 'reward_redeemed_total', 'total', 'discount_concept', 'notes'])]
+#[Fillable(['branch_id', 'user_id', 'customer_id', 'work_session_id', 'sold_at', 'payment_method', 'payment_breakdown', 'status', 'subtotal', 'discount_total', 'reward_redeemed_total', 'total', 'discount_concept', 'notes'])]
 class Sale extends Model
 {
     /** @use HasFactory<SaleFactory> */
@@ -31,6 +31,7 @@ class Sale extends Model
             'reward_redeemed_total' => 'decimal:2',
             'total' => 'decimal:2',
             'payment_method' => PaymentMethod::class,
+            'payment_breakdown' => 'array',
             'status' => SaleStatus::class,
         ];
     }

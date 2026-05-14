@@ -28,6 +28,7 @@ class SaleResource extends JsonResource
             'customer' => $this->whenLoaded('customer', fn () => new CustomerResource($this->customer)),
             'payment_method' => $this->payment_method->value,
             'payment_method_label' => $this->payment_method->label(),
+            'payment_breakdown' => $this->payment_breakdown,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
             'subtotal' => $this->subtotal,
