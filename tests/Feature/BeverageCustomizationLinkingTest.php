@@ -81,3 +81,37 @@ test('editing a beverage preloads linked customization options', function () {
     Livewire::test(BeverageCreate::class, ['beverage' => $beverage])
         ->assertSet('selected_customization_option_ids', [$option->id]);
 });
+
+test('beverage form can select and clear all options for a customization type', function () {
+    Queue::fake();
+
+    $category = BeverageCategory::factory()->create();
+    Size::factory()->create(['is_active' => true]);
+    Branch::factory()->create(['is_active' => true]);
+
+    $intensityType = CustomizationType::factory()->create([
+        'name' => 'Intensidad',
+        'is_active' => true,
+    ]);
+    $milkType = CustomizationType::factory()->create([
+        'name' => 'Leches',
+        'is_active' => true,
+    ]);
+
+    $intensityOptions = CustomizationOption::factory()->count(2)->create([
+        'customization_type_id' => $intensityType->id,
+        'is_available' => true,
+    ]);
+    $milkOption = CustomizationOption::factory()->create([
+        'customization_type_id' => $milkType->id,
+        'is_available' => true,
+    ]);
+
+    Livewire::test(BeverageCreate::class)
+        ->set('beverage_category_id', $category->id)
+        ->call('selectAllCustomizationOptions', $intensityType->id)
+        ->assertSet('selected_customization_option_ids', $intensityOptions->pluck('id')->all())
+        ->set('selected_customization_option_ids', [...$intensityOptions->pluck('id')->all(), $milkOption->id])
+        ->call('clearCustomizationOptions', $intensityType->id)
+        ->assertSet('selected_customization_option_ids', [$milkOption->id]);
+});

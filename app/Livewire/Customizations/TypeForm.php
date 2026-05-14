@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Customizations;
 
+use App\Models\Beverage;
 use App\Models\CustomizationType;
 use App\Support\CatalogImageManager;
 use Flux\Flux;
@@ -15,6 +16,8 @@ class TypeForm extends Component
 {
     use WithFileUploads;
 
+    public string $activeTab = 'general';
+
     public ?CustomizationType $customizationType = null;
 
     public string $type_name = '';
@@ -24,6 +27,34 @@ class TypeForm extends Component
     public bool $type_is_active = true;
 
     public $type_image;
+
+    /**
+     * @var array<int>
+     */
+    public array $selected_beverage_ids = [];
+
+    public function generateImage(): void
+    {
+        $wasCreating = $this->customizationType === null;
+        $type = $this->persistForImageGeneration();
+
+        $generated = app(CatalogImageManager::class)->generateImage($type);
+
+        if (! $generated) {
+            Flux::toast(variant: 'danger', text: 'No se pudo generar la imagen en este momento.');
+
+            return;
+        }
+
+        $this->type_image = null;
+        $this->customizationType = $type->fresh();
+
+        Flux::toast(variant: 'success', text: 'Imagen generada correctamente.');
+
+        if ($wasCreating) {
+            $this->redirectRoute('dashboard.customizations.types.edit', ['customizationType' => $type], navigate: true);
+        }
+    }
 
     public function mount(?CustomizationType $customizationType = null): void
     {
@@ -65,8 +96,82 @@ class TypeForm extends Component
         $this->redirectRoute('dashboard.customizations.types.edit', ['customizationType' => $type], navigate: true);
     }
 
+    public function removeBeverage(int $beverageId): void
+    {
+        if ($this->customizationType === null) {
+            return;
+        }
+
+        $optionIds = $this->customizationType->options()->pluck('customization_options.id');
+
+        Beverage::query()->findOrFail($beverageId)
+            ->customizationOptions()
+            ->detach($optionIds);
+
+        Flux::toast(variant: 'success', text: 'La bebida se desvinculó de este tipo.');
+    }
+
+    public function removeSelectedBeverages(): void
+    {
+        if ($this->customizationType === null || $this->selected_beverage_ids === []) {
+            return;
+        }
+
+        $optionIds = $this->customizationType->options()->pluck('customization_options.id');
+
+        Beverage::query()
+            ->whereIn('id', $this->selected_beverage_ids)
+            ->get()
+            ->each(fn (Beverage $beverage) => $beverage->customizationOptions()->detach($optionIds));
+
+        $count = count($this->selected_beverage_ids);
+        $this->selected_beverage_ids = [];
+
+        Flux::toast(variant: 'success', text: $count === 1 ? 'Se desvinculó 1 bebida.' : "Se desvincularon {$count} bebidas.");
+    }
+
     public function render(): View
     {
-        return view('livewire.customizations.type-form')->layout('layouts.app');
+        $relatedBeverages = collect();
+
+        if ($this->customizationType !== null) {
+            $relatedBeverages = Beverage::query()
+                ->whereHas('customizationOptions', function ($query): void {
+                    $query->whereIn(
+                        'customization_options.id',
+                        $this->customizationType?->options()->pluck('customization_options.id') ?? []
+                    );
+                })
+                ->with(['category', 'customizationOptions' => function ($query): void {
+                    $query->where('customization_type_id', $this->customizationType?->id)
+                        ->orderBy('name');
+                }])
+                ->orderBy('name')
+                ->get();
+        }
+
+        return view('livewire.customizations.type-form', [
+            'relatedBeverages' => $relatedBeverages,
+        ])->layout('layouts.app');
+    }
+
+    protected function persistForImageGeneration(): CustomizationType
+    {
+        $validated = $this->validate([
+            'type_name' => ['required', 'string', 'max:255'],
+            'selection_mode' => ['required', 'in:single,multiple'],
+            'type_is_active' => ['boolean'],
+        ]);
+
+        return CatalogImageManager::withoutQueueing(function () use ($validated): CustomizationType {
+            return CustomizationType::query()->updateOrCreate([
+                'id' => $this->customizationType?->id,
+            ], [
+                'name' => $validated['type_name'],
+                'selection_mode' => $validated['selection_mode'],
+                'image_path' => $this->customizationType?->image_path,
+                'is_active' => $validated['type_is_active'],
+            ]);
+        });
     }
 }

@@ -20,6 +20,28 @@ use Throwable;
 
 class CatalogImageManager
 {
+    protected static bool $queueSuppressed = false;
+
+    /**
+     * Run a callback while suppressing queued AI image generation.
+     *
+     * @template TReturn
+     *
+     * @param  callable(): TReturn  $callback
+     * @return TReturn
+     */
+    public static function withoutQueueing(callable $callback): mixed
+    {
+        $previousState = self::$queueSuppressed;
+        self::$queueSuppressed = true;
+
+        try {
+            return $callback();
+        } finally {
+            self::$queueSuppressed = $previousState;
+        }
+    }
+
     /**
      * Generate and store an AI image for a catalog model immediately.
      */
@@ -72,6 +94,10 @@ class CatalogImageManager
      */
     public function queueImageGeneration(Model $model): bool
     {
+        if (self::$queueSuppressed) {
+            return false;
+        }
+
         if (! $this->shouldGenerateImage($model)) {
             return false;
         }

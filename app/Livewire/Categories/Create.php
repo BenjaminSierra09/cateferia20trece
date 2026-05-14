@@ -25,6 +25,29 @@ class Create extends Component
 
     public $image;
 
+    public function generateImage(): void
+    {
+        $wasCreating = $this->category === null;
+        $category = $this->persistForImageGeneration();
+
+        $generated = app(CatalogImageManager::class)->generateImage($category);
+
+        if (! $generated) {
+            Flux::toast(variant: 'danger', text: 'No se pudo generar la imagen en este momento.');
+
+            return;
+        }
+
+        $this->image = null;
+        $this->category = $category->fresh();
+
+        Flux::toast(variant: 'success', text: 'Imagen generada correctamente.');
+
+        if ($wasCreating) {
+            $this->redirectRoute('dashboard.categories.edit', ['category' => $category], navigate: true);
+        }
+    }
+
     public function mount(?BeverageCategory $category = null): void
     {
         $this->category = $category?->exists ? $category : null;
@@ -68,5 +91,25 @@ class Create extends Component
     public function render(): View
     {
         return view('livewire.categories.create')->layout('layouts.app');
+    }
+
+    protected function persistForImageGeneration(): BeverageCategory
+    {
+        $validated = $this->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'is_active' => ['boolean'],
+        ]);
+
+        return CatalogImageManager::withoutQueueing(function () use ($validated): BeverageCategory {
+            return BeverageCategory::query()->updateOrCreate([
+                'id' => $this->category?->id,
+            ], [
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'is_active' => $validated['is_active'],
+                'image_path' => $this->category?->image_path,
+            ]);
+        });
     }
 }

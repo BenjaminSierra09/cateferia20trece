@@ -29,6 +29,29 @@ class Create extends Component
 
     public $image;
 
+    public function generateImage(): void
+    {
+        $wasCreating = $this->product === null;
+        $product = $this->persistForImageGeneration();
+
+        $generated = app(CatalogImageManager::class)->generateImage($product);
+
+        if (! $generated) {
+            Flux::toast(variant: 'danger', text: 'No se pudo generar la imagen en este momento.');
+
+            return;
+        }
+
+        $this->image = null;
+        $this->product = $product->fresh();
+
+        Flux::toast(variant: 'success', text: 'Imagen generada correctamente.');
+
+        if ($wasCreating) {
+            $this->redirectRoute('dashboard.products.edit', ['product' => $product], navigate: true);
+        }
+    }
+
     public function mount(?Product $product = null): void
     {
         $this->product = $product?->exists ? $product : null;
@@ -78,5 +101,29 @@ class Create extends Component
     public function render(): View
     {
         return view('livewire.products.create')->layout('layouts.app');
+    }
+
+    protected function persistForImageGeneration(): Product
+    {
+        $validated = $this->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'unit_type' => ['required', 'in:piece,gram,kilo'],
+            'base_price' => ['required', 'numeric', 'min:0'],
+            'is_active' => ['boolean'],
+        ]);
+
+        return CatalogImageManager::withoutQueueing(function () use ($validated): Product {
+            return Product::query()->updateOrCreate([
+                'id' => $this->product?->id,
+            ], [
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'image_path' => $this->product?->image_path,
+                'unit_type' => $validated['unit_type'],
+                'base_price' => $validated['base_price'],
+                'is_active' => $validated['is_active'],
+            ]);
+        });
     }
 }

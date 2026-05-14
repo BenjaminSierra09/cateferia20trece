@@ -79,8 +79,7 @@ class SaleService
             }
 
             if ($customer !== null) {
-                $drinkCount = (int) $sale->items()->whereNotNull('beverage_id')->sum('quantity');
-                $this->rewardProgramService->applyEarnedRewards($customer, $sale, $drinkCount);
+                $this->rewardProgramService->applyEarnedRewards($customer, $sale);
             }
 
             return $sale->load('branch', 'user', 'customer', 'items.customizations');

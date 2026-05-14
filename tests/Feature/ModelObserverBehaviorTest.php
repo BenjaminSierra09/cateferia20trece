@@ -127,6 +127,20 @@ test('catalog image job exits cleanly when no AI image provider is configured', 
     Log::shouldHaveReceived('warning')->once();
 });
 
+test('catalog image manager can suppress queued generation temporarily', function () {
+    Queue::fake();
+
+    $product = Product::factory()->create([
+        'image_path' => 'products/existing-image.png',
+    ]);
+
+    CatalogImageManager::withoutQueueing(function () use ($product): void {
+        app(CatalogImageManager::class)->queueImageGeneration($product);
+    });
+
+    Queue::assertNothingPushed();
+});
+
 test('user observer normalizes name username and email', function () {
     $user = User::factory()->create([
         'name' => '  Ana López  ',

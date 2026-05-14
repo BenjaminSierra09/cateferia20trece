@@ -7,36 +7,17 @@ use App\Enums\RewardTransactionType;
 use App\Models\Customer;
 use App\Models\RewardTransaction;
 use App\Models\Sale;
-use Carbon\CarbonInterface;
 
 class RewardProgramService
 {
     /**
-     * Reset annual progress if the reward year changed.
+     * Determine the reward tier for the amount of qualifying visits.
      */
-    public function synchronizeAnnualProgress(Customer $customer, ?CarbonInterface $date = null): Customer
-    {
-        $date ??= now();
-
-        if ($customer->reward_year !== (int) $date->format('Y')) {
-            $customer->forceFill([
-                'reward_year' => (int) $date->format('Y'),
-                'annual_drink_count' => 0,
-                'reward_tier' => RewardTier::Bronze,
-            ])->save();
-        }
-
-        return $customer->refresh();
-    }
-
-    /**
-     * Determine the reward tier for the amount of drinks.
-     */
-    public function determineTier(int $annualDrinkCount): RewardTier
+    public function determineTier(int $visitCount): RewardTier
     {
         return match (true) {
-            $annualDrinkCount >= 24 => RewardTier::Gold,
-            $annualDrinkCount >= 12 => RewardTier::Silver,
+            $visitCount >= 45 => RewardTier::Gold,
+            $visitCount >= 30 => RewardTier::Silver,
             default => RewardTier::Bronze,
         };
     }
@@ -44,16 +25,27 @@ class RewardProgramService
     /**
      * Apply earned rewards to the customer from a sale.
      */
-    public function applyEarnedRewards(Customer $customer, Sale $sale, int $drinkCount): ?RewardTransaction
+    public function applyEarnedRewards(Customer $customer, Sale $sale): ?RewardTransaction
     {
-        $customer = $this->synchronizeAnnualProgress($customer, $sale->sold_at);
+        if (! $this->qualifiesForRewards($sale)) {
+            return null;
+        }
 
-        $annualDrinkCount = $customer->annual_drink_count + $drinkCount;
-        $rewardTier = $this->determineTier($annualDrinkCount);
-        $earnedAmount = round(((float) $sale->total * $rewardTier->percentage()) / 100, 2);
+        $visitCount = (int) $customer->annual_drink_count;
+        $countedVisit = false;
+
+        if (! $this->hasQualifiedVisitOnDate($customer, $sale)) {
+            $visitCount++;
+            $countedVisit = true;
+        }
+
+        $rewardTier = $this->determineTier($visitCount);
+        $rewardPercentage = $rewardTier->percentage() + $this->welcomeBonusPercentage($customer, $sale);
+        $earnedAmount = round(((float) $sale->total * $rewardPercentage) / 100, 2);
 
         $customer->forceFill([
-            'annual_drink_count' => $annualDrinkCount,
+            'reward_year' => (int) $sale->sold_at->format('Y'),
+            'annual_drink_count' => $visitCount,
             'reward_tier' => $rewardTier,
             'reward_balance' => round(((float) $customer->reward_balance + $earnedAmount), 2),
         ])->save();
@@ -68,7 +60,12 @@ class RewardProgramService
             'type' => RewardTransactionType::Earned,
             'amount' => $earnedAmount,
             'balance_after' => $customer->reward_balance,
-            'description' => sprintf('Abono del %d%% por venta #%d', $rewardTier->percentage(), $sale->id),
+            'description' => $this->buildEarnedDescription(
+                rewardPercentage: $rewardPercentage,
+                rewardTier: $rewardTier,
+                sale: $sale,
+                countedVisit: $countedVisit,
+            ),
             'transacted_at' => $sale->sold_at,
         ]);
     }
@@ -93,5 +90,61 @@ class RewardProgramService
             'description' => sprintf('Uso de saldo en venta #%d', $sale->id),
             'transacted_at' => $sale->sold_at,
         ]);
+    }
+
+    /**
+     * Determine if the sale can earn rewards and count as a visit.
+     */
+    protected function qualifiesForRewards(Sale $sale): bool
+    {
+        return (float) $sale->reward_redeemed_total <= 0;
+    }
+
+    /**
+     * Determine whether the customer already has a qualifying visit on the sale date.
+     */
+    protected function hasQualifiedVisitOnDate(Customer $customer, Sale $sale): bool
+    {
+        return $customer->sales()
+            ->where('status', 'completed')
+            ->where('reward_redeemed_total', '<=', 0)
+            ->whereDate('sold_at', $sale->sold_at->toDateString())
+            ->whereKeyNot($sale->id)
+            ->exists();
+    }
+
+    /**
+     * Resolve the temporary welcome percentage for the customer.
+     */
+    protected function welcomeBonusPercentage(Customer $customer, Sale $sale): int
+    {
+        if ($customer->created_at === null) {
+            return 0;
+        }
+
+        return $sale->sold_at->lt($customer->created_at->copy()->addDays(3)) ? 5 : 0;
+    }
+
+    /**
+     * Build a readable reward description for the ledger.
+     */
+    protected function buildEarnedDescription(
+        int $rewardPercentage,
+        RewardTier $rewardTier,
+        Sale $sale,
+        bool $countedVisit,
+    ): string {
+        $description = sprintf(
+            'Abono del %d%% (%s) por venta #%d',
+            $rewardPercentage,
+            $rewardTier->label(),
+            $sale->id,
+        );
+
+        if ($countedVisit) {
+            return $description.' y visita del día';
+        }
+
+        return $description.' sin visita adicional del día';
     }
 }

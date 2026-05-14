@@ -16,6 +16,16 @@
                 <flux:file-upload wire:model="image" label="Imagen" accept="image/*">
                     <flux:file-upload.dropzone inline heading="Selecciona una imagen" text="PNG o JPG de hasta 3 MB" />
                 </flux:file-upload>
+                <div class="flex flex-wrap items-center gap-3">
+                    <flux:button type="button" variant="ghost" wire:click="generateImage" wire:loading.attr="disabled" wire:target="generateImage">
+                        <span wire:loading.remove wire:target="generateImage">{{ $category?->image_path ? 'Regenerar imagen con IA' : 'Generar imagen con IA' }}</span>
+                        <span wire:loading.inline-flex wire:target="generateImage" class="items-center gap-2">
+                            <span class="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                            Generando imagen...
+                        </span>
+                    </flux:button>
+                    <flux:text size="sm">La IA toma la categoría y descripción actual para regenerarla.</flux:text>
+                </div>
                 @if ($image)
                     <img src="{{ $image->temporaryUrl() }}" alt="Vista previa de categoría" class="h-28 w-28 rounded-2xl object-cover" />
                 @elseif ($category?->image_path)

@@ -20,6 +20,8 @@ class Create extends Component
 {
     use WithFileUploads;
 
+    public string $activeTab = 'general';
+
     public ?Beverage $beverage = null;
 
     public string $name = '';
@@ -41,6 +43,72 @@ class Create extends Component
     public bool $is_active = true;
 
     public $image;
+
+    public function generateImage(): void
+    {
+        $wasCreating = $this->beverage === null;
+        $beverage = $this->persistForImageGeneration();
+
+        $generated = app(CatalogImageManager::class)->generateImage($beverage);
+
+        if (! $generated) {
+            Flux::toast(variant: 'danger', text: 'No se pudo generar la imagen en este momento.');
+
+            return;
+        }
+
+        $this->image = null;
+        $this->beverage = $beverage->fresh(['sizePrices', 'customizationOptions']);
+
+        Flux::toast(variant: 'success', text: 'Imagen generada correctamente.');
+
+        if ($wasCreating) {
+            $this->redirectRoute('dashboard.beverages.edit', ['beverage' => $beverage], navigate: true);
+        }
+    }
+
+    public function selectAllCustomizationOptions(?int $typeId = null): void
+    {
+        $availableOptionIds = CustomizationType::query()
+            ->when($typeId !== null, fn ($query) => $query->whereKey($typeId))
+            ->with(['options' => fn ($query) => $query->where('is_available', true)->orderBy('name')])
+            ->where('is_active', true)
+            ->get()
+            ->flatMap(fn (CustomizationType $type) => $type->options->pluck('id'))
+            ->all();
+
+        $this->selected_customization_option_ids = collect($this->selected_customization_option_ids)
+            ->merge($availableOptionIds)
+            ->map(fn (mixed $optionId): int => (int) $optionId)
+            ->sort()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function clearCustomizationOptions(?int $typeId = null): void
+    {
+        if ($typeId === null) {
+            $this->selected_customization_option_ids = [];
+
+            return;
+        }
+
+        $optionIdsToRemove = CustomizationType::query()
+            ->whereKey($typeId)
+            ->with(['options' => fn ($query) => $query->where('is_available', true)])
+            ->get()
+            ->flatMap(fn (CustomizationType $type) => $type->options->pluck('id'))
+            ->map(fn (mixed $optionId): int => (int) $optionId)
+            ->all();
+
+        $this->selected_customization_option_ids = collect($this->selected_customization_option_ids)
+            ->reject(fn (mixed $optionId): bool => in_array((int) $optionId, $optionIdsToRemove, true))
+            ->map(fn (mixed $optionId): int => (int) $optionId)
+            ->sort()
+            ->values()
+            ->all();
+    }
 
     public function mount(?Beverage $beverage = null): void
     {
@@ -238,5 +306,34 @@ class Create extends Component
                 ->orderBy('name')
                 ->get(),
         ])->layout('layouts.app');
+    }
+
+    protected function persistForImageGeneration(): Beverage
+    {
+        $validated = $this->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'beverage_category_id' => ['required', 'integer', 'exists:beverage_categories,id'],
+            'selected_customization_option_ids' => ['nullable', 'array'],
+            'selected_customization_option_ids.*' => ['integer', 'exists:customization_options,id'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $beverage = CatalogImageManager::withoutQueueing(function () use ($validated): Beverage {
+            return Beverage::query()->updateOrCreate([
+                'id' => $this->beverage?->id,
+            ], [
+                'beverage_category_id' => $validated['beverage_category_id'],
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'image_path' => $this->beverage?->image_path,
+                'base_price' => $this->beverage?->base_price ?? 0,
+                'is_active' => $validated['is_active'],
+            ]);
+        });
+
+        $beverage->customizationOptions()->sync($validated['selected_customization_option_ids'] ?? []);
+
+        return $beverage;
     }
 }
