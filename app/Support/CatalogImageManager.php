@@ -10,12 +10,63 @@ use App\Models\CustomizationType;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Image;
 use RuntimeException;
+use Throwable;
 
 class CatalogImageManager
 {
+    /**
+     * Generate and store an AI image for a catalog model immediately.
+     */
+    public function generateImage(Model $model): bool
+    {
+        if (! $this->shouldGenerateImage($model)) {
+            return false;
+        }
+
+        $providers = $this->availableProviders();
+
+        if ($providers === []) {
+            Log::warning('No AI image provider is configured for catalog image generation.', [
+                'model' => $model::class,
+                'id' => $model->getKey(),
+            ]);
+
+            return false;
+        }
+
+        try {
+            $generatedImage = Image::of($this->promptFor($model))
+                ->square()
+                ->quality('low')
+                ->timeout(180)
+                ->generate(provider: count($providers) === 1 ? $providers[0] : $providers);
+        } catch (Throwable $exception) {
+            Log::warning('Catalog AI image generation failed.', [
+                'model' => $model::class,
+                'id' => $model->getKey(),
+                'providers' => array_map(
+                    static fn (Lab $provider): string => $provider->value,
+                    $providers,
+                ),
+                'message' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        $path = $this->storeGeneratedImage($model, (string) $generatedImage);
+
+        $model->forceFill(['image_path' => $path])->saveQuietly();
+
+        return true;
+    }
+
     /**
      * Queue AI image generation for a catalog model when it is missing an image.
      */
@@ -244,5 +295,19 @@ class CatalogImageManager
             CustomizationOption::class => 'customization-options',
             default => Str::kebab(class_basename($model)),
         };
+    }
+
+    /**
+     * Resolve the available image providers in failover order.
+     *
+     * @return array<int, Lab>
+     */
+    protected function availableProviders(): array
+    {
+        return array_values(array_filter([
+            filled(config('ai.providers.openai.key')) ? Lab::OpenAI : null,
+            filled(config('ai.providers.gemini.key')) ? Lab::Gemini : null,
+            filled(config('ai.providers.xai.key')) ? Lab::xAI : null,
+        ]));
     }
 }

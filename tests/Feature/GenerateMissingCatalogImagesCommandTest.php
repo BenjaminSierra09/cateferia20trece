@@ -1,46 +1,41 @@
 <?php
 
-use App\Jobs\GenerateCatalogImage;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\CustomizationOption;
 use App\Models\CustomizationType;
 use App\Models\Product;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Image;
 
 test('it queues missing catalog images', function () {
-    Bus::fake();
+    Storage::fake('public');
 
-    $missingProduct = null;
-    $productWithImage = null;
-    $beverageCategory = null;
-    $customizationType = null;
+    config()->set('ai.providers.openai.key', 'fake-openai-key');
+    config()->set('ai.providers.gemini.key', null);
+    config()->set('ai.providers.xai.key', null);
 
-    Product::withoutEvents(function () use (&$missingProduct, &$productWithImage): void {
-        $missingProduct = Product::factory()->create();
-        $productWithImage = Product::factory()->create(['image_path' => 'catalog/products/example.png']);
-    });
+    $missingProduct = Product::withoutEvents(fn (): Product => Product::factory()->create());
+    $productWithImage = Product::withoutEvents(fn (): Product => Product::factory()->create(['image_path' => 'catalog/products/example.png']));
+    $beverageCategory = BeverageCategory::withoutEvents(fn (): BeverageCategory => BeverageCategory::factory()->create());
+    Beverage::withoutEvents(fn (): Beverage => Beverage::factory()->create(['beverage_category_id' => $beverageCategory->getKey()]));
+    $customizationType = CustomizationType::withoutEvents(fn (): CustomizationType => CustomizationType::factory()->create());
+    CustomizationOption::withoutEvents(fn (): CustomizationOption => CustomizationOption::factory()->create(['customization_type_id' => $customizationType->getKey()]));
 
-    BeverageCategory::withoutEvents(function () use (&$beverageCategory): void {
-        $beverageCategory = BeverageCategory::factory()->create();
-    });
+    $fixture = UploadedFile::fake()->image('generated.png', 1200, 900);
 
-    Beverage::withoutEvents(function () use ($beverageCategory): void {
-        Beverage::factory()->create(['beverage_category_id' => $beverageCategory->getKey()]);
-    });
+    Image::fake(array_fill(0, 5, base64_encode((string) file_get_contents($fixture->getRealPath()))))
+        ->preventStrayImages();
 
-    CustomizationType::withoutEvents(function () use (&$customizationType): void {
-        $customizationType = CustomizationType::factory()->create();
-    });
+    expect(Artisan::call('catalog:generate-missing-images'))->toBe(0);
 
-    CustomizationOption::withoutEvents(function () use ($customizationType): void {
-        CustomizationOption::factory()->create(['customization_type_id' => $customizationType->getKey()]);
-    });
+    $missingProduct->refresh();
+    $productWithImage->refresh();
 
-    $this->artisan('catalog:generate-missing-images')->assertSuccessful();
+    expect($missingProduct->image_path)->not->toBeNull();
+    expect($productWithImage->image_path)->toBe('catalog/products/example.png');
 
-    Bus::assertDispatchedTimes(GenerateCatalogImage::class, 5);
-    Bus::assertDispatched(GenerateCatalogImage::class, function (GenerateCatalogImage $job) use ($missingProduct): bool {
-        return $job->modelClass === Product::class && $job->modelId === $missingProduct->getKey();
-    });
+    expect(Storage::disk('public')->exists($missingProduct->image_path))->toBeTrue();
 });
