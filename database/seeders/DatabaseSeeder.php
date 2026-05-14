@@ -6,12 +6,10 @@ use App\Enums\UserRole;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\Branch;
-use App\Models\Customer;
 use App\Models\CustomizationOption;
 use App\Models\CustomizationType;
 use App\Models\Size;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -35,111 +33,159 @@ class DatabaseSeeder extends Seeder
 
         // Create sizes
         $sizes = collect([
+            ['name' => 'Mini', 'capacity_label' => '60 ml', 'capacity_ounces' => 2.03],
             ['name' => 'Chico', 'capacity_label' => '8 oz', 'capacity_ounces' => 8],
             ['name' => 'Mediano', 'capacity_label' => '12 oz', 'capacity_ounces' => 12],
             ['name' => 'Grande', 'capacity_label' => '16 oz', 'capacity_ounces' => 16],
-        ])->map(fn (array $size) => Size::factory()->create($size));
-
-        // Create beverage category
-        $category = BeverageCategory::factory()->create([
-            'name' => 'Café caliente',
-            'slug' => 'cafe-caliente',
+        ])->mapWithKeys(fn (array $size) => [
+            $size['name'] => Size::factory()->create($size),
         ]);
 
-        // Create customization types
-        $milkType = CustomizationType::factory()->create([
-            'name' => 'Tipo de leche',
-            'slug' => 'tipo-de-leche',
-            'selection_mode' => 'single',
+        $categories = collect([
+            ['name' => 'Cafés pequeños / especiales', 'slug' => 'cafes-pequenos-especiales'],
+            ['name' => 'Especiales medianos', 'slug' => 'especiales-medianos'],
+            ['name' => 'Bebidas básicas', 'slug' => 'bebidas-basicas'],
+            ['name' => 'Lattes y chocolate', 'slug' => 'lattes-y-chocolate'],
+            ['name' => 'Saborizados', 'slug' => 'saborizados'],
+            ['name' => 'Infusiones y frutales', 'slug' => 'infusiones-y-frutales'],
+            ['name' => 'Métodos filtrados', 'slug' => 'metodos-filtrados'],
+        ])->mapWithKeys(fn (array $category) => [
+            $category['name'] => BeverageCategory::factory()->create($category),
         ]);
 
-        $extraType = CustomizationType::factory()->create([
-            'name' => 'Extras',
-            'slug' => 'extras',
-            'selection_mode' => 'multiple',
+        $customizationTypes = collect([
+            [
+                'name' => 'Shots / sabores',
+                'slug' => 'shots-sabores',
+                'selection_mode' => 'multiple',
+                'options' => [
+                    ['name' => 'Shot de café', 'price' => 15],
+                    ['name' => 'Chai', 'price' => 15],
+                    ['name' => 'Taro', 'price' => 15],
+                    ['name' => 'Matcha', 'price' => 15],
+                    ['name' => 'Vainilla', 'price' => 15],
+                    ['name' => 'Caramelo', 'price' => 15],
+                    ['name' => 'Avellana', 'price' => 15],
+                    ['name' => 'Pistache', 'price' => 15],
+                    ['name' => 'Menta', 'price' => 15],
+                    ['name' => 'Mazapán', 'price' => 15],
+                    ['name' => 'Cajeta', 'price' => 15],
+                    ['name' => 'Foam', 'price' => 15],
+                    ['name' => 'Crema batida', 'price' => 15],
+                    ['name' => 'Miel', 'price' => 15],
+                    ['name' => 'Jarabe', 'price' => 15],
+                ],
+            ],
+            [
+                'name' => 'Leches',
+                'slug' => 'leches',
+                'selection_mode' => 'single',
+                'options' => [
+                    ['name' => 'Light', 'price' => 0],
+                    ['name' => 'Avena', 'price' => 0],
+                    ['name' => 'Soya', 'price' => 10],
+                    ['name' => 'Almendra', 'price' => 15],
+                ],
+            ],
+            [
+                'name' => 'Boba / toppings',
+                'slug' => 'boba-y-toppings',
+                'selection_mode' => 'multiple',
+                'options' => [
+                    ['name' => 'Boba', 'price' => 20],
+                    ['name' => 'Tapioca', 'price' => 20],
+                    ['name' => 'Jellys', 'price' => 20],
+                ],
+            ],
+            [
+                'name' => 'Chocolates especiales',
+                'slug' => 'chocolates-especiales',
+                'selection_mode' => 'single',
+                'options' => [
+                    ['name' => '100% cacao', 'price' => 5],
+                    ['name' => '70% cacao', 'price' => 5],
+                    ['name' => 'Amargo', 'price' => 5],
+                    ['name' => 'Dulce', 'price' => 0],
+                    ['name' => 'Cardamomo', 'price' => 5],
+                    ['name' => 'Especial', 'price' => 5],
+                    ['name' => 'Oaxaqueño', 'price' => 0],
+                    ['name' => 'San Isidro', 'price' => 0],
+                    ['name' => 'Canela', 'price' => 0],
+                    ['name' => 'Blanco', 'price' => 0],
+                    ['name' => 'Masala', 'price' => 5],
+                ],
+            ],
+        ])->mapWithKeys(fn (array $type) => [
+            $type['name'] => $this->createCustomizationTypeWithOptions($type),
         ]);
 
-        // Create milk options
-        $milkOptions = [
-            'Entera' => 0,
-            'Deslactosada' => 12,
-            'Almendra' => 12,
-            'Avena' => 12,
-            'Coco' => 12,
-        ];
+        $allCustomizationOptionIds = $customizationTypes
+            ->flatMap(fn (CustomizationType $customizationType) => $customizationType->options->pluck('id'))
+            ->all();
 
-        $milks = collect($milkOptions)->map(fn ($price, $name) => 
-            CustomizationOption::factory()->create([
-                'customization_type_id' => $milkType->id,
-                'name' => $name,
-                'price' => $price,
-            ])
-        );
-
-        // Create extra options
-        $extraOptions = [
-            'Shot extra' => 18,
-            'Miel' => 15,
-            'Caramelo' => 15,
-            'Vanilla' => 15,
-            'Canela' => 10,
-            'Chocolate en polvo' => 15,
-        ];
-
-        $extras = collect($extraOptions)->map(fn ($price, $name) => 
-            CustomizationOption::factory()->create([
-                'customization_type_id' => $extraType->id,
-                'name' => $name,
-                'price' => $price,
-            ])
-        );
-
-        // Create beverages with prices based on menu
         $beverages = [
-            ['name' => 'Espresso', 'prices' => [35, 35, 35]],
-            ['name' => 'Machiato', 'prices' => [35, 35, 35]],
-            ['name' => 'Cortado', 'prices' => [35, 35, 35]],
-            ['name' => 'Americano', 'prices' => [35, 40, 45]],
-            ['name' => 'Flat White', 'prices' => [45, 45, 45]],
-            ['name' => 'Piccolo', 'prices' => [45, 45, 45]],
-            ['name' => 'Latte', 'prices' => [39, 49, 59]],
-            ['name' => 'Vanilla Latte', 'prices' => [45, 55, 65]],
-            ['name' => 'Caramel Latte', 'prices' => [45, 55, 65]],
-            ['name' => 'Cappuccino', 'prices' => [39, 49, 59]],
-            ['name' => 'Chocolate', 'prices' => [39, 49, 59]],
-            ['name' => 'Moxa', 'prices' => [45, 55, 65]],
-            ['name' => 'Chai', 'prices' => [41, 51, 61]],
-            ['name' => 'Dirty Chai', 'prices' => [49, 59, 69]],
-            ['name' => 'Matcha', 'prices' => [41, 51, 61]],
-            ['name' => 'Taro', 'prices' => [41, 51, 61]],
+            ['category' => 'Cafés pequeños / especiales', 'name' => 'Espresso', 'prices' => ['Mini' => 35]],
+            ['category' => 'Cafés pequeños / especiales', 'name' => 'Machiato', 'prices' => ['Mini' => 35]],
+            ['category' => 'Cafés pequeños / especiales', 'name' => 'Cortado', 'prices' => ['Mini' => 35]],
+            ['category' => 'Cafés pequeños / especiales', 'name' => 'Tinto ch', 'prices' => ['Mini' => 35]],
+            ['category' => 'Cafés pequeños / especiales', 'name' => 'Cubano', 'prices' => ['Mini' => 35]],
+            ['category' => 'Especiales medianos', 'name' => 'Flat White', 'prices' => ['Chico' => 50]],
+            ['category' => 'Especiales medianos', 'name' => 'Levanta muertos', 'prices' => ['Chico' => 50]],
+            ['category' => 'Especiales medianos', 'name' => 'Long Black', 'prices' => ['Chico' => 50]],
+            ['category' => 'Bebidas básicas', 'name' => 'Americano', 'prices' => ['Chico' => 35, 'Mediano' => 45, 'Grande' => 50]],
+            ['category' => 'Bebidas básicas', 'name' => 'Mexicano', 'prices' => ['Chico' => 35, 'Mediano' => 45, 'Grande' => 50]],
+            ['category' => 'Bebidas básicas', 'name' => 'Té', 'prices' => ['Chico' => 35, 'Mediano' => 45, 'Grande' => 50]],
+            ['category' => 'Lattes y chocolate', 'name' => 'Latte', 'prices' => ['Chico' => 39, 'Mediano' => 59, 'Grande' => 69]],
+            ['category' => 'Lattes y chocolate', 'name' => 'Capuchino', 'prices' => ['Chico' => 39, 'Mediano' => 59, 'Grande' => 69]],
+            ['category' => 'Lattes y chocolate', 'name' => 'Lechero', 'prices' => ['Chico' => 39, 'Mediano' => 59, 'Grande' => 69]],
+            ['category' => 'Lattes y chocolate', 'name' => 'Xocolatl', 'prices' => ['Chico' => 39, 'Mediano' => 59, 'Grande' => 69]],
+            ['category' => 'Lattes y chocolate', 'name' => 'Chocolate', 'prices' => ['Chico' => 39, 'Mediano' => 59, 'Grande' => 69]],
+            ['category' => 'Saborizados', 'name' => 'Vainilla Latte', 'prices' => ['Chico' => 45, 'Mediano' => 65, 'Grande' => 75]],
+            ['category' => 'Saborizados', 'name' => 'Caramel Latte', 'prices' => ['Chico' => 45, 'Mediano' => 65, 'Grande' => 75]],
+            ['category' => 'Saborizados', 'name' => 'Chococafé', 'prices' => ['Chico' => 45, 'Mediano' => 65, 'Grande' => 75]],
+            ['category' => 'Saborizados', 'name' => 'Moka', 'prices' => ['Chico' => 45, 'Mediano' => 65, 'Grande' => 75]],
+            ['category' => 'Saborizados', 'name' => 'Chai', 'prices' => ['Chico' => 45, 'Mediano' => 65, 'Grande' => 75]],
+            ['category' => 'Saborizados', 'name' => 'Taro', 'prices' => ['Chico' => 45, 'Mediano' => 65, 'Grande' => 75]],
+            ['category' => 'Saborizados', 'name' => 'Matcha', 'prices' => ['Chico' => 45, 'Mediano' => 65, 'Grande' => 75]],
+            ['category' => 'Infusiones y frutales', 'name' => 'Tisana', 'prices' => ['Mediano' => 55]],
+            ['category' => 'Infusiones y frutales', 'name' => 'Flor de café', 'prices' => ['Mediano' => 55]],
+            ['category' => 'Infusiones y frutales', 'name' => 'Cereza de café', 'prices' => ['Mediano' => 55]],
+            ['category' => 'Infusiones y frutales', 'name' => 'Frutal (agua de sabor con café)', 'prices' => ['Mediano' => 55]],
+            ['category' => 'Métodos filtrados', 'name' => 'Café Turco', 'prices' => ['Mediano' => 60]],
+            ['category' => 'Métodos filtrados', 'name' => 'Moka pot', 'prices' => ['Mediano' => 60]],
+            ['category' => 'Métodos filtrados', 'name' => 'V60', 'prices' => ['Mediano' => 70]],
+            ['category' => 'Métodos filtrados', 'name' => 'Kalita', 'prices' => ['Mediano' => 70]],
+            ['category' => 'Métodos filtrados', 'name' => 'Chemex', 'prices' => ['Mediano' => 80]],
+            ['category' => 'Métodos filtrados', 'name' => 'AeroPress', 'prices' => ['Mediano' => 60]],
+            ['category' => 'Métodos filtrados', 'name' => 'Prensa francesa', 'prices' => ['Mediano' => 70]],
+            ['category' => 'Métodos filtrados', 'name' => 'Siphon japonés', 'prices' => ['Mediano' => 80]],
+            ['category' => 'Métodos filtrados', 'name' => 'Origami', 'prices' => ['Mediano' => 70]],
+            ['category' => 'Métodos filtrados', 'name' => 'Ahu', 'prices' => ['Mediano' => 60]],
+            ['category' => 'Métodos filtrados', 'name' => 'Olla', 'prices' => ['Mediano' => 60]],
+            ['category' => 'Métodos filtrados', 'name' => 'Calcetín', 'prices' => ['Mediano' => 60]],
+            ['category' => 'Métodos filtrados', 'name' => 'Stagg', 'prices' => ['Mediano' => 70]],
+            ['category' => 'Métodos filtrados', 'name' => 'Piedra', 'prices' => ['Mediano' => 70]],
+            ['category' => 'Métodos filtrados', 'name' => 'Barro', 'prices' => ['Mediano' => 70]],
         ];
 
         foreach ($beverages as $bevData) {
             $beverage = Beverage::create([
-                'beverage_category_id' => $category->id,
+                'beverage_category_id' => $categories[$bevData['category']]->id,
                 'name' => $bevData['name'],
                 'slug' => Str::slug($bevData['name']),
-                'base_price' => $bevData['prices'][0],
+                'base_price' => array_values($bevData['prices'])[0],
                 'is_active' => true,
             ]);
 
-            foreach ($sizes as $size) {
-                $sizeIndex = match ($size->name) {
-                    'Chico' => 0,
-                    'Mediano' => 1,
-                    default => 2,
-                };
-
+            foreach ($bevData['prices'] as $sizeName => $price) {
                 $beverage->sizePrices()->create([
-                    'size_id' => $size->id,
-                    'price' => $bevData['prices'][$sizeIndex],
+                    'size_id' => $sizes[$sizeName]->id,
+                    'price' => $price,
                 ]);
             }
 
             // Attach customization options to beverages
-            $beverage->customizationOptions()->attach(
-                $milks->pluck('id')->merge($extras->pluck('id'))
-            );
+            $beverage->customizationOptions()->attach($allCustomizationOptionIds);
         }
 
         // Create users
@@ -149,84 +195,33 @@ class DatabaseSeeder extends Seeder
             'username' => 'admin',
             'email' => 'admin@20trece.test',
             'role' => UserRole::Admin,
-            'branch_id' => $branchCentro->id,
             'password' => 'password',
             'is_active' => true,
         ]);
 
-        // Manager for Centro
-        User::factory()->create([
-            'name' => 'Gerente Centro',
-            'username' => 'gerente_centro',
-            'email' => 'gerente.centro@20trece.test',
-            'role' => UserRole::Manager,
-            'branch_id' => $branchCentro->id,
-            'password' => 'password',
-            'is_active' => true,
-        ]);
+    }
 
-        // Manager for Canal 22
-        User::factory()->create([
-            'name' => 'Gerente Canal 22',
-            'username' => 'gerente_canal22',
-            'email' => 'gerente.canal22@20trece.test',
-            'role' => UserRole::Manager,
-            'branch_id' => $branchCanal22->id,
-            'password' => 'password',
-            'is_active' => true,
-        ]);
+    /**
+     * Create a customization type and its options.
+     *
+     * @param  array{name: string, slug: string, selection_mode: string, options: array<int, array{name: string, price: int}>}  $customizationTypeData
+     */
+    private function createCustomizationTypeWithOptions(array $customizationTypeData): CustomizationType
+    {
+        $options = $customizationTypeData['options'];
 
-        // Baristas for Centro
-        for ($i = 1; $i <= 3; $i++) {
-            User::factory()->create([
-                'name' => "Barista Centro {$i}",
-                'username' => "barista_centro_{$i}",
-                'email' => "barista.centro.{$i}@20trece.test",
-                'role' => UserRole::Barista,
-                'branch_id' => $branchCentro->id,
-                'password' => 'password',
-                'is_active' => true,
+        unset($customizationTypeData['options']);
+
+        $customizationType = CustomizationType::factory()->create($customizationTypeData);
+
+        collect($options)->each(function (array $option) use ($customizationType): void {
+            CustomizationOption::factory()->create([
+                'customization_type_id' => $customizationType->id,
+                'name' => $option['name'],
+                'price' => $option['price'],
             ]);
-        }
+        });
 
-        // Baristas for Canal 22
-        for ($i = 1; $i <= 2; $i++) {
-            User::factory()->create([
-                'name' => "Barista Canal 22 {$i}",
-                'username' => "barista_canal22_{$i}",
-                'email' => "barista.canal22.{$i}@20trece.test",
-                'role' => UserRole::Barista,
-                'branch_id' => $branchCanal22->id,
-                'password' => 'password',
-                'is_active' => true,
-            ]);
-        }
-
-        // Cashiers for Centro
-        for ($i = 1; $i <= 2; $i++) {
-            User::factory()->create([
-                'name' => "Cajero Centro {$i}",
-                'username' => "cajero_centro_{$i}",
-                'email' => "cajero.centro.{$i}@20trece.test",
-                'role' => UserRole::Cashier,
-                'branch_id' => $branchCentro->id,
-                'password' => 'password',
-                'is_active' => true,
-            ]);
-        }
-
-        // Cashier for Canal 22
-        User::factory()->create([
-            'name' => 'Cajero Canal 22',
-            'username' => 'cajero_canal22',
-            'email' => 'cajero.canal22@20trece.test',
-            'role' => UserRole::Cashier,
-            'branch_id' => $branchCanal22->id,
-            'password' => 'password',
-            'is_active' => true,
-        ]);
-
-        // Create customers
-        Customer::factory()->count(15)->create();
+        return $customizationType->load('options');
     }
 }
