@@ -37,6 +37,11 @@ class OptionForm extends Component
      */
     public array $selected_beverage_ids = [];
 
+    /**
+     * @var array<int>
+     */
+    public array $synced_beverage_ids = [];
+
     public function generateImage(): void
     {
         $wasCreating = $this->customizationOption === null;
@@ -69,6 +74,8 @@ class OptionForm extends Component
             $this->option_name = $this->customizationOption->name;
             $this->option_price = (float) $this->customizationOption->price;
             $this->is_available = $this->customizationOption->is_available;
+            $this->selected_beverage_ids = $this->relatedBeverageIds();
+            $this->synced_beverage_ids = $this->selected_beverage_ids;
         }
     }
 
@@ -109,9 +116,9 @@ class OptionForm extends Component
             return;
         }
 
-        Beverage::query()->findOrFail($beverageId)
-            ->customizationOptions()
-            ->detach($this->customizationOption->id);
+        $this->syncSelectedBeverages(
+            array_values(array_diff($this->selected_beverage_ids, [$beverageId])),
+        );
 
         Flux::toast(variant: 'success', text: 'La bebida se desvinculó de esta opción.');
     }
@@ -122,23 +129,109 @@ class OptionForm extends Component
             return;
         }
 
-        Beverage::query()
-            ->whereIn('id', $this->selected_beverage_ids)
-            ->get()
-            ->each(fn (Beverage $beverage) => $beverage->customizationOptions()->detach($this->customizationOption?->id));
-
         $count = count($this->selected_beverage_ids);
-        $this->selected_beverage_ids = [];
+        $this->syncSelectedBeverages([]);
 
         Flux::toast(variant: 'success', text: $count === 1 ? 'Se desvinculó 1 bebida.' : "Se desvincularon {$count} bebidas.");
     }
 
     public function render(): View
     {
+        $beverages = collect();
+
+        if ($this->customizationOption !== null) {
+            $beverages = Beverage::query()
+                ->with('category')
+                ->orderBy('name')
+                ->get();
+        }
+
         return view('livewire.customizations.option-form', [
             'customizationTypes' => CustomizationType::query()->where('is_active', true)->orderBy('name')->get(),
-            'relatedBeverages' => $this->customizationOption?->beverages()->with('category')->orderBy('name')->get() ?? collect(),
+            'beverages' => $beverages,
         ])->layout('layouts.app');
+    }
+
+    public function selectAllBeverages(): void
+    {
+        if ($this->customizationOption === null) {
+            return;
+        }
+
+        $this->syncSelectedBeverages(
+            Beverage::query()->orderBy('name')->pluck('id')->all(),
+        );
+
+        Flux::toast(variant: 'success', text: 'Se vinculó esta opción con todas las bebidas.');
+    }
+
+    public function clearAllBeverages(): void
+    {
+        if ($this->customizationOption === null) {
+            return;
+        }
+
+        $this->syncSelectedBeverages([]);
+
+        Flux::toast(variant: 'success', text: 'Se desvinculó esta opción de todas las bebidas.');
+    }
+
+    public function updatedSelectedBeverageIds(): void
+    {
+        if ($this->customizationOption === null) {
+            return;
+        }
+
+        $this->syncSelectedBeverages($this->selected_beverage_ids);
+    }
+
+    /**
+     * @param  array<int>  $beverageIds
+     */
+    protected function syncSelectedBeverages(array $beverageIds): void
+    {
+        if ($this->customizationOption === null) {
+            return;
+        }
+
+        $normalizedBeverageIds = collect($beverageIds)
+            ->map(fn (mixed $beverageId): int => (int) $beverageId)
+            ->filter(fn (int $beverageId): bool => $beverageId > 0)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $beverageIdsToAttach = array_diff($normalizedBeverageIds, $this->synced_beverage_ids);
+        $beverageIdsToDetach = array_diff($this->synced_beverage_ids, $normalizedBeverageIds);
+
+        Beverage::query()
+            ->whereIn('id', $beverageIdsToAttach)
+            ->get()
+            ->each(fn (Beverage $beverage) => $beverage->customizationOptions()->syncWithoutDetaching([$this->customizationOption->id]));
+
+        Beverage::query()
+            ->whereIn('id', $beverageIdsToDetach)
+            ->get()
+            ->each(fn (Beverage $beverage) => $beverage->customizationOptions()->detach([$this->customizationOption->id]));
+
+        $this->selected_beverage_ids = $normalizedBeverageIds;
+        $this->synced_beverage_ids = $normalizedBeverageIds;
+    }
+
+    /**
+     * @return array<int>
+     */
+    protected function relatedBeverageIds(): array
+    {
+        if ($this->customizationOption === null) {
+            return [];
+        }
+
+        return $this->customizationOption->beverages()
+            ->orderBy('name')
+            ->pluck('beverages.id')
+            ->all();
     }
 
     protected function persistForImageGeneration(): CustomizationOption

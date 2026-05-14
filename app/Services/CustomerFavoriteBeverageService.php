@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Enums\SaleStatus;
 use App\Models\Customer;
 use App\Models\SaleItem;
+use App\Support\CatalogImageManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 
 class CustomerFavoriteBeverageService
 {
@@ -133,16 +133,6 @@ class CustomerFavoriteBeverageService
 
     protected function resolveImageUrl(?string $imagePath): ?string
     {
-        if ($imagePath === null || $imagePath === '') {
-            return null;
-        }
-
-        $storageUrl = Storage::url($imagePath);
-
-        if (str_starts_with($storageUrl, 'http://') || str_starts_with($storageUrl, 'https://')) {
-            return $storageUrl;
-        }
-
-        return url($storageUrl);
+        return CatalogImageManager::publicUrl($imagePath);
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Beverages\Create as BeverageCreate;
+use App\Livewire\Customizations\OptionForm;
 use App\Livewire\Customizations\TypeForm;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
@@ -167,6 +168,47 @@ test('customization type form can select all beverages and sync all of its optio
 
     expect($firstBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
         ->toEqualCanonicalizing([$otherOption->id]);
+
+    expect($secondBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
+        ->toBeEmpty();
+});
+
+test('customization option form can select and clear all beverages', function () {
+    Queue::fake();
+
+    $category = BeverageCategory::factory()->create();
+
+    $type = CustomizationType::factory()->create([
+        'name' => 'Leches',
+        'is_active' => true,
+    ]);
+
+    $option = CustomizationOption::factory()->create([
+        'customization_type_id' => $type->id,
+        'name' => 'Avena',
+        'is_available' => true,
+    ]);
+
+    $firstBeverage = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Americano',
+    ]);
+    $secondBeverage = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Latte',
+    ]);
+
+    $firstBeverage->customizationOptions()->attach($option->id);
+
+    Livewire::test(OptionForm::class, ['customizationOption' => $option])
+        ->assertSet('selected_beverage_ids', [$firstBeverage->id])
+        ->call('selectAllBeverages')
+        ->assertSet('selected_beverage_ids', [$firstBeverage->id, $secondBeverage->id])
+        ->call('clearAllBeverages')
+        ->assertSet('selected_beverage_ids', []);
+
+    expect($firstBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
+        ->toBeEmpty();
 
     expect($secondBeverage->fresh()->customizationOptions()->pluck('customization_options.id')->all())
         ->toBeEmpty();

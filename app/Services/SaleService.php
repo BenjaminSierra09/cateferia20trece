@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CustomerDebtMovementType;
 use App\Enums\PaymentMethod;
+use App\Mail\SaleReceipt;
 use App\Models\Beverage;
 use App\Models\BranchCustomizationPriceOverride;
 use App\Models\Customer;
@@ -16,6 +17,7 @@ use App\Models\User;
 use App\Models\WorkSession;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
 
 class SaleService
@@ -112,8 +114,24 @@ class SaleService
                 $this->rewardProgramService->applyEarnedRewards($customer, $sale);
             }
 
-            return $sale->load('branch', 'user', 'customer', 'items.customizations');
+            $sale->load('branch', 'user', 'customer', 'items.customizations');
+
+            $this->queueReceiptEmail($sale);
+
+            return $sale;
         });
+    }
+
+    /**
+     * Queue a customer receipt email when the sale has a reachable customer.
+     */
+    protected function queueReceiptEmail(Sale $sale): void
+    {
+        if ($sale->customer === null || blank($sale->customer->email)) {
+            return;
+        }
+
+        Mail::to($sale->customer->email)->queue(new SaleReceipt($sale));
     }
 
     /**

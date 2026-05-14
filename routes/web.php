@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PublicPagesController;
 use App\Livewire\Beverages\Create as BeverageCreate;
 use App\Livewire\Beverages\Manager as BeverageManager;
 use App\Livewire\Branches\Create as BranchCreate;
@@ -26,7 +27,12 @@ use App\Livewire\Team\Manager as TeamManager;
 use App\Livewire\WorkSession\CheckIn;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+Route::get('/', [PublicPagesController::class, 'home'])->name('home');
+Route::get('terminos-y-condiciones', [PublicPagesController::class, 'terms'])->name('public.terms');
+Route::get('aviso-de-privacidad', [PublicPagesController::class, 'privacy'])->name('public.privacy');
+Route::get('recompensas', [PublicPagesController::class, 'rewards'])->name('public.rewards');
+Route::get('mi-cuenta', [PublicPagesController::class, 'lookup'])->name('public.lookup');
+Route::get('qr/{uuid}', [PublicPagesController::class, 'customerPortal'])->name('public.qr.show');
 
 Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])->group(function () {
     Route::livewire('work-session/check-in', CheckIn::class)->name('dashboard.work-session.check-in');

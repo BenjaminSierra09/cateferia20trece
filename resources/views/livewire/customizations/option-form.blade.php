@@ -59,27 +59,35 @@
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <flux:heading size="sm">Bebidas vinculadas</flux:heading>
-                        <flux:text>Retira esta opción desde aquí si ya no debe aparecer en alguna bebida.</flux:text>
+                        <flux:text>Selecciona las bebidas donde esta opción debe estar disponible.</flux:text>
                     </div>
 
-                    @if ($selected_beverage_ids !== [])
-                        <flux:button type="button" variant="danger" size="sm" wire:click="removeSelectedBeverages" icon="x-circle">
-                            Deseleccionar {{ count($selected_beverage_ids) }}
+                    <div class="flex flex-wrap items-center gap-2">
+                        <flux:button type="button" variant="ghost" size="sm" wire:click="selectAllBeverages" icon="check-circle">
+                            Seleccionar todas
                         </flux:button>
-                    @endif
+                        <flux:button type="button" variant="ghost" size="sm" wire:click="clearAllBeverages" icon="x-circle">
+                            Deseleccionar todas
+                        </flux:button>
+                        @if ($selected_beverage_ids !== [])
+                            <flux:button type="button" variant="danger" size="sm" wire:click="removeSelectedBeverages" icon="x-circle">
+                                Deseleccionar {{ count($selected_beverage_ids) }}
+                            </flux:button>
+                        @endif
+                    </div>
                 </div>
 
                 @if ($customizationOption === null)
                     <flux:callout color="sky" icon="information-circle">
                         Guarda primero la opción para administrar sus bebidas relacionadas.
                     </flux:callout>
-                @elseif ($relatedBeverages->isEmpty())
+                @elseif ($beverages->isEmpty())
                     <flux:callout color="zinc" icon="beaker">
-                        Esta opción todavía no está vinculada a ninguna bebida.
+                        Todavía no hay bebidas registradas.
                     </flux:callout>
                 @else
                     <div class="space-y-3">
-                        @foreach ($relatedBeverages as $beverage)
+                        @foreach ($beverages as $beverage)
                             <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
                                 <div class="flex items-start gap-3">
                                     <flux:checkbox wire:model.live="selected_beverage_ids" value="{{ $beverage->id }}" />

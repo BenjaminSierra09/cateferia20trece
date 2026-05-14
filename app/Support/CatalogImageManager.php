@@ -23,6 +23,18 @@ class CatalogImageManager
     protected static bool $queueSuppressed = false;
 
     /**
+     * Resolve a public URL for a catalog image path.
+     */
+    public static function publicUrl(?string $imagePath): ?string
+    {
+        if (blank($imagePath)) {
+            return null;
+        }
+
+        return url(Storage::url($imagePath));
+    }
+
+    /**
      * Run a callback while suppressing queued AI image generation.
      *
      * @template TReturn
