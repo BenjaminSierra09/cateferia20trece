@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Jobs\GenerateCatalogImage;
 use App\Models\Beverage;
+use App\Support\CatalogImageManager;
 use App\Support\GeneratesUniqueSlugs;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 
@@ -41,8 +41,7 @@ class BeverageObserver implements ShouldHandleEventsAfterCommit
     protected function queueImageGeneration(Beverage $beverage): void
     {
         if (blank($beverage->image_path)) {
-            GenerateCatalogImage::dispatch($beverage::class, $beverage->getKey())
-                ->onConnection('database');
+            app(CatalogImageManager::class)->queueImageGeneration($beverage);
         }
     }
 }

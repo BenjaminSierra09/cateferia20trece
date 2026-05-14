@@ -106,6 +106,7 @@ test('catalog image job stores a generated square image on the public disk', fun
 
 test('catalog image job exits cleanly when no AI image provider is configured', function () {
     Storage::fake('public');
+    Queue::fake([GenerateCatalogImage::class]);
     Log::spy();
 
     config()->set('ai.providers.openai.key', null);

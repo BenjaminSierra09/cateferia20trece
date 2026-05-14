@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Jobs\GenerateCatalogImage;
 use App\Models\Product;
+use App\Support\CatalogImageManager;
 use App\Support\GeneratesUniqueSlugs;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 
@@ -41,8 +41,7 @@ class ProductObserver implements ShouldHandleEventsAfterCommit
     protected function queueImageGeneration(Product $product): void
     {
         if (blank($product->image_path)) {
-            GenerateCatalogImage::dispatch($product::class, $product->getKey())
-                ->onConnection('database');
+            app(CatalogImageManager::class)->queueImageGeneration($product);
         }
     }
 }

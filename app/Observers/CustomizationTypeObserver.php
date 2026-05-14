@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Jobs\GenerateCatalogImage;
 use App\Models\CustomizationType;
+use App\Support\CatalogImageManager;
 use App\Support\GeneratesUniqueSlugs;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 
@@ -41,8 +41,7 @@ class CustomizationTypeObserver implements ShouldHandleEventsAfterCommit
     protected function queueImageGeneration(CustomizationType $customizationType): void
     {
         if (blank($customizationType->image_path)) {
-            GenerateCatalogImage::dispatch($customizationType::class, $customizationType->getKey())
-                ->onConnection('database');
+            app(CatalogImageManager::class)->queueImageGeneration($customizationType);
         }
     }
 }

@@ -25,8 +25,7 @@ class CatalogImageManager
             return false;
         }
 
-        GenerateCatalogImage::dispatch($model::class, $model->getKey())
-            ->onConnection('database');
+        GenerateCatalogImage::dispatch($model::class, $model->getKey());
 
         return true;
     }
