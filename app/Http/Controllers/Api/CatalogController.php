@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\SaleStatus;
 use App\Http\Resources\BeverageResource;
 use App\Models\Beverage;
 use App\Models\Branch;
@@ -26,7 +27,14 @@ class CatalogController extends Controller
             'beverages' => BeverageResource::collection(
                 Beverage::query()
                     ->with(['category', 'sizePrices.size', 'customizationOptions.type'])
+                    ->withSum([
+                        'saleItems as popularity_quantity' => fn ($query) => $query->whereHas(
+                            'sale',
+                            fn ($saleQuery) => $saleQuery->where('status', SaleStatus::Completed),
+                        ),
+                    ], 'quantity')
                     ->where('is_active', true)
+                    ->orderByDesc('popularity_quantity')
                     ->orderBy('name')
                     ->get(),
             ),

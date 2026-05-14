@@ -36,6 +36,53 @@
             <div class="space-y-4 md:col-span-2">
                 <div class="flex items-start justify-between gap-4">
                     <div>
+                        <flux:heading size="sm">Personalizaciones vinculadas</flux:heading>
+                        <flux:text>Selecciona qué opciones estarán disponibles para esta bebida en la app y en ventas.</flux:text>
+                    </div>
+                    <flux:badge color="violet">{{ count($selected_customization_option_ids) }} seleccionadas</flux:badge>
+                </div>
+
+                @if ($customizationTypes->isEmpty())
+                    <flux:callout color="sky" icon="information-circle">
+                        Primero crea tipos y opciones de personalización para poder vincularlas a la bebida.
+                    </flux:callout>
+                @else
+                    <div class="grid gap-4 lg:grid-cols-2">
+                        @foreach ($customizationTypes as $type)
+                            <div class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="font-medium text-zinc-900 dark:text-white">{{ $type->name }}</div>
+                                        <div class="text-sm text-zinc-500">
+                                            {{ $type->selection_mode === 'single' ? 'Una opción a la vez' : 'Se permiten múltiples opciones' }}
+                                        </div>
+                                    </div>
+                                    <flux:badge color="zinc">{{ $type->options->count() }} opciones</flux:badge>
+                                </div>
+
+                                @if ($type->options->isEmpty())
+                                    <flux:text size="sm" class="text-zinc-500">No hay opciones disponibles en este tipo.</flux:text>
+                                @else
+                                    <div class="grid gap-3">
+                                        @foreach ($type->options as $option)
+                                            <label class="flex items-start gap-3 rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                                                <flux:checkbox wire:model.live="selected_customization_option_ids" value="{{ $option->id }}" />
+                                                <div class="min-w-0">
+                                                    <div class="font-medium text-zinc-900 dark:text-white">{{ $option->name }}</div>
+                                                    <div class="text-sm text-zinc-500">${{ number_format($option->price, 2) }}</div>
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+            <div class="space-y-4 md:col-span-2">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
                         <flux:heading size="sm">Precios por tamaño</flux:heading>
                         <flux:text>Activa los tamaños que venderá esta bebida y captura el precio general. Si una sucursal cobra distinto, puedes sobrescribirlo aquí mismo.</flux:text>
                     </div>

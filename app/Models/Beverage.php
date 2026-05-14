@@ -43,4 +43,12 @@ class Beverage extends Model
         return $this->belongsToMany(CustomizationOption::class)
             ->withTimestamps();
     }
+
+    /**
+     * Get the sale items registered for this beverage.
+     */
+    public function saleItems(): HasMany
+    {
+        return $this->hasMany(SaleItem::class);
+    }
 }

@@ -42,6 +42,7 @@ class BeverageResource extends JsonResource
             'image_url' => $this->resolveImageUrl(),
             'base_price' => $this->base_price,
             'is_active' => $this->is_active,
+            'popularity_quantity' => (int) ($this->popularity_quantity ?? 0),
             'category' => $this->whenLoaded('category', fn () => new BeverageCategoryResource($this->category)),
             'sizes' => BeverageSizePriceResource::collection($this->whenLoaded('sizePrices')),
             'customizations' => CustomizationOptionResource::collection($this->whenLoaded('customizationOptions')),

@@ -6,6 +6,7 @@ use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\Branch;
 use App\Models\BranchBeveragePriceOverride;
+use App\Models\CustomizationType;
 use App\Models\Size;
 use App\Support\CatalogImageManager;
 use Flux\Flux;
@@ -32,19 +33,25 @@ class Create extends Component
      */
     public array $size_pricing = [];
 
+    /**
+     * @var array<int>
+     */
+    public array $selected_customization_option_ids = [];
+
     public bool $is_active = true;
 
     public $image;
 
     public function mount(?Beverage $beverage = null): void
     {
-        $this->beverage = $beverage?->exists ? $beverage->load('sizePrices') : null;
+        $this->beverage = $beverage?->exists ? $beverage->load(['sizePrices', 'customizationOptions']) : null;
 
         if ($this->beverage !== null) {
             $this->name = $this->beverage->name;
             $this->description = $this->beverage->description ?? '';
             $this->beverage_category_id = $this->beverage->beverage_category_id;
             $this->is_active = $this->beverage->is_active;
+            $this->selected_customization_option_ids = $this->beverage->customizationOptions->pluck('id')->all();
         }
 
         $this->size_pricing = $this->buildSizePricingRows();
@@ -73,6 +80,8 @@ class Create extends Component
             'size_pricing.*.price' => ['nullable', 'numeric', 'min:0'],
             'size_pricing.*.branch_prices' => ['nullable', 'array'],
             'size_pricing.*.branch_prices.*' => ['nullable', 'numeric', 'min:0'],
+            'selected_customization_option_ids' => ['nullable', 'array'],
+            'selected_customization_option_ids.*' => ['integer', 'exists:customization_options,id'],
             'is_active' => ['boolean'],
             'image' => ['nullable', 'image', 'max:3072'],
         ]);
@@ -163,6 +172,8 @@ class Create extends Component
             }
         }
 
+        $beverage->customizationOptions()->sync($validated['selected_customization_option_ids'] ?? []);
+
         Flux::toast(variant: 'success', text: $this->beverage ? 'Bebida actualizada.' : 'Bebida creada.');
 
         $this->redirectRoute('dashboard.beverages.edit', ['beverage' => $beverage], navigate: true);
@@ -221,6 +232,11 @@ class Create extends Component
         return view('livewire.beverages.create', [
             'categories' => BeverageCategory::query()->where('is_active', true)->orderBy('name')->get(),
             'branches' => Branch::query()->where('is_active', true)->orderBy('name')->get(),
+            'customizationTypes' => CustomizationType::query()
+                ->with(['options' => fn ($query) => $query->where('is_available', true)->orderBy('name')])
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
         ])->layout('layouts.app');
     }
 }
