@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Jobs\GenerateCatalogImage;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\CustomizationOption;
@@ -15,6 +16,21 @@ use RuntimeException;
 
 class CatalogImageManager
 {
+    /**
+     * Queue AI image generation for a catalog model when it is missing an image.
+     */
+    public function queueImageGeneration(Model $model): bool
+    {
+        if (! $this->shouldGenerateImage($model)) {
+            return false;
+        }
+
+        GenerateCatalogImage::dispatch($model::class, $model->getKey())
+            ->onConnection('database');
+
+        return true;
+    }
+
     /**
      * Store an uploaded catalog image as a centered square.
      */

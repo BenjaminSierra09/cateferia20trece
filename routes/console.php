@@ -1,31 +1,31 @@
 <?php
 
-use App\Jobs\GenerateCatalogImage;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\CustomizationOption;
 use App\Models\CustomizationType;
 use App\Models\Product;
+use App\Support\CatalogImageManager;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 
 Artisan::command('catalog:generate-missing-images', function () {
     $queuedImages = 0;
+    $catalogImageManager = app(CatalogImageManager::class);
 
-    $queueMissingImages = function (string $modelClass) use (&$queuedImages): void {
+    $queueMissingImages = function (string $modelClass) use ($catalogImageManager, &$queuedImages): void {
         $modelClass::query()
             ->where(function ($query): void {
                 $query->whereNull('image_path')
                     ->orWhere('image_path', '');
             })
-            ->select('id')
-            ->chunkById(100, function ($models) use ($modelClass, &$queuedImages): void {
+            ->select('id', 'name', 'image_path')
+            ->chunkById(100, function ($models) use ($catalogImageManager, &$queuedImages): void {
                 foreach ($models as $model) {
-                    GenerateCatalogImage::dispatch($modelClass, $model->getKey())
-                        ->onConnection('database');
-
-                    $queuedImages++;
+                    if ($catalogImageManager->queueImageGeneration($model)) {
+                        $queuedImages++;
+                    }
                 }
             });
     };
