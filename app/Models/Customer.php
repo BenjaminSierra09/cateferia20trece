@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use App\Enums\RewardTier;
+use App\Observers\CustomerObserver;
 use App\Support\TonalpohualliCalendar;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+#[ObservedBy([CustomerObserver::class])]
 #[Fillable(['name', 'phone', 'birthday', 'email', 'reward_balance', 'reward_year', 'annual_drink_count', 'reward_tier', 'is_active'])]
 class Customer extends Model
 {

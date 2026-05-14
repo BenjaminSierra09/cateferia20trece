@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Ai\Image;
 
 test('catalog observers generate unique slugs on create', function () {
@@ -148,4 +149,14 @@ test('customer qr code observer normalizes uuid casing and whitespace', function
     ]);
 
     expect($qrCode->fresh()->uuid)->toBe('abcd-1234-efgh');
+});
+
+test('customer observer creates a qr code automatically on customer creation', function () {
+    $customer = Customer::factory()->create();
+
+    $customer->load('qrCodes');
+
+    expect($customer->qrCodes)->toHaveCount(1);
+    expect(Str::isUuid($customer->qrCodes->first()->uuid))->toBeTrue();
+    expect($customer->qrCodes->first()->customer_id)->toBe($customer->id);
 });
