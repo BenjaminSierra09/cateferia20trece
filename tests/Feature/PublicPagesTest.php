@@ -10,6 +10,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Size;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 
 test('public policy and rewards pages are accessible', function () {
     $this->get(route('home'))
@@ -34,8 +35,72 @@ test('public policy and rewards pages are accessible', function () {
 
     $this->get(route('public.lookup'))
         ->assertOk()
-        ->assertSee('Escanea tu QR o pega tu UUID')
+        ->assertSee('Escanea tu tarjeta QR')
         ->assertSee('Escanear con cámara');
+
+    $this->get(route('public.register'))
+        ->assertOk()
+        ->assertSee('Obtén tu QR de cliente')
+        ->assertSee('Obtener mi QR')
+        ->assertSee('for="privacy_consent"', false)
+        ->assertSee('type="checkbox"', false)
+        ->assertSee('id="phone_hidden"', false);
+});
+
+test('public customer registration creates a customer and redirects to the qr portal', function () {
+    $response = $this->post(route('public.register.store'), [
+        'name' => 'Cliente Público',
+        'phone' => '+524151234567',
+        'email' => 'cliente@example.com',
+        'birthday' => '1994-03-21',
+        'privacy_consent' => '1',
+    ]);
+
+    $customer = Customer::query()
+        ->where('email', 'cliente@example.com')
+        ->first();
+
+    expect($customer)->not->toBeNull();
+    expect($customer->phone)->toBe('+524151234567');
+
+    $customer->load('qrCodes');
+
+    expect($customer->qrCodes)->toHaveCount(1);
+
+    $qrCode = $customer->qrCodes->first();
+
+    $response->assertRedirect(route('public.qr.show', ['uuid' => $qrCode->uuid]));
+
+    $this->followingRedirects()
+        ->post(route('public.register.store'), [
+            'name' => 'Cliente Público 2',
+            'phone' => '+524151234568',
+            'email' => 'cliente2@example.com',
+            'privacy_consent' => '1',
+        ])
+        ->assertSee('Registro completado. Este es tu QR de cliente.')
+        ->assertSee('Tu QR de cliente')
+        ->assertSee('UUID:');
+});
+
+test('public customer registration requires a recaptcha token when recaptcha is enabled', function () {
+    config()->set('services.recaptcha.site_key', 'site-key');
+    config()->set('services.recaptcha.secret_key', 'secret-key');
+    Http::fake();
+
+    $response = $this->from(route('public.register'))
+        ->post(route('public.register.store'), [
+            'name' => 'Cliente Bloqueado',
+            'email' => 'blocked@example.com',
+            'privacy_consent' => '1',
+        ]);
+
+    $response->assertRedirect(route('public.register'));
+    $response->assertSessionHasErrors('recaptcha');
+
+    expect(Customer::query()->where('email', 'blocked@example.com')->exists())->toBeFalse();
+
+    Http::assertNothingSent();
 });
 
 test('public customer portal shows rewards, favorites and recent purchases from an active qr', function () {
@@ -94,7 +159,11 @@ test('public customer portal shows rewards, favorites and recent purchases from 
         ->assertSee('Saldo a favor')
         ->assertSee('Dirty Chai')
         ->assertSee('Compras recientes')
-        ->assertSee('Matriz Centro');
+        ->assertSee('Matriz Centro')
+        ->assertSee('Descargar tarjeta')
+        ->assertSee('Tarjeta de cliente')
+        ->assertSee('id="customer-card-image"', false)
+        ->assertSee('data-download-name="tarjeta-cliente-', false);
 
     expect($qrCode->fresh()->last_scanned_at)->not->toBeNull();
 

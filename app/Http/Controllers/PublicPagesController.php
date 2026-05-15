@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\SaleStatus;
 use App\Models\CustomerQrCode;
+use App\Services\CustomerCardRenderer;
 use App\Services\CustomerFavoriteBeverageService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\File;
@@ -64,8 +65,11 @@ class PublicPagesController extends Controller
     /**
      * Show a public customer portal resolved from a QR UUID.
      */
-    public function customerPortal(string $uuid, CustomerFavoriteBeverageService $favoriteBeverageService): View
-    {
+    public function customerPortal(
+        string $uuid,
+        CustomerFavoriteBeverageService $favoriteBeverageService,
+        CustomerCardRenderer $customerCardRenderer,
+    ): View {
         $qrCode = CustomerQrCode::query()
             ->with('customer')
             ->where('uuid', $uuid)
@@ -93,10 +97,14 @@ class PublicPagesController extends Controller
             ->get();
 
         $favoriteBeverages = $favoriteBeverageService->topForCustomer($customer);
+        $primaryQrCode = $customer->qrCodes->firstWhere('is_active', true) ?? $customer->qrCodes->first();
 
         return view('public.customer-portal', [
             'customer' => $customer,
+            'customerCardImageUrl' => $primaryQrCode ? $customerCardRenderer->svgDataUrl($customer, $primaryQrCode, asset('logotipo.png')) : null,
             'favoriteBeverages' => $favoriteBeverages,
+            'primaryQrCode' => $primaryQrCode,
+            'portalUrl' => $primaryQrCode ? route('public.qr.show', ['uuid' => $primaryQrCode->uuid]) : null,
             'recentSales' => $recentSales,
             'rewardTiers' => $this->rewardTiers(),
         ]);

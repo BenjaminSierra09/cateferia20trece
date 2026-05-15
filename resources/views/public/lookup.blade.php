@@ -13,6 +13,15 @@
                 Aquí puedes revisar tu nivel, saldo a favor, compras recientes y bebidas favoritas de Café 20Trece.
             </p>
 
+            <div class="mt-6 flex flex-wrap gap-3">
+                <a
+                    href="{{ route('public.register') }}"
+                    class="inline-flex items-center gap-2 rounded-full border border-[#8B5E34]/20 bg-[#8B5E34]/5 px-5 py-3 text-sm font-bold text-[#6F4324] transition hover:bg-[#8B5E34]/10"
+                >
+                    <flux:icon.user-plus class="size-4" /> Aún no tengo QR
+                </a>
+            </div>
+
             <form class="mt-8 space-y-4" method="GET" id="customer-qr-form">
                 <label for="uuid" class="block text-sm font-semibold text-[#6F4324]">UUID del QR</label>
                 <div class="relative">

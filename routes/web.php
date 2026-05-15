@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PublicCustomerRegistrationController;
 use App\Http\Controllers\PublicPagesController;
 use App\Livewire\Beverages\Create as BeverageCreate;
 use App\Livewire\Beverages\Manager as BeverageManager;
@@ -32,6 +33,8 @@ Route::get('terminos-y-condiciones', [PublicPagesController::class, 'terms'])->n
 Route::get('aviso-de-privacidad', [PublicPagesController::class, 'privacy'])->name('public.privacy');
 Route::get('recompensas', [PublicPagesController::class, 'rewards'])->name('public.rewards');
 Route::get('mi-cuenta', [PublicPagesController::class, 'lookup'])->name('public.lookup');
+Route::get('registro-cliente', [PublicCustomerRegistrationController::class, 'create'])->name('public.register');
+Route::post('registro-cliente', [PublicCustomerRegistrationController::class, 'store'])->name('public.register.store');
 Route::get('qr/{uuid}', [PublicPagesController::class, 'customerPortal'])->name('public.qr.show');
 
 Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])->group(function () {

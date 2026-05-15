@@ -19,7 +19,7 @@
         <link rel="manifest" href="/site.webmanifest" />
 
         @fonts
-        @vite('resources/css/app.css')
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
 
     <body class="min-h-screen bg-[#F7F1E8] text-[#2A2118] selection:bg-[#8B5E34] selection:text-white">
@@ -40,6 +40,7 @@
                 </a>
 
                 <nav class="hidden items-center gap-3 text-sm font-medium text-[#6B5B4A] md:flex">
+                    <a href="{{ route('public.register') }}" class="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-[#8B5E34]/10 hover:text-[#6F4324]"><flux:icon.user-plus class="size-4" /> Obtener mi QR</a>
                     <a href="{{ route('public.lookup') }}" class="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-[#8B5E34]/10 hover:text-[#6F4324]"><flux:icon.qr-code class="size-4" /> Mi cuenta QR</a>
                     <a href="{{ route('public.rewards') }}" class="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-[#8B5E34]/10 hover:text-[#6F4324]"><flux:icon.gift class="size-4" /> Recompensas</a>
                     <a href="{{ route('public.terms') }}" class="inline-flex items-center gap-2 rounded-full px-3 py-2 transition hover:bg-[#8B5E34]/10 hover:text-[#6F4324]"><flux:icon.document-text class="size-4" /> Términos</a>
@@ -57,6 +58,7 @@
                 <p>© 2026 Café 20Trece. Información pública para clientes.</p>
 
                 <div class="flex flex-wrap gap-4">
+                    <a href="{{ route('public.register') }}" class="inline-flex items-center gap-2 transition hover:text-[#6F4324]"><flux:icon.user-plus class="size-4" /> Obtener mi QR</a>
                     <a href="{{ route('public.lookup') }}" class="inline-flex items-center gap-2 transition hover:text-[#6F4324]"><flux:icon.qr-code class="size-4" /> Mi cuenta QR</a>
                     <a href="{{ route('public.rewards') }}" class="inline-flex items-center gap-2 transition hover:text-[#6F4324]"><flux:icon.gift class="size-4" /> Recompensas</a>
                     <a href="{{ route('public.terms') }}" class="inline-flex items-center gap-2 transition hover:text-[#6F4324]"><flux:icon.document-text class="size-4" /> Términos y condiciones</a>
@@ -65,6 +67,7 @@
             </div>
         </footer>
 
+        @fluxScripts
         @stack('scripts')
     </body>
 </html>

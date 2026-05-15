@@ -5,6 +5,12 @@
     <section class="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div class="space-y-6">
             <article class="rounded-[2rem] border border-white/60 bg-white/80 p-8 shadow-xl shadow-[#8B5E34]/10 backdrop-blur">
+                @if (session('status'))
+                    <div class="mb-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
+                        <span class="inline-flex items-center gap-2"><flux:icon.check-circle class="size-4" /> {{ session('status') }}</span>
+                    </div>
+                @endif
+
                 <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                         <span class="inline-flex rounded-full border border-[#8B5E34]/15 bg-[#8B5E34]/10 px-4 py-2 text-sm font-semibold text-[#6F4324]">
@@ -53,6 +59,53 @@
                 @if ($customer->welcome_reward_active)
                     <div class="mt-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
                         <span class="inline-flex items-center gap-2"><flux:icon.gift class="size-4" /> Tienes activa tu bonificación de bienvenida: durante tus primeros 3 días se suma 5% extra a tu nivel actual.</span>
+                    </div>
+                @endif
+
+                @if ($primaryQrCode && $portalUrl && $customerCardImageUrl)
+                    <div class="mt-6 rounded-[1.75rem] border border-[#8B5E34]/10 bg-[#F7F1E8]/80 p-6">
+                        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                            <div class="max-w-xl">
+                                <h2 class="inline-flex items-center gap-3 text-2xl font-bold"><flux:icon.identification class="size-6 text-[#8B5E34]" /> Tu QR de cliente</h2>
+                                <p class="mt-2 text-sm leading-7 text-[#6B5B4A]">
+                                    Presenta esta tarjeta en sucursal para identificar tu cuenta. También puedes descargarla o compartir tu link público.
+                                </p>
+                                <div class="mt-4 space-y-3 text-sm text-[#6B5B4A]">
+                                    <p><span class="font-semibold text-[#2A2118]">UUID:</span> {{ $primaryQrCode->uuid }}</p>
+                                    <p class="break-all"><span class="font-semibold text-[#2A2118]">Link:</span> {{ $portalUrl }}</p>
+                                </div>
+                            </div>
+
+                            <div class="flex w-full max-w-[24rem] flex-col items-center gap-3">
+                                <img
+                                    id="customer-card-image"
+                                    src="{{ $customerCardImageUrl }}"
+                                    alt="Tarjeta de cliente de {{ $customer->name }}"
+                                    class="w-full rounded-[2rem] shadow-lg shadow-[#8B5E34]/10"
+                                >
+
+                                <div class="flex flex-wrap justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        id="download-customer-card-button"
+                                        data-download-url="{{ $customerCardImageUrl }}"
+                                        data-download-name="tarjeta-cliente-{{ $primaryQrCode->uuid }}.png"
+                                        class="inline-flex items-center gap-2 rounded-full bg-[#6F4324] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#5D351C]"
+                                    >
+                                        <flux:icon.arrow-down-tray class="size-4" /> Descargar tarjeta
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        id="copy-customer-card-link-button"
+                                        data-copy-value="{{ $portalUrl }}"
+                                        class="inline-flex items-center gap-2 rounded-full border border-[#8B5E34]/20 bg-white px-4 py-2 text-sm font-semibold text-[#6F4324] transition hover:bg-[#8B5E34]/5"
+                                    >
+                                        <flux:icon.clipboard-document class="size-4" /> Copiar link
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 @endif
             </article>
@@ -204,4 +257,77 @@
             </article>
         </div>
     </section>
+
+    @if ($primaryQrCode && $portalUrl && $customerCardImageUrl)
+        @push('scripts')
+            <script>
+                (() => {
+                    const cardImage = document.getElementById('customer-card-image');
+                    const copyButton = document.getElementById('copy-customer-card-link-button');
+                    const downloadButton = document.getElementById('download-customer-card-button');
+
+                    const downloadCard = async () => {
+                        const downloadUrl = downloadButton?.dataset.downloadUrl;
+                        const downloadName = downloadButton?.dataset.downloadName;
+
+                        if (! downloadUrl || ! cardImage) {
+                            return;
+                        }
+
+                        try {
+                            const image = new Image();
+                            image.decoding = 'async';
+                            image.src = downloadUrl;
+
+                            await new Promise((resolve, reject) => {
+                                image.onload = resolve;
+                                image.onerror = reject;
+                            });
+
+                            const canvas = document.createElement('canvas');
+                            canvas.width = image.naturalWidth || 900;
+                            canvas.height = image.naturalHeight || 1460;
+
+                            const context = canvas.getContext('2d');
+
+                            if (! context) {
+                                throw new Error('No canvas context available.');
+                            }
+
+                            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+                            const pngDataUrl = canvas.toDataURL('image/png');
+
+                            const anchor = document.createElement('a');
+                            anchor.href = pngDataUrl;
+                            anchor.download = downloadName || 'tarjeta-cliente.png';
+                            document.body.appendChild(anchor);
+                            anchor.click();
+                            anchor.remove();
+                        } catch (error) {
+                            const anchor = document.createElement('a');
+                            anchor.href = downloadUrl;
+                            anchor.download = downloadName || 'tarjeta-cliente.png';
+                            document.body.appendChild(anchor);
+                            anchor.click();
+                            anchor.remove();
+                        }
+                    };
+
+                    downloadButton?.addEventListener('click', async () => {
+                        await downloadCard();
+                    });
+
+                    copyButton?.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(copyButton.dataset.copyValue || '');
+                            copyButton.innerHTML = '<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Link copiado';
+                        } catch (error) {
+                            copyButton.textContent = 'No se pudo copiar';
+                        }
+                    });
+                })();
+            </script>
+        @endpush
+    @endif
 </x-public-layout>

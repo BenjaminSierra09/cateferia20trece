@@ -1,7 +1,7 @@
 @props([
     'label',
     'name',
-    'wireModel',
+    'wireModel' => null,
     'value' => '',
     'placeholder' => '',
     'country' => 'mx',
@@ -10,7 +10,9 @@
 @php
     $inputId = $attributes->get('id') ?: $name;
     $hiddenId = $inputId.'_hidden';
-    $errorKey = str_replace(['[', ']'], ['.', ''], $wireModel);
+    $errorKey = $wireModel !== null
+        ? str_replace(['[', ']'], ['.', ''], $wireModel)
+        : str_replace(['[', ']'], ['.', ''], $name);
 @endphp
 
 <div class="grid gap-2">
@@ -19,7 +21,11 @@
     <input
         id="{{ $hiddenId }}"
         type="hidden"
-        wire:model="{{ $wireModel }}"
+        name="{{ $name }}"
+        value="{{ $value }}"
+        @if ($wireModel !== null)
+            wire:model="{{ $wireModel }}"
+        @endif
     />
 
     <div
