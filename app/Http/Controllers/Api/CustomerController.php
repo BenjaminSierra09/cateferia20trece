@@ -110,6 +110,10 @@ class CustomerController extends Controller
             ->unique('uuid')
             ->values();
 
+        if ($normalizedQrCodes->isEmpty()) {
+            return;
+        }
+
         $submittedUuids = $normalizedQrCodes->pluck('uuid')->all();
 
         $customer->qrCodes()

@@ -204,6 +204,26 @@ test('v1 api auto-assigns a qr uuid when a customer is created without qr payloa
         ->and(CustomerQrCode::query()->where('customer_id', $customerId)->first()?->uuid)->not->toBeNull();
 });
 
+test('v1 api keeps the auto-created qr when an empty qr payload is sent', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $response = $this->postJson('/api/v1/customers', [
+        'name' => 'Cliente QR Vacío',
+        'phone' => '+524151234501',
+        'email' => 'cliente-vacio@cafeteria20trece.com',
+        'qr_codes' => [],
+    ]);
+
+    $customerId = $response->json('data.id');
+
+    $response->assertSuccessful()
+        ->assertJsonCount(1, 'data.qr_codes')
+        ->assertJsonPath('data.qr_codes.0.customer_id', $customerId)
+        ->assertJsonPath('data.qr_codes.0.is_active', true);
+
+    expect(CustomerQrCode::query()->where('customer_id', $customerId)->count())->toBe(1);
+});
+
 test('v1 api can create and update beverages with sizes and customizations', function () {
     Sanctum::actingAs(User::factory()->create());
 
