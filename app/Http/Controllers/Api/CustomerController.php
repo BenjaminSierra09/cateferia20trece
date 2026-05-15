@@ -55,7 +55,10 @@ class CustomerController extends Controller
             'reward_tier' => RewardTier::Bronze,
             ...collect($validated)->except('qr_codes')->all(),
         ]);
-        $this->syncQrCodes($customer, collect($validated['qr_codes'] ?? []));
+
+        if (array_key_exists('qr_codes', $validated)) {
+            $this->syncQrCodes($customer, collect($validated['qr_codes']));
+        }
 
         return new CustomerResource($customer->load('qrCodes', 'rewardTransactions', 'debtMovements')->loadCount('sales'));
     }
