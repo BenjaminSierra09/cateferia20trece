@@ -70,9 +70,9 @@ class Customer extends Model
     }
 
     /**
-     * Get the current debt balance for the customer.
+     * Get the current gross debt balance for the customer.
      */
-    public function debtBalance(): float
+    public function grossDebtBalance(): float
     {
         $balance = $this->relationLoaded('debtMovements')
             ? $this->debtMovements->first()?->balance_after
@@ -82,7 +82,23 @@ class Customer extends Model
     }
 
     /**
-     * Determine if the customer currently owes money.
+     * Get the portion of reward balance that remains available after covering debt.
+     */
+    public function availableRewardBalance(): float
+    {
+        return round(max((float) $this->reward_balance - $this->grossDebtBalance(), 0), 2);
+    }
+
+    /**
+     * Get the effective debt balance after automatically applying reward balance.
+     */
+    public function debtBalance(): float
+    {
+        return round(max($this->grossDebtBalance() - (float) $this->reward_balance, 0), 2);
+    }
+
+    /**
+     * Determine if the customer currently owes money after offsets.
      */
     public function hasDebt(): bool
     {

@@ -37,7 +37,7 @@
                 <div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <div class="rounded-[1.5rem] border border-white/60 bg-white/80 p-5">
                         <p class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#8B5E34]"><flux:icon.wallet class="size-4" /> Saldo a favor</p>
-                        <p class="mt-2 text-3xl font-black">${{ number_format((float) $customer->reward_balance, 2) }}</p>
+                        <p class="mt-2 text-3xl font-black">${{ number_format($customer->availableRewardBalance(), 2) }}</p>
                     </div>
 
                     <div class="rounded-[1.5rem] border border-white/60 bg-white/80 p-5">

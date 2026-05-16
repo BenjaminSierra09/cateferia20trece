@@ -23,7 +23,7 @@ Hemos registrado tu venta #{{ $sale->id }}. Aquí tienes el resumen con los dato
 | Concepto | Detalle |
 | :--- | :--- |
 | Nivel | {{ $sale->customer->reward_tier->label() }} |
-| Saldo disponible | ${{ number_format((float) $sale->customer->reward_balance, 2, '.', ',') }} |
+| Saldo disponible | ${{ number_format($sale->customer->availableRewardBalance(), 2, '.', ',') }} |
 | Saldo de deuda | ${{ number_format((float) $sale->customer->debtBalance(), 2, '.', ',') }} |
 @if ($sale->customer->email)
 | Correo | {{ $sale->customer->email }} |

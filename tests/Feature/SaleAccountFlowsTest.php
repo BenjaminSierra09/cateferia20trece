@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Size;
 use App\Models\User;
 use App\Models\WorkSession;
+use App\Services\CustomerDebtService;
 use Laravel\Sanctum\Sanctum;
 
 function createOperationalSaleContext(): array
@@ -116,8 +117,43 @@ test('v1 api can register a sale as debt and create the debt movement automatica
     $context['customer']->refresh();
 
     expect($context['customer']->hasDebt())->toBeTrue()
-        ->and($context['customer']->debtBalance())->toBe(150.0)
+        ->and($context['customer']->grossDebtBalance())->toBe(150.0)
+        ->and($context['customer']->debtBalance())->toBe(50.0)
         ->and(
             $context['customer']->debtMovements()->latest('id')->value('type')
         )->toBe(CustomerDebtMovementType::Debt);
+});
+
+test('v1 api caps redeemed reward balance using the amount available after offsetting debt', function () {
+    $context = createOperationalSaleContext();
+
+    app(CustomerDebtService::class)->register(
+        customer: $context['customer'],
+        type: CustomerDebtMovementType::Debt,
+        amount: 80,
+        user: $context['user'],
+        branchId: $context['branch']->id,
+    );
+
+    Sanctum::actingAs($context['user']);
+
+    $response = $this->postJson('/api/v1/sales', [
+        'user_id' => $context['user']->id,
+        'customer_id' => $context['customer']->id,
+        'payment_method' => PaymentMethod::Mixed->value,
+        'reward_redeemed_total' => 20,
+        'payment_breakdown' => [
+            'cash' => 130,
+            'reward_balance' => 20,
+        ],
+        'items' => [[
+            'beverage_id' => $context['beverage']->id,
+            'size_id' => $context['size']->id,
+            'quantity' => 1,
+        ]],
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.reward_redeemed_total', '20.00')
+        ->assertJsonPath('data.total', '130.00');
 });

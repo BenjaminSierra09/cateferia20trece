@@ -220,7 +220,7 @@
                                 </flux:table.cell>
 
                                 <flux:table.cell variant="strong">
-                                    ${{ number_format($customer->reward_balance, 2) }}
+                                    ${{ number_format($customer->availableRewardBalance(), 2) }}
                                 </flux:table.cell>
 
                                 <flux:table.cell>
@@ -348,7 +348,7 @@
 
                         <div class="flex flex-wrap gap-2">
                             <flux:badge color="emerald" inset="top bottom">
-                                ${{ number_format($customer->reward_balance, 2) }}
+                                ${{ number_format($customer->availableRewardBalance(), 2) }}
                             </flux:badge>
 
                             <flux:badge color="zinc" icon="gift" inset="top bottom">

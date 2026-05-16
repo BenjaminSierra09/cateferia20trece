@@ -37,8 +37,8 @@ class CustomerDebtService
 
             $currentBalance = $this->balanceFor($customer);
 
-            if ($type === CustomerDebtMovementType::Payment && $normalizedAmount > $currentBalance) {
-                throw new InvalidArgumentException('El abono no puede ser mayor a la deuda actual.');
+            if ($type === CustomerDebtMovementType::Payment && $normalizedAmount > $customer->debtBalance()) {
+                throw new InvalidArgumentException('El abono no puede ser mayor a la deuda actual después de aplicar el saldo a favor.');
             }
 
             $balanceAfter = $type === CustomerDebtMovementType::Debt

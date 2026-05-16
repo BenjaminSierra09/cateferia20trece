@@ -134,6 +134,24 @@
                     </div>
                 </div>
 
+                @if ((float) $customer->reward_balance > 0 || $customer->grossDebtBalance() > 0)
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="text-sm text-zinc-500">Saldo a favor disponible</div>
+                            <div class="mt-2 text-2xl font-semibold">
+                                ${{ number_format($customer->availableRewardBalance(), 2) }}
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
+                            <div class="text-sm text-zinc-500">Adeudo bruto registrado</div>
+                            <div class="mt-2 text-2xl font-semibold">
+                                ${{ number_format($customer->grossDebtBalance(), 2) }}
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="grid gap-4">
                     <flux:input wire:model="debt_amount" label="Monto" type="number" min="0" step="0.01" />
                     <flux:textarea wire:model="debt_notes" label="Notas" rows="3" placeholder="Motivo del adeudo o referencia del abono" />

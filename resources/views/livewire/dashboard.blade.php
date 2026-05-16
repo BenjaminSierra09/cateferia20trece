@@ -320,7 +320,7 @@
                                 <flux:badge>{{ $customer->reward_tier->label() }}</flux:badge>
                             </flux:table.cell>
                             <flux:table.cell>{{ $customer->annual_drink_count }}</flux:table.cell>
-                            <flux:table.cell class="font-semibold">${{ number_format($customer->reward_balance, 2) }}</flux:table.cell>
+                            <flux:table.cell class="font-semibold">${{ number_format($customer->availableRewardBalance(), 2) }}</flux:table.cell>
                         </flux:table.row>
                     @empty
                         <flux:table.row>

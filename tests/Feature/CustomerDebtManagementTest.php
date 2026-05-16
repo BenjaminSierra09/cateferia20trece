@@ -65,6 +65,7 @@ test('customer manager shows debt information for customers with open balances',
     $user = User::factory()->assignedToBranch($branch)->create();
     $customer = Customer::factory()->create([
         'name' => 'Cliente con adeudo',
+        'reward_balance' => 0,
     ]);
 
     app(CustomerDebtService::class)->register(
@@ -80,4 +81,66 @@ test('customer manager shows debt information for customers with open balances',
         ->assertSee('Cliente con adeudo')
         ->assertSee('Debe')
         ->assertSee('$75.00');
+});
+
+test('customer balances offset debt against reward balance in manager and detail views', function () {
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $customer = Customer::factory()->create([
+        'name' => 'Cliente con saldo a favor',
+        'reward_balance' => 10000,
+    ]);
+
+    app(CustomerDebtService::class)->register(
+        customer: $customer,
+        type: CustomerDebtMovementType::Debt,
+        amount: 354,
+        user: $user,
+        branchId: $branch->id,
+    );
+
+    $customer->refresh();
+
+    expect($customer->grossDebtBalance())->toBe(354.0)
+        ->and($customer->debtBalance())->toBe(0.0)
+        ->and($customer->availableRewardBalance())->toBe(9646.0)
+        ->and($customer->hasDebt())->toBeFalse();
+
+    Livewire::actingAs($user)
+        ->test(CustomerManager::class)
+        ->assertSee('Cliente con saldo a favor')
+        ->assertSee('Al corriente')
+        ->assertSee('$9,646.00')
+        ->assertSee('$0.00');
+
+    Livewire::actingAs($user)
+        ->test(CustomerForm::class, ['customer' => $customer->fresh()])
+        ->assertSee('Saldo actual')
+        ->assertSee('$0.00')
+        ->assertSee('Saldo a favor disponible')
+        ->assertSee('$9,646.00')
+        ->assertSee('Adeudo bruto registrado')
+        ->assertSee('$354.00');
+});
+
+test('customer form prevents payments larger than the effective debt after reward balance offsets', function () {
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $customer = Customer::factory()->create([
+        'reward_balance' => 90,
+    ]);
+
+    app(CustomerDebtService::class)->register(
+        customer: $customer,
+        type: CustomerDebtMovementType::Debt,
+        amount: 100,
+        user: $user,
+        branchId: $branch->id,
+    );
+
+    Livewire::actingAs($user)
+        ->test(CustomerForm::class, ['customer' => $customer->fresh()])
+        ->set('debt_amount', '20')
+        ->call('registerPayment')
+        ->assertHasErrors(['debt_amount']);
 });

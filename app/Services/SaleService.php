@@ -50,7 +50,7 @@ class SaleService
             $subtotal = round($lineItems->sum('line_total'), 2);
             $discountTotal = round((float) ($payload['discount_total'] ?? 0), 2);
             $rewardRedeemedTotal = $customer !== null
-                ? min(round((float) ($payload['reward_redeemed_total'] ?? 0), 2), (float) $customer->reward_balance)
+                ? min(round((float) ($payload['reward_redeemed_total'] ?? 0), 2), $customer->availableRewardBalance())
                 : 0;
             $total = max(round($subtotal - $discountTotal - $rewardRedeemedTotal, 2), 0);
             $paymentMethod = $payload['payment_method'];
