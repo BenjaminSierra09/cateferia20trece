@@ -43,6 +43,8 @@ class Create extends Component
 
     public bool $is_active = true;
 
+    public string $temperature = 'hot';
+
     public $image;
 
     public function generateImage(): void
@@ -119,6 +121,7 @@ class Create extends Component
             $this->name = $this->beverage->name;
             $this->description = $this->beverage->description ?? '';
             $this->beverage_category_id = $this->beverage->beverage_category_id;
+            $this->temperature = $this->beverage->is_hot ? 'hot' : 'cold';
             $this->is_active = $this->beverage->is_active;
             $this->selected_customization_option_ids = $this->beverage->customizationOptions->pluck('id')->all();
         }
@@ -151,6 +154,7 @@ class Create extends Component
             'size_pricing.*.branch_prices.*' => ['nullable', 'numeric', 'min:0'],
             'selected_customization_option_ids' => ['nullable', 'array'],
             'selected_customization_option_ids.*' => ['integer', 'exists:customization_options,id'],
+            'temperature' => ['required', 'in:hot,cold'],
             'is_active' => ['boolean'],
             'image' => ['nullable', 'image', 'max:3072'],
         ]);
@@ -195,6 +199,7 @@ class Create extends Component
             'description' => $validated['description'],
             'image_path' => $imagePath,
             'base_price' => $basePrice,
+            'is_hot' => $validated['temperature'] === 'hot',
             'is_active' => $validated['is_active'],
         ]);
 

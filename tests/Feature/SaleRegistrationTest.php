@@ -202,6 +202,28 @@ test('sale service registers products sold by piece or gram', function () {
     expect($sale->items->last()->item_name)->toContain('(500g)');
 });
 
+test('sale service registers temporary products without catalog entries', function () {
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $workSession = app(WorkSessionService::class)->start($user, $branch);
+
+    $sale = app(SaleService::class)->register([
+        'payment_method' => PaymentMethod::Cash->value,
+        'items' => [[
+            'item_name' => 'Croissant de chocolate',
+            'unit_price' => 30,
+            'quantity' => 2,
+        ]],
+    ], $user, $workSession);
+
+    expect((float) $sale->subtotal)->toBe(60.0);
+    expect($sale->items)->toHaveCount(1);
+    expect($sale->items->first()->beverage_id)->toBeNull();
+    expect($sale->items->first()->product_id)->toBeNull();
+    expect($sale->items->first()->item_name)->toBe('Croissant de chocolate');
+    expect((float) $sale->items->first()->unit_price)->toBe(30.0);
+});
+
 test('manual sale can assign a customer by qr', function () {
     $branch = Branch::factory()->create();
     $user = User::factory()->assignedToBranch($branch)->create();

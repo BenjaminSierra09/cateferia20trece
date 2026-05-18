@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\StoreBeverageRequest;
+use App\Http\Requests\UpdateBeverageRequest;
 use App\Http\Resources\BeverageResource;
 use App\Models\Beverage;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
@@ -17,6 +18,7 @@ class BeverageController extends Controller
         $beverages = Beverage::query()
             ->with(['category', 'sizePrices.size', 'customizationOptions.type'])
             ->when($request->filled('beverage_category_id'), fn ($query) => $query->where('beverage_category_id', $request->integer('beverage_category_id')))
+            ->when($request->has('is_hot'), fn ($query) => $query->where('is_hot', $request->boolean('is_hot')))
             ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
             ->orderBy('name')
             ->paginate($this->perPage($request));
@@ -24,21 +26,9 @@ class BeverageController extends Controller
         return BeverageResource::collection($beverages);
     }
 
-    public function store(Request $request): BeverageResource
+    public function store(StoreBeverageRequest $request): BeverageResource
     {
-        $validated = $request->validate([
-            'beverage_category_id' => ['nullable', 'integer', 'exists:beverage_categories,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'image_path' => ['nullable', 'string', 'max:255'],
-            'is_active' => ['sometimes', 'boolean'],
-            'size_prices' => ['required', 'array', 'min:1'],
-            'size_prices.*.size_id' => ['required', 'integer', 'exists:sizes,id', 'distinct'],
-            'size_prices.*.price' => ['required', 'numeric', 'min:0'],
-            'size_prices.*.is_active' => ['sometimes', 'boolean'],
-            'customization_option_ids' => ['nullable', 'array'],
-            'customization_option_ids.*' => ['integer', 'exists:customization_options,id'],
-        ]);
+        $validated = $request->validated();
 
         $beverage = Beverage::query()->create([
             'beverage_category_id' => $validated['beverage_category_id'] ?? null,
@@ -47,6 +37,7 @@ class BeverageController extends Controller
             'description' => $validated['description'] ?? null,
             'image_path' => $validated['image_path'] ?? null,
             'base_price' => collect($validated['size_prices'])->min('price'),
+            'is_hot' => $validated['is_hot'] ?? true,
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
@@ -61,21 +52,9 @@ class BeverageController extends Controller
         return new BeverageResource($beverage->load(['category', 'sizePrices.size', 'customizationOptions.type']));
     }
 
-    public function update(Request $request, Beverage $beverage): BeverageResource
+    public function update(UpdateBeverageRequest $request, Beverage $beverage): BeverageResource
     {
-        $validated = $request->validate([
-            'beverage_category_id' => ['sometimes', 'nullable', 'integer', 'exists:beverage_categories,id'],
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'image_path' => ['nullable', 'string', 'max:255'],
-            'is_active' => ['sometimes', 'boolean'],
-            'size_prices' => ['sometimes', 'array', 'min:1'],
-            'size_prices.*.size_id' => ['required_with:size_prices', 'integer', 'exists:sizes,id', 'distinct'],
-            'size_prices.*.price' => ['required_with:size_prices', 'numeric', 'min:0'],
-            'size_prices.*.is_active' => ['sometimes', 'boolean'],
-            'customization_option_ids' => ['sometimes', 'array'],
-            'customization_option_ids.*' => ['integer', 'exists:customization_options,id'],
-        ]);
+        $validated = $request->validated();
 
         if (array_key_exists('name', $validated)) {
             $validated['slug'] = $this->slugFromName($validated['name']);

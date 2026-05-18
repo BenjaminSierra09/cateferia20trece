@@ -56,6 +56,7 @@ class SaleController extends Controller
             'payment_breakdown.debt' => ['nullable', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.beverage_id' => ['nullable', 'integer', 'exists:beverages,id'],
+            'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
             'items.*.size_id' => ['nullable', 'integer', 'exists:sizes,id'],
             'items.*.item_name' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
@@ -94,6 +95,12 @@ class SaleController extends Controller
             ]);
         }
 
+        $itemErrors = $this->validateSaleItems($validated['items']);
+
+        if ($itemErrors !== []) {
+            throw ValidationException::withMessages($itemErrors);
+        }
+
         $user = User::query()->findOrFail($validated['user_id']);
         $workSession = $workSessionService->currentFor($user);
 
@@ -129,5 +136,40 @@ class SaleController extends Controller
             'items.product',
             'items.customizations',
         ]));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<string, array<int, string>>
+     */
+    protected function validateSaleItems(array $items): array
+    {
+        $errors = [];
+
+        foreach ($items as $index => $item) {
+            $hasBeverage = ! empty($item['beverage_id']);
+            $hasSize = ! empty($item['size_id']);
+            $hasProduct = ! empty($item['product_id']);
+            $hasTemporaryName = filled(trim((string) ($item['item_name'] ?? '')));
+            $hasTemporaryPrice = array_key_exists('unit_price', $item) && $item['unit_price'] !== null;
+
+            if ($hasBeverage xor $hasSize) {
+                $errors["items.$index.size_id"] = ['Selecciona bebida y tamaño juntos.'];
+            }
+
+            if ($hasProduct && ($hasBeverage || $hasSize)) {
+                $errors["items.$index.product_id"] = ['Cada línea debe ser bebida, producto o temporal, pero no mezclar tipos.'];
+            }
+
+            if ($hasProduct && ($hasTemporaryName || $hasTemporaryPrice)) {
+                $errors["items.$index.item_name"] = ['No combines un producto de catálogo con un concepto temporal en la misma línea.'];
+            }
+
+            if (! $hasBeverage && ! $hasProduct && ! ($hasTemporaryName && $hasTemporaryPrice)) {
+                $errors["items.$index.item_name"] = ['Cada línea debe tener una bebida, un producto o un concepto temporal con precio.'];
+            }
+        }
+
+        return $errors;
     }
 }

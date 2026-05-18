@@ -157,3 +157,26 @@ test('v1 api caps redeemed reward balance using the amount available after offse
         ->assertJsonPath('data.reward_redeemed_total', '20.00')
         ->assertJsonPath('data.total', '130.00');
 });
+
+test('v1 api can register temporary sale items', function () {
+    $context = createOperationalSaleContext();
+
+    Sanctum::actingAs($context['user']);
+
+    $response = $this->postJson('/api/v1/sales', [
+        'user_id' => $context['user']->id,
+        'payment_method' => PaymentMethod::Cash->value,
+        'items' => [[
+            'item_name' => 'Croissant de chocolate',
+            'unit_price' => 30,
+            'quantity' => 2,
+        ]],
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.subtotal', '60.00')
+        ->assertJsonPath('data.total', '60.00')
+        ->assertJsonPath('data.items.0.item_name', 'Croissant de chocolate')
+        ->assertJsonPath('data.items.0.product_id', null)
+        ->assertJsonPath('data.items.0.beverage_id', null);
+});

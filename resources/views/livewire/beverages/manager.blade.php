@@ -73,6 +73,7 @@
 
                         <flux:table.column>Bebida</flux:table.column>
                         <flux:table.column>Categoría</flux:table.column>
+                        <flux:table.column>Temperatura</flux:table.column>
                         <flux:table.column class="max-lg:hidden">Tamaños</flux:table.column>
                         <flux:table.column>Base</flux:table.column>
                         <flux:table.column>Estado</flux:table.column>
@@ -124,6 +125,12 @@
                                     </flux:badge>
                                 </flux:table.cell>
 
+                                <flux:table.cell>
+                                    <flux:badge color="{{ $beverage->is_hot ? 'orange' : 'sky' }}" inset="top bottom">
+                                        {{ $beverage->is_hot ? 'Caliente' : 'Fría' }}
+                                    </flux:badge>
+                                </flux:table.cell>
+
                                 <flux:table.cell class="max-lg:hidden">
                                     <span class="block max-w-60 truncate">
                                         {{ $beverage->sizePrices->map(fn ($price) => $price->size?->name)->filter()->implode(', ') ?: 'Sin tamaños' }}
@@ -153,7 +160,7 @@
                             </flux:table.row>
                         @empty
                             <flux:table.row>
-                                <flux:table.cell colspan="7">
+                                <flux:table.cell colspan="8">
                                     <flux:callout icon="information-circle" color="sky">
                                         Todavía no hay bebidas registradas.
                                     </flux:callout>
@@ -222,6 +229,10 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <flux:badge color="zinc" inset="top bottom">
                                 {{ $beverage->category?->name ?: 'Sin categoría' }}
+                            </flux:badge>
+
+                            <flux:badge color="{{ $beverage->is_hot ? 'orange' : 'sky' }}" inset="top bottom">
+                                {{ $beverage->is_hot ? 'Caliente' : 'Fría' }}
                             </flux:badge>
 
                             <flux:badge color="sky" inset="top bottom">

@@ -25,6 +25,7 @@ class BeverageFactory extends Factory
             'slug' => Str::slug(fake()->unique()->words(2, true)),
             'description' => fake()->sentence(),
             'base_price' => fake()->randomFloat(2, 40, 120),
+            'is_hot' => true,
             'is_active' => true,
         ];
     }

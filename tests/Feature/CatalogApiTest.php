@@ -39,6 +39,7 @@ test('catalog api returns beverages branches and customizations', function () {
     $response->assertSuccessful()
         ->assertJsonFragment(['name' => $branch->name])
         ->assertJsonFragment(['name' => $beverage->name])
+        ->assertJsonFragment(['is_hot' => true])
         ->assertJsonFragment(['name' => $option->name]);
 });
 

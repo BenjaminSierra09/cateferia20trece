@@ -53,6 +53,10 @@
                             <option value="{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
                     </flux:select>
+                    <flux:radio.group wire:model="temperature" label="Temperatura">
+                        <flux:radio value="hot" label="Caliente" description="Ideal para cafés, tés e infusiones." />
+                        <flux:radio value="cold" label="Fría" description="Ideal para frappés, bebidas heladas y refrescantes." />
+                    </flux:radio.group>
                     <flux:field variant="inline">
                         <flux:label>Activa</flux:label>
                         <flux:switch wire:model.live="is_active" />

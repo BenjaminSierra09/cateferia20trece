@@ -13,11 +13,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[ObservedBy([BeverageObserver::class])]
-#[Fillable(['beverage_category_id', 'name', 'slug', 'description', 'image_path', 'base_price', 'is_active'])]
+#[Fillable(['beverage_category_id', 'name', 'slug', 'description', 'image_path', 'base_price', 'is_hot', 'is_active'])]
 class Beverage extends Model
 {
     /** @use HasFactory<BeverageFactory> */
     use HasFactory;
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_hot' => 'boolean',
+            'is_active' => 'boolean',
+        ];
+    }
 
     /**
      * Get the category for the beverage.

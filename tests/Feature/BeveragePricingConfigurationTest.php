@@ -24,6 +24,7 @@ test('beverage form stores multiple size prices and branch overrides', function 
         ->set('name', 'Moka')
         ->set('description', 'Chocolate y espresso')
         ->set('beverage_category_id', $category->id)
+        ->set('temperature', 'cold')
         ->set('size_pricing.0.enabled', true)
         ->set('size_pricing.0.price', 58)
         ->set("size_pricing.0.branch_prices.{$branchNorth->id}", 61)
@@ -35,6 +36,7 @@ test('beverage form stores multiple size prices and branch overrides', function 
 
     expect($beverage)->not->toBeNull();
     expect((float) $beverage->base_price)->toBe(58.0);
+    expect($beverage->is_hot)->toBeFalse();
     expect($beverage->sizePrices)->toHaveCount(2);
     expect((float) $beverage->sizePrices()->where('size_id', $small->id)->value('price'))->toBe(58.0);
     expect((float) $beverage->sizePrices()->where('size_id', $large->id)->value('price'))->toBe(72.0);

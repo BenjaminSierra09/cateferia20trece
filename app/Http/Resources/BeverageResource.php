@@ -41,6 +41,7 @@ class BeverageResource extends JsonResource
             'image_path' => $this->image_path,
             'image_url' => $this->resolveImageUrl(),
             'base_price' => $this->base_price,
+            'is_hot' => $this->is_hot,
             'is_active' => $this->is_active,
             'popularity_quantity' => (int) ($this->popularity_quantity ?? 0),
             'category' => $this->whenLoaded('category', fn () => new BeverageCategoryResource($this->category)),
