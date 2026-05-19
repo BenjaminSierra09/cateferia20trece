@@ -167,11 +167,22 @@ test('multiple sales on the same day only count as one visit', function () {
     Carbon::setTestNow($saleMoment->addHours(3));
     registerRewardSale($customer, $user, $workSession, $beverage, $size);
 
+    Carbon::setTestNow($saleMoment->addHours(6));
+    registerRewardSale($customer, $user, $workSession, $beverage, $size, [
+        'items' => [[
+            'beverage_id' => $beverage->id,
+            'size_id' => $size->id,
+            'quantity' => 2,
+            'customization_option_ids' => [],
+        ]],
+    ]);
+
     Carbon::setTestNow();
     $customer->refresh();
 
     expect($customer->annual_drink_count)->toBe(1)
-        ->and((float) $customer->reward_balance)->toBe(2.0);
+        ->and((float) $customer->reward_balance)->toBe(4.0)
+        ->and($customer->rewardTransactions()->where('type', RewardTransactionType::Earned)->count())->toBe(3);
 });
 
 test('sales paid with reward balance do not earn bonus or visit progress', function () {

@@ -36,14 +36,8 @@ class RewardProgramService
             return null;
         }
 
-        $visitCount = (int) $customer->annual_drink_count;
-        $countedVisit = false;
-
-        if (! $this->hasQualifiedVisitOnDate($customer, $sale)) {
-            $visitCount++;
-            $countedVisit = true;
-        }
-
+        $countedVisit = ! $this->hasQualifiedVisitOnDate($customer, $sale);
+        $visitCount = (int) $customer->annual_drink_count + ($countedVisit ? 1 : 0);
         $rewardTier = $this->determineTier($visitCount);
         $rewardPercentage = $rewardTier->percentage() + $this->welcomeBonusPercentage($customer, $sale);
         $earnedAmount = round(((float) $sale->total * $rewardPercentage) / 100, 2);
