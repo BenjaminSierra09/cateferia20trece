@@ -7,7 +7,7 @@ use App\Models\WorkSession;
 
 test('sale details page displays correctly', function () {
     $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
+    $user = User::factory()->admin()->create();
     WorkSession::factory()->create([
         'user_id' => $user->id,
         'branch_id' => $branch->id,
@@ -22,7 +22,7 @@ test('sale details page displays correctly', function () {
 
 test('sale details page shows all sale information', function () {
     $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
+    $user = User::factory()->admin()->create();
     WorkSession::factory()->create([
         'user_id' => $user->id,
         'branch_id' => $branch->id,
@@ -41,7 +41,7 @@ test('sale details page shows all sale information', function () {
 
 test('authenticated user with work session can access sale details', function () {
     $branch = Branch::factory()->create();
-    $user = User::factory()->assignedToBranch($branch)->create();
+    $user = User::factory()->admin()->create();
     WorkSession::factory()->create([
         'user_id' => $user->id,
         'branch_id' => $branch->id,

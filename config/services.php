@@ -41,4 +41,10 @@ return [
         'min_score' => env('RECAPTCHA_MIN_SCORE', 0.5),
     ],
 
+    'evolution' => [
+        'api_url' => env('EVOLUTION_API_URL', 'https://evolution.benjaminsierra.com/message/sendText/San Miguel Live'),
+        'api_key' => env('EVOLUTION_API_KEY'),
+        'instance_id' => env('EVOLUTION_INSTANCE_ID', 'CAFETERIA20TRECE'),
+    ],
+
 ];

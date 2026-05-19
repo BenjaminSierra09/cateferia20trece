@@ -20,6 +20,11 @@ return [
     'default_for_embeddings' => 'openai',
     'default_for_reranking' => 'cohere',
 
+    'voice_sale' => [
+        'transcription_model' => env('AI_VOICE_SALE_TRANSCRIPTION_MODEL', 'gpt-4o-mini-transcribe'),
+        'response_model' => env('AI_VOICE_SALE_RESPONSE_MODEL', 'gpt-4o-mini'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Caching

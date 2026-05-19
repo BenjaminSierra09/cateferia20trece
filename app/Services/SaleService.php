@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CustomerDebtMovementType;
 use App\Enums\PaymentMethod;
+use App\Enums\SaleStatus;
 use App\Mail\SaleReceipt;
 use App\Models\Beverage;
 use App\Models\BranchCustomizationPriceOverride;
@@ -106,6 +107,7 @@ class SaleService
                     notes: sprintf('Cargo automático por venta #%d', $sale->id),
                     user: $user,
                     branchId: $workSession->branch_id,
+                    saleId: $sale->id,
                     recordedAt: $sale->sold_at?->toIso8601String(),
                 );
             }
@@ -119,6 +121,28 @@ class SaleService
             $this->queueReceiptEmail($sale);
 
             return $sale;
+        });
+    }
+
+    public function cancel(Sale $sale): Sale
+    {
+        return DB::transaction(function () use ($sale): Sale {
+            $sale->loadMissing(['customer', 'debtMovements']);
+
+            if (! $sale->canBeCancelled()) {
+                return $sale->fresh(['branch', 'user', 'customer', 'items.customizations', 'debtMovements']);
+            }
+
+            $sale->forceFill([
+                'status' => SaleStatus::Cancelled,
+            ])->save();
+
+            if ($sale->customer !== null) {
+                $this->customerDebtService->removeSaleMovements($sale);
+                $this->rewardProgramService->rebuildForCustomer($sale->customer);
+            }
+
+            return $sale->fresh(['branch', 'user', 'customer', 'items.customizations', 'debtMovements']);
         });
     }
 

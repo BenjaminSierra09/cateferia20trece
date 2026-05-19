@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['customer_id', 'user_id', 'branch_id', 'type', 'amount', 'balance_after', 'notes', 'recorded_at'])]
+#[Fillable(['customer_id', 'sale_id', 'user_id', 'branch_id', 'type', 'amount', 'balance_after', 'notes', 'recorded_at'])]
 class CustomerDebtMovement extends Model
 {
     /** @use HasFactory<CustomerDebtMovementFactory> */
@@ -33,6 +33,11 @@ class CustomerDebtMovement extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     public function user(): BelongsTo

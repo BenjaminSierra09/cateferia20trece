@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\RewardTransactionController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SizeController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VoiceSaleDraftController;
 use App\Http\Controllers\Api\WorkSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::apiResource('work-sessions', WorkSessionController::class)->except(['destroy']);
         Route::apiResource('sales', SaleController::class)->only(['index', 'store', 'show']);
+        Route::post('sales/voice-drafts', VoiceSaleDraftController::class)->name('sales.voice-drafts.store');
         Route::apiResource('reward-transactions', RewardTransactionController::class)->only(['index', 'show']);
     });
 });

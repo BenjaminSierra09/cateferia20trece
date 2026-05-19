@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\PaymentMethod;
 use App\Enums\RewardTier;
 use App\Enums\RewardTransactionType;
+use App\Enums\SaleStatus;
 use App\Models\Customer;
 use App\Models\RewardTransaction;
 use App\Models\Sale;
@@ -129,6 +130,83 @@ class RewardProgramService
         });
     }
 
+    public function rebuildForCustomer(Customer $customer): void
+    {
+        $customer->refresh();
+
+        $manualTransactions = $customer->rewardTransactions()
+            ->where('type', RewardTransactionType::ManualAdjustment->value)
+            ->orderBy('transacted_at')
+            ->orderBy('id')
+            ->get();
+
+        $completedSales = $customer->sales()
+            ->where('status', SaleStatus::Completed->value)
+            ->orderBy('sold_at')
+            ->orderBy('id')
+            ->get();
+
+        RewardTransaction::query()
+            ->where('customer_id', $customer->id)
+            ->where('type', '!=', RewardTransactionType::ManualAdjustment->value)
+            ->delete();
+
+        $customer->forceFill([
+            'reward_balance' => 0,
+            'reward_year' => (int) now()->format('Y'),
+            'annual_drink_count' => 0,
+            'reward_tier' => $this->determineTier(0),
+        ])->save();
+
+        $timeline = collect()
+            ->concat($manualTransactions->map(fn (RewardTransaction $transaction): array => [
+                'kind' => 'manual',
+                'at' => $transaction->transacted_at,
+                'order' => 0,
+                'id' => $transaction->id,
+                'transaction' => $transaction,
+            ]))
+            ->concat($completedSales->map(fn (Sale $sale): array => [
+                'kind' => 'sale',
+                'at' => $sale->sold_at,
+                'order' => 1,
+                'id' => $sale->id,
+                'sale' => $sale,
+            ]))
+            ->sortBy(fn (array $event): string => sprintf(
+                '%s-%d-%020d',
+                $event['at']?->format('YmdHis.u') ?? '00000000000000.000000',
+                $event['order'],
+                $event['id'],
+            ));
+
+        $timeline->each(function (array $event) use ($customer): void {
+            if ($event['kind'] === 'manual') {
+                /** @var RewardTransaction $transaction */
+                $transaction = $event['transaction'];
+
+                $customer->forceFill([
+                    'reward_balance' => round((float) $customer->reward_balance + (float) $transaction->amount, 2),
+                ])->save();
+
+                $transaction->forceFill([
+                    'balance_after' => $customer->reward_balance,
+                ])->save();
+
+                return;
+            }
+
+            /** @var Sale $sale */
+            $sale = $event['sale'];
+
+            if ((float) $sale->reward_redeemed_total > 0) {
+                $this->redeem($customer, $sale, (float) $sale->reward_redeemed_total);
+            }
+
+            $this->applyEarnedRewards($customer, $sale);
+        });
+    }
+
     /**
      * Determine if the sale can earn rewards and count as a visit.
      */
@@ -144,11 +222,17 @@ class RewardProgramService
     protected function hasQualifiedVisitOnDate(Customer $customer, Sale $sale): bool
     {
         return $customer->sales()
-            ->where('status', 'completed')
+            ->where('status', SaleStatus::Completed->value)
             ->where('reward_redeemed_total', '<=', 0)
             ->where('payment_method', '!=', PaymentMethod::Debt->value)
             ->whereDate('sold_at', $sale->sold_at->toDateString())
-            ->whereKeyNot($sale->id)
+            ->where(function ($query) use ($sale) {
+                $query->where('sold_at', '<', $sale->sold_at)
+                    ->orWhere(function ($sameMomentQuery) use ($sale) {
+                        $sameMomentQuery->where('sold_at', $sale->sold_at)
+                            ->where('id', '<', $sale->id);
+                    });
+            })
             ->exists();
     }
 

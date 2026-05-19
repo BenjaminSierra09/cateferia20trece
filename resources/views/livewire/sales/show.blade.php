@@ -4,9 +4,22 @@
             <flux:heading>Venta #{{ $sale->id }}</flux:heading>
             <flux:text>Detalles completos de la venta</flux:text>
         </div>
-        <flux:button :href="route('dashboard.sales.index')" variant="ghost" icon="arrow-left" wire:navigate>
-            Volver
-        </flux:button>
+        <div class="flex items-center gap-3">
+            @if ($sale->canBeCancelled())
+                <flux:button
+                    variant="danger"
+                    icon="x-circle"
+                    wire:click="cancelSale"
+                    wire:confirm="¿Seguro que quieres cancelar esta venta? Se revertirá el saldo a favor y la deuda automática vinculados a ella."
+                >
+                    Cancelar venta
+                </flux:button>
+            @endif
+
+            <flux:button :href="route('dashboard.sales.index')" variant="ghost" icon="arrow-left" wire:navigate>
+                Volver
+            </flux:button>
+        </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-3">
@@ -15,6 +28,12 @@
             <!-- Sale Information -->
             <flux:card>
                 <div class="space-y-4">
+                    @if ($sale->status->value === 'cancelled')
+                        <flux:callout icon="exclamation-triangle" color="amber">
+                            Esta venta está cancelada y ya no debe considerarse para reportes, recompensas o adeudos automáticos.
+                        </flux:callout>
+                    @endif
+
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <flux:subheading>Folio</flux:subheading>

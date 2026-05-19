@@ -75,4 +75,20 @@ class Sale extends Model
     {
         return $this->hasMany(SaleItem::class);
     }
+
+    /**
+     * Get the debt movements automatically created from the sale.
+     */
+    public function debtMovements(): HasMany
+    {
+        return $this->hasMany(CustomerDebtMovement::class);
+    }
+
+    /**
+     * Determine whether the sale can still be cancelled.
+     */
+    public function canBeCancelled(): bool
+    {
+        return $this->status === SaleStatus::Completed;
+    }
 }
