@@ -199,7 +199,7 @@ class VoiceSaleDraftService
             throw new RuntimeException('No fue posible interpretar el pedido con OpenAI Responses.', previous: $exception);
         }
 
-        $outputText = trim((string) $response->json('output_text'));
+        $outputText = $this->extractResponseOutputText($response->json());
 
         if ($outputText === '') {
             throw new RuntimeException('OpenAI Responses no devolvió un JSON interpretable.');
@@ -213,6 +213,43 @@ class VoiceSaleDraftService
         }
 
         return $decoded;
+    }
+
+    /**
+     * Extract plain text from a raw Responses API payload.
+     *
+     * @param  array<string, mixed>  $responsePayload
+     */
+    protected function extractResponseOutputText(array $responsePayload): string
+    {
+        $sdkOutputText = trim((string) ($responsePayload['output_text'] ?? ''));
+
+        if ($sdkOutputText !== '') {
+            return $sdkOutputText;
+        }
+
+        $segments = [];
+
+        foreach (Arr::wrap($responsePayload['output'] ?? []) as $outputItem) {
+            if (! is_array($outputItem)) {
+                continue;
+            }
+
+            foreach (Arr::wrap($outputItem['content'] ?? []) as $contentItem) {
+                if (! is_array($contentItem)) {
+                    continue;
+                }
+
+                $text = trim((string) ($contentItem['text'] ?? ''));
+                $type = (string) ($contentItem['type'] ?? '');
+
+                if ($text !== '' && in_array($type, ['output_text', 'text'], true)) {
+                    $segments[] = $text;
+                }
+            }
+        }
+
+        return trim(implode("\n", $segments));
     }
 
     protected function developerInstructions(): string

@@ -273,6 +273,77 @@ test('voice sale draft endpoint assigns the sale to a customer when customer uui
     });
 });
 
+test('voice sale draft endpoint reads structured output text from the raw output array when output_text is absent', function () {
+    config()->set('ai.providers.openai.key', 'test-key');
+    config()->set('ai.providers.openai.url', 'https://api.openai.test/v1');
+
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $product = Product::factory()->create([
+        'name' => 'Pan del día',
+        'base_price' => 20,
+    ]);
+
+    app(WorkSessionService::class)->start($user, $branch);
+
+    Http::fake([
+        'https://api.openai.test/v1/audio/transcriptions' => Http::response([
+            'text' => 'Vendí un pan del día.',
+        ]),
+        'https://api.openai.test/v1/responses' => Http::response([
+            'output' => [
+                [
+                    'type' => 'message',
+                    'role' => 'assistant',
+                    'content' => [
+                        [
+                            'type' => 'output_text',
+                            'text' => json_encode([
+                                'payment_method' => PaymentMethod::Cash->value,
+                                'payment_breakdown' => [
+                                    'cash' => null,
+                                    'card' => null,
+                                    'transfer' => null,
+                                    'reward_balance' => null,
+                                    'debt' => null,
+                                ],
+                                'reward_redeemed_total' => 0,
+                                'discount_total' => 0,
+                                'discount_concept' => null,
+                                'notes' => null,
+                                'assumptions' => [],
+                                'items' => [
+                                    [
+                                        'item_type' => 'product',
+                                        'beverage_id' => null,
+                                        'product_id' => $product->id,
+                                        'size_id' => null,
+                                        'item_name' => null,
+                                        'unit_price' => null,
+                                        'quantity' => 1,
+                                        'customization_option_ids' => [],
+                                        'special_instructions' => null,
+                                    ],
+                                ],
+                            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        ],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->post(route('api.v1.sales.voice-drafts.store'), [
+        'audio' => UploadedFile::fake()->create('venta.m4a', 200, 'audio/mp4'),
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('sale.payment_method', PaymentMethod::Cash->value)
+        ->assertJsonPath('sale.items.0.product_id', $product->id);
+});
+
 test('voice sale draft endpoint rejects an unknown customer uuid', function () {
     config()->set('ai.providers.openai.key', 'test-key');
 
