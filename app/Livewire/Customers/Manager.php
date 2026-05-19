@@ -3,6 +3,7 @@
 namespace App\Livewire\Customers;
 
 use App\Models\Customer;
+use App\Services\EvolutionWhatsAppService;
 use App\Support\TonalpohualliCalendar;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -11,6 +12,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Throwable;
 
 #[Title('Clientes')]
 class Manager extends Component
@@ -103,6 +105,39 @@ class Manager extends Component
         $customer->update(['is_active' => ! $customer->is_active]);
 
         Flux::toast(text: $customer->is_active ? 'Cliente reactivado.' : 'Cliente desactivado.');
+    }
+
+    public function sendWelcomeMessage(int $customerId): void
+    {
+        $customer = Customer::query()
+            ->with('qrCodes')
+            ->findOrFail($customerId);
+
+        if (blank($customer->phone)) {
+            Flux::toast(variant: 'danger', text: 'Este cliente no tiene teléfono registrado.');
+
+            return;
+        }
+
+        $qrCode = $customer->qrCodes->firstWhere('is_active', true) ?? $customer->qrCodes->first();
+
+        if ($qrCode === null) {
+            Flux::toast(variant: 'danger', text: 'Este cliente todavía no tiene un QR vinculado.');
+
+            return;
+        }
+
+        try {
+            app(EvolutionWhatsAppService::class)->sendCustomerCredential($customer, $qrCode);
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            Flux::toast(variant: 'danger', text: 'No fue posible enviar el mensaje de bienvenida.');
+
+            return;
+        }
+
+        Flux::toast(variant: 'success', text: 'Mensaje de bienvenida enviado.');
     }
 
     protected function customerQuery(): Builder

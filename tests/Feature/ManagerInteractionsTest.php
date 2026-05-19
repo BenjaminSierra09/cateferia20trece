@@ -8,7 +8,10 @@ use App\Livewire\Reports\Overview as ReportsOverview;
 use App\Models\Beverage;
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\CustomerQrCode;
 use App\Models\Product;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
 test('branch manager can select visible rows and bulk update their status', function () {
@@ -52,6 +55,39 @@ test('customer manager can select visible rows and bulk deactivate', function ()
     $component->call('deactivateSelected');
 
     expect(Customer::query()->where('is_active', false)->count())->toBe(2);
+});
+
+test('customer manager can resend the welcome whatsapp message', function () {
+    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
+    config()->set('services.evolution.api_key', 'test-api-key');
+    config()->set('services.evolution.instance_id', 'San Miguel Live');
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://evolution.benjaminsierra.com/message/sendMedia/*' => Http::response(['status' => 'PENDING'], 201),
+        'https://evolution.benjaminsierra.com/message/sendText/*' => Http::response(['status' => 'PENDING'], 201),
+    ]);
+
+    $customer = Customer::factory()->create([
+        'name' => 'Benjamin Sierra',
+        'phone' => '+524151234567',
+    ]);
+
+    $qrCode = CustomerQrCode::query()->where('customer_id', $customer->id)->firstOrFail();
+
+    Livewire::test(CustomerManager::class)
+        ->call('sendWelcomeMessage', $customer->id);
+
+    Http::assertSentCount(4);
+    Http::assertSent(function (Request $request) use ($customer): bool {
+        return str_contains($request->url(), '/message/sendMedia/')
+            && $request['number'] === '524151234567'
+            && str_contains($request['caption'], $customer->name);
+    });
+    Http::assertSent(function (Request $request) use ($qrCode): bool {
+        return str_contains($request->url(), '/message/sendText/')
+            && str_contains($request['text'], route('public.qr.show', ['uuid' => $qrCode->uuid]));
+    });
 });
 
 test('product manager supports grid mode', function () {

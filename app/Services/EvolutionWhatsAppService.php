@@ -64,19 +64,19 @@ class EvolutionWhatsAppService
 
     protected function sendMedia(string $number, string $caption, string $mediaBase64, string $fileName): void
     {
+        $payload = [
+            'number' => $number,
+            'mediatype' => 'image',
+            'mimetype' => 'image/png',
+            'caption' => $caption,
+            'media' => $mediaBase64,
+            'fileName' => $fileName,
+            'delay' => 300,
+            'linkPreview' => true,
+        ];
+
         try {
-            $this->client()->post($this->endpointUrl('sendMedia'), [
-                'number' => $number,
-                'mediatype' => 'image',
-                'mimetype' => 'image/png',
-                'caption' => $caption,
-                'media' => $mediaBase64,
-                'fileName' => $fileName,
-                'delay' => 300,
-                'linkPreview' => true,
-                'mentionsEveryOne' => false,
-                'mentioned' => [],
-            ])->throw();
+            $this->client()->post($this->endpointUrl('sendMedia'), $payload)->throw();
         } catch (RequestException $exception) {
             throw new RuntimeException('No fue posible enviar la credencial QR por WhatsApp.', previous: $exception);
         }
@@ -84,15 +84,15 @@ class EvolutionWhatsAppService
 
     protected function sendText(string $number, string $text): void
     {
+        $payload = [
+            'number' => $number,
+            'text' => $text,
+            'delay' => 300,
+            'linkPreview' => true,
+        ];
+
         try {
-            $this->client()->post($this->endpointUrl('sendText'), [
-                'number' => $number,
-                'text' => $text,
-                'delay' => 300,
-                'linkPreview' => true,
-                'mentionsEveryOne' => false,
-                'mentioned' => [],
-            ])->throw();
+            $this->client()->post($this->endpointUrl('sendText'), $payload)->throw();
         } catch (RequestException $exception) {
             throw new RuntimeException('No fue posible enviar el mensaje de bienvenida por WhatsApp.', previous: $exception);
         }

@@ -232,12 +232,16 @@ test('customer observer sends welcome qr credential by whatsapp when evolution i
             && $request['mimetype'] === 'image/png'
             && str_contains($request['caption'], $customer->name)
             && filled($request['media'])
+            && ! array_key_exists('mentioned', $request->data())
+            && ! array_key_exists('mentionsEveryOne', $request->data())
             && str_ends_with($request['fileName'], '.png');
     });
     Http::assertSent(function (Request $request) use ($customer, $qrCode): bool {
         return str_contains($request->url(), '/message/sendText/')
             && $request['number'] === '524151234567'
             && str_contains($request['text'], $customer->name)
+            && ! array_key_exists('mentioned', $request->data())
+            && ! array_key_exists('mentionsEveryOne', $request->data())
             && str_contains($request['text'], route('public.rewards'))
             && str_contains($request['text'], route('public.qr.show', ['uuid' => $qrCode->uuid]));
     });

@@ -259,6 +259,16 @@
 
                                             <flux:menu>
                                                 <flux:menu.item
+                                                    icon="paper-airplane"
+                                                    wire:click="sendWelcomeMessage({{ $customer->id }})"
+                                                    wire:confirm="¿Enviar de nuevo el mensaje de bienvenida por WhatsApp a este cliente?"
+                                                >
+                                                    Enviar bienvenida
+                                                </flux:menu.item>
+
+                                                <flux:menu.separator />
+
+                                                <flux:menu.item
                                                     :href="route('dashboard.customers.edit', $customer)"
                                                     icon="pencil-square"
                                                     wire:navigate
@@ -311,6 +321,16 @@
                                 <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
 
                                 <flux:menu>
+                                    <flux:menu.item
+                                        icon="paper-airplane"
+                                        wire:click="sendWelcomeMessage({{ $customer->id }})"
+                                        wire:confirm="¿Enviar de nuevo el mensaje de bienvenida por WhatsApp a este cliente?"
+                                    >
+                                        Enviar bienvenida
+                                    </flux:menu.item>
+
+                                    <flux:menu.separator />
+
                                     <flux:menu.item
                                         :href="route('dashboard.customers.edit', $customer)"
                                         icon="pencil-square"
