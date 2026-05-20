@@ -5,12 +5,16 @@ use App\Livewire\Branches\Manager as BranchManager;
 use App\Livewire\Customers\Manager as CustomerManager;
 use App\Livewire\Products\Manager as ProductManager;
 use App\Livewire\Reports\Overview as ReportsOverview;
+use App\Livewire\Team\Manager as TeamManager;
 use App\Models\Beverage;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\CustomerQrCode;
 use App\Models\Product;
+use App\Models\User;
+use App\Support\InitialIndexViewModeResolver;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
@@ -99,9 +103,54 @@ test('product manager supports grid mode', function () {
         ->assertSee('Productos');
 });
 
+test('team manager supports grid mode', function () {
+    User::factory()->count(2)->create();
+
+    Livewire::test(TeamManager::class)
+        ->set('viewMode', 'grid')
+        ->assertSet('viewMode', 'grid')
+        ->assertSee('Colaboradores');
+});
+
 test('reports overview can switch between visual and detail modes', function () {
     Livewire::test(ReportsOverview::class)
         ->set('presentationMode', 'detail')
         ->assertSet('presentationMode', 'detail')
         ->assertSee('Bebidas destacadas');
+});
+
+test('initial index view mode resolver chooses grid on mobile and list on desktop', function () {
+    $resolver = app(InitialIndexViewModeResolver::class);
+
+    $mobileRequest = HttpRequest::create('/dashboard/customers', 'GET', server: [
+        'HTTP_USER_AGENT' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    ]);
+    $desktopRequest = HttpRequest::create('/dashboard/customers', 'GET', server: [
+        'HTTP_USER_AGENT' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+    ]);
+
+    expect($resolver->resolve($mobileRequest))->toBe('grid')
+        ->and($resolver->resolve($desktopRequest))->toBe('list');
+});
+
+test('initial index view mode resolver keeps the requested query mode', function () {
+    $resolver = app(InitialIndexViewModeResolver::class);
+
+    $request = HttpRequest::create('/dashboard/customers', 'GET', [
+        'view' => 'list',
+    ], server: [
+        'HTTP_USER_AGENT' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    ]);
+
+    expect($resolver->resolve($request))->toBe('list');
+});
+
+test('explicit view query keeps the requested mode', function () {
+    request()->headers->set(
+        'User-Agent',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    );
+
+    Livewire::withQueryParams(['view' => 'list'])->test(CustomerManager::class)
+        ->assertSet('viewMode', 'list');
 });

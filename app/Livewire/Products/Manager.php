@@ -3,6 +3,7 @@
 namespace App\Livewire\Products;
 
 use App\Models\Product;
+use App\Support\InitialIndexViewModeResolver;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
@@ -20,6 +21,11 @@ class Manager extends Component
 
     #[Url(as: 'view', keep: true)]
     public string $viewMode = 'list';
+
+    public function mount(InitialIndexViewModeResolver $initialIndexViewModeResolver): void
+    {
+        $this->viewMode = $initialIndexViewModeResolver->resolve(request());
+    }
 
     public function updatedPerPage(): void
     {

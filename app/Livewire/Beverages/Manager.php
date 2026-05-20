@@ -3,6 +3,7 @@
 namespace App\Livewire\Beverages;
 
 use App\Models\Beverage;
+use App\Support\InitialIndexViewModeResolver;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,6 +29,11 @@ class Manager extends Component
     public array $selectedBeverageIds = [];
 
     public bool $selectPage = false;
+
+    public function mount(InitialIndexViewModeResolver $initialIndexViewModeResolver): void
+    {
+        $this->viewMode = $initialIndexViewModeResolver->resolve(request());
+    }
 
     public function updatedPerPage(): void
     {

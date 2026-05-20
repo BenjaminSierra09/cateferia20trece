@@ -247,6 +247,64 @@ test('customer observer sends welcome qr credential by whatsapp when evolution i
     });
 });
 
+test('customer observer resends welcome qr credential when phone changes to a new number', function () {
+    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
+    config()->set('services.evolution.api_key', 'test-api-key');
+    config()->set('services.evolution.instance_id', 'San Miguel Live');
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://evolution.benjaminsierra.com/message/sendMedia/*' => Http::response(['status' => 'PENDING'], 201),
+        'https://evolution.benjaminsierra.com/message/sendText/*' => Http::response(['status' => 'PENDING'], 201),
+    ]);
+
+    $customer = Customer::factory()->create([
+        'name' => 'Benjamin Sierra',
+        'phone' => '+52 415 123 4567',
+    ]);
+
+    Http::assertSentCount(2);
+
+    $customer->update([
+        'phone' => '+52 415 765 4321',
+    ]);
+
+    Http::assertSentCount(4);
+    Http::assertSent(function (Request $request): bool {
+        return str_contains($request->url(), '/message/sendMedia/')
+            && $request['number'] === '524157654321';
+    });
+    Http::assertSent(function (Request $request): bool {
+        return str_contains($request->url(), '/message/sendText/')
+            && $request['number'] === '524157654321';
+    });
+});
+
+test('customer observer does not resend welcome qr credential when phone formatting changes only', function () {
+    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
+    config()->set('services.evolution.api_key', 'test-api-key');
+    config()->set('services.evolution.instance_id', 'San Miguel Live');
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://evolution.benjaminsierra.com/message/sendMedia/*' => Http::response(['status' => 'PENDING'], 201),
+        'https://evolution.benjaminsierra.com/message/sendText/*' => Http::response(['status' => 'PENDING'], 201),
+    ]);
+
+    $customer = Customer::factory()->create([
+        'name' => 'Benjamin Sierra',
+        'phone' => '+52 415 123 4567',
+    ]);
+
+    Http::assertSentCount(2);
+
+    $customer->update([
+        'phone' => '524151234567',
+    ]);
+
+    Http::assertSentCount(2);
+});
+
 test('customer observer skips whatsapp delivery when evolution api key is missing', function () {
     config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
     config()->set('services.evolution.api_key', null);

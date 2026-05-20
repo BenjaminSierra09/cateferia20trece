@@ -27,4 +27,38 @@ class CustomerObserver
             report($throwable);
         }
     }
+
+    /**
+     * Handle the Customer "updated" event.
+     */
+    public function updated(Customer $customer): void
+    {
+        if (! $customer->wasChanged('phone')) {
+            return;
+        }
+
+        if ($this->normalizePhoneNumber($customer->getOriginal('phone')) === $this->normalizePhoneNumber($customer->phone)) {
+            return;
+        }
+
+        $qrCode = $customer->qrCodes()
+            ->where('is_active', true)
+            ->latest('id')
+            ->first();
+
+        if (! $qrCode instanceof CustomerQrCode) {
+            return;
+        }
+
+        try {
+            app(EvolutionWhatsAppService::class)->sendCustomerCredential($customer, $qrCode);
+        } catch (Throwable $throwable) {
+            report($throwable);
+        }
+    }
+
+    protected function normalizePhoneNumber(?string $phone): string
+    {
+        return preg_replace('/\D+/', '', (string) $phone) ?? '';
+    }
 }

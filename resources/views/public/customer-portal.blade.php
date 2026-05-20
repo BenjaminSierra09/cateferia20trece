@@ -126,7 +126,7 @@
                         <div class="rounded-[1.5rem] border border-[#8B5E34]/10 bg-[#F7F1E8]/80 p-5">
                             <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                 <div>
-                                    <p class="text-lg font-bold">Venta #{{ $sale->id }}</p>
+                                    <p class="text-lg font-bold">Compra registrada</p>
                                     <p class="text-sm text-[#6B5B4A]">
                                         {{ $sale->sold_at?->timezone('America/Mexico_City')->translatedFormat('d M Y, g:i a') }}
                                         @if ($sale->branch)

@@ -4,6 +4,7 @@ namespace App\Livewire\Customers;
 
 use App\Models\Customer;
 use App\Services\EvolutionWhatsAppService;
+use App\Support\InitialIndexViewModeResolver;
 use App\Support\TonalpohualliCalendar;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -34,6 +35,11 @@ class Manager extends Component
     public array $selectedCustomerIds = [];
 
     public bool $selectPage = false;
+
+    public function mount(InitialIndexViewModeResolver $initialIndexViewModeResolver): void
+    {
+        $this->viewMode = $initialIndexViewModeResolver->resolve(request());
+    }
 
     public function updatedSearch(): void
     {

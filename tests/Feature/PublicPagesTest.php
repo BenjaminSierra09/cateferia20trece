@@ -159,9 +159,11 @@ test('public customer portal shows rewards, favorites and recent purchases from 
         ->assertSee('Saldo a favor')
         ->assertSee('Dirty Chai')
         ->assertSee('Compras recientes')
+        ->assertSee('Compra registrada')
         ->assertSee('Matriz Centro')
         ->assertSee('Descargar tarjeta')
         ->assertSee('Tarjeta de cliente')
+        ->assertDontSee('Venta #'.$sale->id)
         ->assertSee('id="customer-card-image"', false)
         ->assertSee('data-download-name="tarjeta-cliente-', false);
 

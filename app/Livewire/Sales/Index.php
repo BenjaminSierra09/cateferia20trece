@@ -4,6 +4,7 @@ namespace App\Livewire\Sales;
 
 use App\Enums\PaymentMethod;
 use App\Models\Sale;
+use App\Support\InitialIndexViewModeResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Title;
@@ -27,6 +28,11 @@ class Index extends Component
 
     #[Url(as: 'view', keep: true)]
     public string $viewMode = 'list';
+
+    public function mount(InitialIndexViewModeResolver $initialIndexViewModeResolver): void
+    {
+        $this->viewMode = $initialIndexViewModeResolver->resolve(request());
+    }
 
     public function updatedSearch(): void
     {
