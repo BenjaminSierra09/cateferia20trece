@@ -169,7 +169,7 @@ class Create extends Component
             ->normalizeSettings($this->customization_type_settings);
 
         if ($this->beverage !== null) {
-            $this->persistCustomizationTypeSettings($this->beverage, $this->selected_customization_option_ids);
+            $this->persistCustomizationTypeSettings($this->beverage);
         }
     }
 
@@ -379,7 +379,7 @@ class Create extends Component
         $defaultOptionIds = $this->sanitizeOptionIds($validated['default_customization_option_ids'] ?? []);
 
         $this->syncCustomizationOptions($beverage, $selectedOptionIds, $defaultOptionIds);
-        $this->persistCustomizationTypeSettings($beverage, $selectedOptionIds);
+        $this->persistCustomizationTypeSettings($beverage);
 
         Flux::toast(variant: 'success', text: $this->beverage ? 'Bebida actualizada.' : 'Bebida creada.');
 
@@ -593,36 +593,27 @@ class Create extends Component
         );
     }
 
-    /**
-     * @param  array<int>  $selectedOptionIds
-     */
-    protected function persistCustomizationTypeSettings(Beverage $beverage, array $selectedOptionIds): void
+    protected function persistCustomizationTypeSettings(Beverage $beverage): void
     {
-        $normalized = app(BeverageTemperatureCustomization::class)->normalizeSelections(
-            $selectedOptionIds,
-            $this->default_customization_option_ids,
-        );
-        $selectedOptionIds = $normalized['selected'];
         $this->customization_type_settings = app(BeverageTemperatureCustomization::class)
             ->normalizeSettings($this->customization_type_settings);
 
-        $selectedTypeIds = CustomizationOption::query()
-            ->whereIn('id', $selectedOptionIds)
-            ->pluck('customization_type_id')
+        $settingTypeIds = collect(array_keys($this->customization_type_settings))
             ->map(fn (mixed $typeId): int => (int) $typeId)
+            ->filter()
             ->unique()
             ->values();
 
         $staleSettingsQuery = BeverageCustomizationTypeSetting::query()
             ->where('beverage_id', $beverage->id);
 
-        if ($selectedTypeIds->isNotEmpty()) {
-            $staleSettingsQuery->whereNotIn('customization_type_id', $selectedTypeIds);
+        if ($settingTypeIds->isNotEmpty()) {
+            $staleSettingsQuery->whereNotIn('customization_type_id', $settingTypeIds);
         }
 
         $staleSettingsQuery->delete();
 
-        $selectedTypeIds->each(function (int $typeId) use ($beverage): void {
+        $settingTypeIds->each(function (int $typeId) use ($beverage): void {
             $settings = $this->customization_type_settings[$typeId] ?? [
                 'sort_order' => count($this->customization_type_settings),
                 'is_open_by_default' => false,
@@ -671,7 +662,7 @@ class Create extends Component
         $defaultOptionIds = $this->sanitizeOptionIds($validated['default_customization_option_ids'] ?? []);
 
         $this->syncCustomizationOptions($beverage, $selectedOptionIds, $defaultOptionIds);
-        $this->persistCustomizationTypeSettings($beverage, $selectedOptionIds);
+        $this->persistCustomizationTypeSettings($beverage);
 
         return $beverage;
     }

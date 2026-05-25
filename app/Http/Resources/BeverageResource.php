@@ -71,7 +71,7 @@ class BeverageResource extends JsonResource
                 $setting = $settings->get($option->customization_type_id);
 
                 if ($option->type instanceof CustomizationType) {
-                    $option->type->setAttribute('sort_order', (int) ($setting?->sort_order ?? PHP_INT_MAX));
+                    $option->type->setAttribute('sort_order', $setting?->sort_order);
                     $option->type->setAttribute('is_open_by_default', (bool) ($setting?->is_open_by_default ?? false));
                 }
             })

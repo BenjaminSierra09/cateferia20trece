@@ -189,6 +189,46 @@ test('beverage form persists customization category sort order immediately', fun
     )->toBe(0);
 });
 
+test('beverage form keeps sorted categories without selected options after saving', function () {
+    $user = User::factory()->create();
+    $category = BeverageCategory::factory()->create();
+    $size = Size::factory()->create(['name' => 'Chico', 'capacity_label' => '8 oz', 'capacity_ounces' => 8]);
+    $beverage = Beverage::factory()->create([
+        'beverage_category_id' => $category->id,
+        'name' => 'Chocolate',
+    ]);
+    $beverage->sizePrices()->create([
+        'size_id' => $size->id,
+        'price' => 58,
+        'is_active' => true,
+    ]);
+
+    $intensityType = CustomizationType::factory()->create(['name' => 'Intensidad']);
+    $chocolateType = CustomizationType::factory()->create(['name' => 'Chocolates especiales']);
+    $normalIntensity = CustomizationOption::factory()->create(['customization_type_id' => $intensityType->id]);
+    CustomizationOption::factory()->create(['customization_type_id' => $chocolateType->id]);
+
+    $beverage->customizationOptions()->attach($normalIntensity->id, ['is_default' => false]);
+
+    Livewire::actingAs($user)
+        ->test(BeverageCreate::class, ['beverage' => $beverage])
+        ->call('sortCustomizationType', $chocolateType->id, 1)
+        ->call('save');
+
+    expect(
+        BeverageCustomizationTypeSetting::query()
+            ->where('beverage_id', $beverage->id)
+            ->where('customization_type_id', $chocolateType->id)
+            ->value('sort_order')
+    )->toBe(1);
+    expect(
+        BeverageCustomizationTypeSetting::query()
+            ->where('beverage_id', $beverage->id)
+            ->where('customization_type_id', $intensityType->id)
+            ->value('sort_order')
+    )->toBe(2);
+});
+
 test('beverage form starts large customization groups collapsed and can expand them', function () {
     $user = User::factory()->create();
     ['type' => $temperatureType] = app(BeverageTemperatureCustomization::class)->ensureExists();
