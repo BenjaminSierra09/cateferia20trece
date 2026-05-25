@@ -115,19 +115,19 @@
 
         @if ($viewMode === 'list')
             <div class="overflow-x-auto">
-                <flux:table class="min-w-[1100px]">
+                <flux:table class="w-full">
                     <flux:table.columns>
                         <flux:table.column class="w-12">
                             <flux:checkbox :checked="$selectPage" wire:click="togglePageSelection" />
                         </flux:table.column>
 
-                        <flux:table.column>Cliente</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')" class="w-80">Cliente</flux:table.column>
                         <flux:table.column class="max-lg:hidden">Tonalpohualli</flux:table.column>
                         <flux:table.column class="max-md:hidden">Nivel</flux:table.column>
-                        <flux:table.column>Saldo</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'reward_balance'" :direction="$sortDirection" wire:click="sort('reward_balance')">Saldo</flux:table.column>
                         <flux:table.column>Adeudo</flux:table.column>
                         <flux:table.column class="max-md:hidden">QR</flux:table.column>
-                        <flux:table.column>Estado</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection" wire:click="sort('is_active')">Estado</flux:table.column>
                         <flux:table.column></flux:table.column>
                     </flux:table.columns>
 

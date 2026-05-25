@@ -65,18 +65,17 @@
 
         @if ($viewMode === 'list')
             <div class="overflow-x-auto">
-                <flux:table class="min-w-[900px]">
+                <flux:table class="w-full">
                     <flux:table.columns>
                         <flux:table.column class="w-12">
                             <flux:checkbox :checked="$selectPage" wire:click="togglePageSelection" />
                         </flux:table.column>
 
-                        <flux:table.column>Bebida</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">Bebida</flux:table.column>
                         <flux:table.column>Categoría</flux:table.column>
-                        <flux:table.column>Temperatura</flux:table.column>
                         <flux:table.column class="max-lg:hidden">Tamaños</flux:table.column>
-                        <flux:table.column>Base</flux:table.column>
-                        <flux:table.column>Estado</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'base_price'" :direction="$sortDirection" wire:click="sort('base_price')">Base</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection" wire:click="sort('is_active')">Estado</flux:table.column>
                         <flux:table.column></flux:table.column>
                     </flux:table.columns>
 
@@ -122,12 +121,6 @@
                                 <flux:table.cell>
                                     <flux:badge color="zinc" inset="top bottom">
                                         {{ $beverage->category?->name ?: 'Sin categoría' }}
-                                    </flux:badge>
-                                </flux:table.cell>
-
-                                <flux:table.cell>
-                                    <flux:badge color="{{ $beverage->is_hot ? 'orange' : 'sky' }}" inset="top bottom">
-                                        {{ $beverage->is_hot ? 'Caliente' : 'Fría' }}
                                     </flux:badge>
                                 </flux:table.cell>
 
@@ -229,10 +222,6 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <flux:badge color="zinc" inset="top bottom">
                                 {{ $beverage->category?->name ?: 'Sin categoría' }}
-                            </flux:badge>
-
-                            <flux:badge color="{{ $beverage->is_hot ? 'orange' : 'sky' }}" inset="top bottom">
-                                {{ $beverage->is_hot ? 'Caliente' : 'Fría' }}
                             </flux:badge>
 
                             <flux:badge color="sky" inset="top bottom">

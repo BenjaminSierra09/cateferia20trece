@@ -23,7 +23,7 @@ class CustomerFactory extends Factory
             'phone' => fake()->phoneNumber(),
             'birthday' => fake()->optional()->date(),
             'email' => fake()->optional()->safeEmail(),
-            'reward_balance' => fake()->randomFloat(2, 0, 200),
+            'reward_balance' => 0,
             'reward_year' => (int) now()->format('Y'),
             'annual_drink_count' => fake()->numberBetween(0, 30),
             'reward_tier' => fake()->randomElement(RewardTier::cases()),

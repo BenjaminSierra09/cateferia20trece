@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Products;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\Product;
 use App\Support\InitialIndexViewModeResolver;
 use Flux\Flux;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 #[Title('Productos')]
 class Manager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'per_page', keep: true)]
@@ -42,11 +44,25 @@ class Manager extends Component
 
     public function render(): View
     {
+        $query = Product::query()->withCount('saleItems');
+
         return view('livewire.products.manager', [
-            'products' => Product::query()
-                ->withCount('saleItems')
-                ->latest()
+            'products' => ($this->sortBy === '' ? $query->latest() : $this->applySorting($query))
                 ->paginate($this->perPage),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'unit_type' => 'unit_type',
+            'base_price' => 'base_price',
+            'sale_items_count' => 'sale_items_count',
+            'is_active' => 'is_active',
+        ];
     }
 }

@@ -18,9 +18,14 @@ use App\Models\User;
 use App\Models\WorkSession;
 use App\Services\SaleService;
 use App\Services\WorkSessionService;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\Fluent\AssertableJson;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
+
+beforeEach(function (): void {
+    Queue::fake();
+});
 
 test('v1 api exposes metadata and catalog endpoints', function () {
     Sanctum::actingAs(User::factory()->create());
@@ -240,7 +245,6 @@ test('v1 api can create and update beverages with sizes and customizations', fun
         'beverage_category_id' => $category->id,
         'name' => 'Mocha',
         'description' => 'Bebida de prueba',
-        'is_hot' => false,
         'is_active' => true,
         'size_prices' => [
             ['size_id' => $small->id, 'price' => 58],
@@ -254,12 +258,11 @@ test('v1 api can create and update beverages with sizes and customizations', fun
     $storeResponse->assertSuccessful()
         ->assertJsonPath('data.name', 'Mocha')
         ->assertJsonPath('data.slug', 'mocha')
-        ->assertJsonPath('data.is_hot', false)
+        ->assertJsonPath('data.customizations.0.type.name', 'Temperatura')
         ->assertJsonPath('data.sizes.0.size_id', $small->id);
 
     $this->patchJson("/api/v1/beverages/{$beverageId}", [
         'name' => 'Mocha Blanco',
-        'is_hot' => true,
         'size_prices' => [
             ['size_id' => $small->id, 'price' => 60],
             ['size_id' => $large->id, 'price' => 78],
@@ -267,13 +270,11 @@ test('v1 api can create and update beverages with sizes and customizations', fun
     ])
         ->assertSuccessful()
         ->assertJsonPath('data.name', 'Mocha Blanco')
-        ->assertJsonPath('data.is_hot', true)
         ->assertJsonPath('data.slug', 'mocha-blanco');
 
     $this->getJson("/api/v1/beverages/{$beverageId}")
         ->assertSuccessful()
-        ->assertJsonPath('data.customizations.0.id', $option->id)
-        ->assertJsonPath('data.is_hot', true)
+        ->assertJsonFragment(['id' => $option->id, 'name' => 'Shot extra'])
         ->assertJsonPath('data.sizes.1.price', 78);
 });
 
@@ -650,5 +651,5 @@ test('v1 api prevents a customer payment from exceeding the current debt', funct
     ])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['amount'])
-        ->assertJsonPath('errors.amount.0', 'El abono no puede ser mayor a la deuda actual.');
+        ->assertJsonPath('errors.amount.0', 'El abono no puede ser mayor a la deuda actual después de aplicar el saldo a favor.');
 });

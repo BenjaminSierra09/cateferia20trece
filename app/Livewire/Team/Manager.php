@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Team;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\User;
 use App\Support\InitialIndexViewModeResolver;
 use Flux\Flux;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 #[Title('Equipo')]
 class Manager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'per_page', keep: true)]
@@ -45,8 +47,24 @@ class Manager extends Component
      */
     public function render(): View
     {
+        $query = User::query();
+
         return view('livewire.team.manager', [
-            'users' => User::query()->latest()->paginate($this->perPage),
+            'users' => ($this->sortBy === '' ? $query->latest() : $this->applySorting($query))->paginate($this->perPage),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'email' => 'email',
+            'role' => 'role',
+            'is_active' => 'is_active',
+            'created_at' => 'created_at',
+        ];
     }
 }

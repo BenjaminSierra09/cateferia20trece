@@ -29,4 +29,12 @@ class Branch extends Model
     {
         return $this->hasMany(Sale::class);
     }
+
+    /**
+     * Get the customization price overrides for the branch.
+     */
+    public function customizationSizePriceOverrides(): HasMany
+    {
+        return $this->hasMany(BranchCustomizationSizePriceOverride::class);
+    }
 }

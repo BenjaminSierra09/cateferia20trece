@@ -78,6 +78,9 @@
                     <flux:sidebar.item icon="users" :href="route('dashboard.customers.index')" :current="request()->routeIs('dashboard.customers.*')" wire:navigate>
                         {{ __('Clientes') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="sparkles" :href="route('dashboard.aztec-symbols.index')" :current="request()->routeIs('dashboard.aztec-symbols.*')" wire:navigate>
+                        {{ __('Símbolos aztecas') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="user-group" :href="route('dashboard.team.index')" :current="request()->routeIs('dashboard.team.*')" wire:navigate>
                         {{ __('Equipo') }}
                     </flux:sidebar.item>

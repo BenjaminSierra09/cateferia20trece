@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Customizations;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\CustomizationType;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -13,6 +14,7 @@ use Livewire\WithPagination;
 #[Title('Tipos de personalización')]
 class TypeManager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'per_page', keep: true)]
@@ -33,11 +35,24 @@ class TypeManager extends Component
 
     public function render(): View
     {
+        $query = CustomizationType::query()->withCount('options');
+
         return view('livewire.customizations.type-manager', [
-            'customizationTypes' => CustomizationType::query()
-                ->withCount('options')
-                ->latest()
+            'customizationTypes' => ($this->sortBy === '' ? $query->latest() : $this->applySorting($query))
                 ->paginate($this->perPage),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'selection_mode' => 'selection_mode',
+            'options_count' => 'options_count',
+            'is_active' => 'is_active',
+        ];
     }
 }

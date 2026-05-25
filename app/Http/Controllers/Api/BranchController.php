@@ -15,7 +15,7 @@ class BranchController extends Controller
         $search = $request->string('search')->toString();
 
         $branches = Branch::query()
-            ->withCount(['users', 'workSessions', 'sales'])
+            ->withCount(['workSessions', 'sales'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($innerQuery) use ($search) {
                     $innerQuery
@@ -43,12 +43,12 @@ class BranchController extends Controller
 
         $branch = Branch::query()->create($validated);
 
-        return new BranchResource($branch->loadCount(['users', 'workSessions', 'sales']));
+        return new BranchResource($branch->loadCount(['workSessions', 'sales']));
     }
 
     public function show(Branch $branch): BranchResource
     {
-        return new BranchResource($branch->loadCount(['users', 'workSessions', 'sales']));
+        return new BranchResource($branch->loadCount(['workSessions', 'sales']));
     }
 
     public function update(Request $request, Branch $branch): BranchResource
@@ -64,7 +64,7 @@ class BranchController extends Controller
 
         $branch->update($validated);
 
-        return new BranchResource($branch->fresh()->loadCount(['users', 'workSessions', 'sales']));
+        return new BranchResource($branch->fresh()->loadCount(['workSessions', 'sales']));
     }
 
     public function destroy(Branch $branch): Response

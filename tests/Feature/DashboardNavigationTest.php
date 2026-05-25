@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AztecSymbol;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\Branch;
@@ -9,6 +10,7 @@ use App\Models\CustomizationType;
 use App\Models\Product;
 use App\Models\Size;
 use App\Models\User;
+use Database\Seeders\AztecSymbolSeeder;
 
 it('renders dashboard modules under the dashboard prefix', function (string $routeName) {
     $user = User::factory()->admin()->create();
@@ -27,6 +29,7 @@ it('renders dashboard modules under the dashboard prefix', function (string $rou
     'dashboard.customizations.types.index',
     'dashboard.customizations.options.index',
     'dashboard.customers.index',
+    'dashboard.aztec-symbols.index',
     'dashboard.sales.index',
     'dashboard.team.index',
     'dashboard.reports.index',
@@ -61,6 +64,8 @@ it('renders dashboard customer edit screen under the dashboard prefix', function
 });
 
 it('renders dashboard edit screens under the dashboard prefix', function () {
+    $this->seed(AztecSymbolSeeder::class);
+
     $branch = Branch::factory()->create();
     $user = User::factory()->admin()->create();
     $category = BeverageCategory::factory()->create();
@@ -70,6 +75,7 @@ it('renders dashboard edit screens under the dashboard prefix', function () {
     $customizationType = CustomizationType::factory()->create();
     $customizationOption = CustomizationOption::factory()->create(['customization_type_id' => $customizationType->id]);
     $teammate = User::factory()->employee()->create();
+    $aztecSymbol = AztecSymbol::query()->where('slug', 'cipactli')->firstOrFail();
 
     $this->actingAs($user)->get(route('dashboard.branches.edit', $branch))->assertOk();
     $this->actingAs($user)->get(route('dashboard.categories.edit', $category))->assertOk();
@@ -78,6 +84,7 @@ it('renders dashboard edit screens under the dashboard prefix', function () {
     $this->actingAs($user)->get(route('dashboard.products.edit', $product))->assertOk();
     $this->actingAs($user)->get(route('dashboard.customizations.types.edit', $customizationType))->assertOk();
     $this->actingAs($user)->get(route('dashboard.customizations.options.edit', $customizationOption))->assertOk();
+    $this->actingAs($user)->get(route('dashboard.aztec-symbols.edit', $aztecSymbol))->assertOk();
     $this->actingAs($user)->get(route('dashboard.team.edit', $teammate))->assertOk();
 });
 
@@ -98,6 +105,8 @@ it('uses dashboard prefixes in generated urls', function () {
     expect(route('dashboard.customizations.options.index'))->toContain('/dashboard/customizations/options');
     expect(route('dashboard.customers.index'))->toContain('/dashboard/customers');
     expect(route('dashboard.customers.create'))->toContain('/dashboard/customers/create');
+    expect(route('dashboard.aztec-symbols.index'))->toContain('/dashboard/aztec-symbols');
+    expect(route('dashboard.aztec-symbols.edit', 1))->toContain('/dashboard/aztec-symbols/1/edit');
     expect(route('dashboard.sales.index'))->toContain('/dashboard/sales');
     expect(route('dashboard.reports.shifts'))->toContain('/dashboard/reports/shifts');
 });

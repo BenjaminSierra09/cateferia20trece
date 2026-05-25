@@ -20,10 +20,10 @@
 
         <flux:table :paginate="$categories">
             <flux:table.columns>
-                <flux:table.column>Categoría</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">Categoría</flux:table.column>
                 <flux:table.column>Descripción</flux:table.column>
-                <flux:table.column>Bebidas</flux:table.column>
-                <flux:table.column>Estado</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'beverages_count'" :direction="$sortDirection" wire:click="sort('beverages_count')">Bebidas</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection" wire:click="sort('is_active')">Estado</flux:table.column>
                 <flux:table.column>Acciones</flux:table.column>
             </flux:table.columns>
 

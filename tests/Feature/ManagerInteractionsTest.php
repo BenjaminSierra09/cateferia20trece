@@ -103,6 +103,20 @@ test('product manager supports grid mode', function () {
         ->assertSee('Productos');
 });
 
+test('product manager table supports flux sortable columns', function () {
+    Product::factory()->create(['name' => 'Zarzamora', 'base_price' => 20]);
+    Product::factory()->create(['name' => 'Avena', 'base_price' => 40]);
+
+    Livewire::test(ProductManager::class)
+        ->call('sort', 'name')
+        ->assertSet('sortBy', 'name')
+        ->assertSet('sortDirection', 'asc')
+        ->assertSeeInOrder(['Avena', 'Zarzamora'])
+        ->call('sort', 'name')
+        ->assertSet('sortDirection', 'desc')
+        ->assertSeeInOrder(['Zarzamora', 'Avena']);
+});
+
 test('team manager supports grid mode', function () {
     User::factory()->count(2)->create();
 

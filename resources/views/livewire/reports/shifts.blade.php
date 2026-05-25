@@ -5,9 +5,15 @@
             <flux:text>Revisa sesiones activas, historial por sucursal y cierra turnos abiertos desde el dashboard.</flux:text>
         </div>
 
-        <flux:button :href="route('dashboard.reports.index')" variant="ghost" icon="chart-bar-square" wire:navigate>
-            Volver a reportes
-        </flux:button>
+        <div class="flex flex-wrap items-center gap-3">
+            <flux:button type="button" icon="arrow-down-tray" wire:click="exportExcel">
+                Exportar Excel
+            </flux:button>
+
+            <flux:button :href="route('dashboard.reports.index')" variant="ghost" icon="chart-bar-square" wire:navigate>
+                Volver a reportes
+            </flux:button>
+        </div>
     </div>
 
     <flux:card class="grid gap-4 xl:grid-cols-5">
@@ -140,11 +146,11 @@
                 <flux:table.columns>
                     <flux:table.column>Empleado</flux:table.column>
                     <flux:table.column>Sucursal</flux:table.column>
-                    <flux:table.column>Fecha</flux:table.column>
-                    <flux:table.column>Inició</flux:table.column>
-                    <flux:table.column>Cerró</flux:table.column>
-                    <flux:table.column>Ventas</flux:table.column>
-                    <flux:table.column>Estatus</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'work_date'" :direction="$sortDirection" wire:click="sort('work_date')">Fecha</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'clock_in_at'" :direction="$sortDirection" wire:click="sort('clock_in_at')">Inició</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'clock_out_at'" :direction="$sortDirection" wire:click="sort('clock_out_at')">Cerró</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'sales_count'" :direction="$sortDirection" wire:click="sort('sales_count')">Ventas</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Estatus</flux:table.column>
                 </flux:table.columns>
                 <flux:table.rows>
                     @forelse ($this->sessions as $session)

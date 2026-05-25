@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Branches;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\Branch;
 use App\Support\InitialIndexViewModeResolver;
 use Flux\Flux;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Title('Sucursales')]
 class Manager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'per_page', keep: true)]
@@ -103,9 +105,9 @@ class Manager extends Component
 
     protected function branchQuery(): Builder
     {
-        return Branch::query()
-            ->withCount(['sales', 'workSessions'])
-            ->latest();
+        $query = Branch::query()->withCount(['sales', 'workSessions']);
+
+        return $this->sortBy === '' ? $query->latest() : $this->applySorting($query);
     }
 
     /**
@@ -132,5 +134,19 @@ class Manager extends Component
         return view('livewire.branches.manager', [
             'branches' => $this->branchQuery()->paginate($this->perPage),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'city' => 'city',
+            'work_sessions_count' => 'work_sessions_count',
+            'sales_count' => 'sales_count',
+            'is_active' => 'is_active',
+        ];
     }
 }

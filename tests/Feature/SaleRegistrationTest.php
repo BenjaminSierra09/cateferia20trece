@@ -6,9 +6,11 @@ use App\Livewire\Sales\RegisterSale;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\Branch;
+use App\Models\BranchCustomizationSizePriceOverride;
 use App\Models\Customer;
 use App\Models\CustomerQrCode;
 use App\Models\CustomizationOption;
+use App\Models\CustomizationOptionSizePrice;
 use App\Models\CustomizationType;
 use App\Models\Product;
 use App\Models\Sale;
@@ -16,6 +18,7 @@ use App\Models\Size;
 use App\Models\User;
 use App\Services\SaleService;
 use App\Services\WorkSessionService;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
 test('sale service registers totals and customizations correctly', function () {
@@ -54,6 +57,53 @@ test('sale service registers totals and customizations correctly', function () {
     expect((float) $sale->total)->toBe(120.0);
     expect($sale->items)->toHaveCount(1);
     expect($sale->items->first()->customizations)->toHaveCount(2);
+});
+
+test('sale service stores customization price resolved by branch and size', function () {
+    Queue::fake();
+
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $category = BeverageCategory::factory()->create();
+    $beverage = Beverage::factory()->create(['beverage_category_id' => $category->id, 'name' => 'Latte']);
+    $small = Size::factory()->create(['name' => 'Chico']);
+    $large = Size::factory()->create(['name' => 'Grande']);
+    $type = CustomizationType::factory()->create(['name' => 'Leches']);
+    $option = CustomizationOption::factory()->create([
+        'customization_type_id' => $type->id,
+        'name' => 'Almendra',
+        'price' => 15,
+    ]);
+
+    $beverage->sizePrices()->createMany([
+        ['size_id' => $small->id, 'price' => 50],
+        ['size_id' => $large->id, 'price' => 70],
+    ]);
+    CustomizationOptionSizePrice::query()->insert([
+        ['customization_option_id' => $option->id, 'size_id' => $small->id, 'price' => 10],
+        ['customization_option_id' => $option->id, 'size_id' => $large->id, 'price' => 20],
+    ]);
+    BranchCustomizationSizePriceOverride::query()->create([
+        'branch_id' => $branch->id,
+        'customization_option_id' => $option->id,
+        'size_id' => $large->id,
+        'price' => 18,
+    ]);
+
+    $workSession = app(WorkSessionService::class)->start($user, $branch);
+
+    $sale = app(SaleService::class)->register([
+        'payment_method' => PaymentMethod::Cash->value,
+        'items' => [[
+            'beverage_id' => $beverage->id,
+            'size_id' => $large->id,
+            'quantity' => 1,
+            'customization_option_ids' => [$option->id],
+        ]],
+    ], $user, $workSession);
+
+    expect((float) $sale->subtotal)->toBe(88.0);
+    expect((float) $sale->items->first()->customizations->first()->price)->toBe(18.0);
 });
 
 test('pos registers a sale from quick beverage selection', function () {

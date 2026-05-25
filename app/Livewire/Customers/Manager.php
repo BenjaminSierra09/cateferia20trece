@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Customers;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\Customer;
 use App\Services\EvolutionWhatsAppService;
 use App\Support\InitialIndexViewModeResolver;
@@ -18,6 +19,7 @@ use Throwable;
 #[Title('Clientes')]
 class Manager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'search', keep: true)]
@@ -148,7 +150,7 @@ class Manager extends Component
 
     protected function customerQuery(): Builder
     {
-        return Customer::query()
+        $query = Customer::query()
             ->with(['qrCodes', 'debtMovements'])
             ->when($this->search !== '', function ($query) {
                 $query->where(function ($customerQuery) {
@@ -156,8 +158,9 @@ class Manager extends Component
                         ->orWhere('phone', 'like', '%'.$this->search.'%')
                         ->orWhere('email', 'like', '%'.$this->search.'%');
                 });
-            })
-            ->latest();
+            });
+
+        return $this->sortBy === '' ? $query->latest() : $this->applySorting($query);
     }
 
     /**
@@ -194,5 +197,19 @@ class Manager extends Component
                 $customer->id => $customer->tonalpohualli(),
             ]),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'birthday' => 'birthday',
+            'reward_balance' => 'reward_balance',
+            'is_active' => 'is_active',
+            'created_at' => 'created_at',
+        ];
     }
 }

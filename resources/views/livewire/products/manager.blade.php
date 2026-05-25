@@ -32,11 +32,11 @@
         @if ($viewMode === 'list')
             <flux:table>
                 <flux:table.columns>
-                    <flux:table.column>Producto</flux:table.column>
-                    <flux:table.column>Unidad</flux:table.column>
-                    <flux:table.column>Precio base</flux:table.column>
-                    <flux:table.column>Ventas</flux:table.column>
-                    <flux:table.column>Estado</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">Producto</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'unit_type'" :direction="$sortDirection" wire:click="sort('unit_type')">Unidad</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'base_price'" :direction="$sortDirection" wire:click="sort('base_price')">Precio base</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'sale_items_count'" :direction="$sortDirection" wire:click="sort('sale_items_count')">Ventas</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection" wire:click="sort('is_active')">Estado</flux:table.column>
                     <flux:table.column>Acciones</flux:table.column>
                 </flux:table.columns>
 

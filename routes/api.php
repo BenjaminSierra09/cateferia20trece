@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthTokenController;
+use App\Http\Controllers\Api\AztecSymbolController;
 use App\Http\Controllers\Api\BeverageCategoryController;
 use App\Http\Controllers\Api\BeverageController;
 use App\Http\Controllers\Api\BranchController;
@@ -30,6 +31,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('auth/me', [AuthTokenController::class, 'show'])->name('auth.me');
         Route::delete('auth/logout', [AuthTokenController::class, 'destroy'])->name('auth.logout');
+        Route::apiResource('aztec-symbols', AztecSymbolController::class)->only(['index', 'show']);
         Route::get('qr/{uuid}', QrLookupController::class)->name('qr.lookup');
         Route::get('reports/overview', ReportController::class)->name('reports.overview');
         Route::apiResource('branches', BranchController::class);

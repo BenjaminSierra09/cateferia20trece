@@ -85,18 +85,18 @@
 
         @if ($viewMode === 'list')
             <div class="overflow-x-auto">
-                <flux:table class="min-w-[900px]">
+                <flux:table class="w-full">
                     <flux:table.columns>
                         <flux:table.column class="w-12">
                             <flux:checkbox :checked="$selectPage" wire:click="togglePageSelection" />
                         </flux:table.column>
 
-                        <flux:table.column>Sucursal</flux:table.column>
-                        <flux:table.column>Ciudad</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">Sucursal</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'city'" :direction="$sortDirection" wire:click="sort('city')">Ciudad</flux:table.column>
                         <flux:table.column class="max-lg:hidden">Horario</flux:table.column>
-                        <flux:table.column>Equipo</flux:table.column>
-                        <flux:table.column>Ventas</flux:table.column>
-                        <flux:table.column>Estado</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'work_sessions_count'" :direction="$sortDirection" wire:click="sort('work_sessions_count')">Equipo</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'sales_count'" :direction="$sortDirection" wire:click="sort('sales_count')">Ventas</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection" wire:click="sort('is_active')">Estado</flux:table.column>
                         <flux:table.column></flux:table.column>
                     </flux:table.columns>
 

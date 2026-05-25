@@ -4,12 +4,14 @@ namespace App\Livewire\Reports;
 
 use App\Enums\PaymentMethod;
 use App\Models\Branch;
+use App\Services\ReportExcelExportService;
 use App\Services\ReportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Title('Reportes')]
 class Overview extends Component
@@ -45,17 +47,23 @@ class Overview extends Component
      */
     public array $topBeveragesChart = [];
 
+    public function exportExcel(ReportExcelExportService $reportExcelExportService): StreamedResponse
+    {
+        $contents = $reportExcelExportService->overview($this->reportFilters());
+
+        return response()->streamDownload(
+            fn () => print $contents,
+            'reporte-ventas-'.now()->format('Y-m-d-His').'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
+    }
+
     /**
      * Render the reports page.
      */
     public function render(): View
     {
-        $overview = app(ReportService::class)->overview([
-            'branch_id' => $this->branch_id,
-            'payment_method' => $this->payment_method !== '' ? $this->payment_method : null,
-            'date_from' => $this->date_from !== '' ? $this->date_from : null,
-            'date_to' => $this->date_to !== '' ? $this->date_to : null,
-        ]);
+        $overview = app(ReportService::class)->overview($this->reportFilters());
 
         $this->branchChart = collect($overview['sales_by_branch'])->map(fn (array $item): array => [
             'branch' => $item['branch'],
@@ -106,5 +114,18 @@ class Overview extends Component
         $normalized = preg_replace('/\s+/', ' ', trim($label)) ?? $label;
 
         return Str::limit($normalized, 18, '…');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function reportFilters(): array
+    {
+        return [
+            'branch_id' => $this->branch_id,
+            'payment_method' => $this->payment_method !== '' ? $this->payment_method : null,
+            'date_from' => $this->date_from !== '' ? $this->date_from : null,
+            'date_to' => $this->date_to !== '' ? $this->date_to : null,
+        ];
     }
 }

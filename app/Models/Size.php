@@ -21,4 +21,12 @@ class Size extends Model
     {
         return $this->hasMany(BeverageSizePrice::class);
     }
+
+    /**
+     * Get the customization option prices using the size.
+     */
+    public function customizationOptionPrices(): HasMany
+    {
+        return $this->hasMany(CustomizationOptionSizePrice::class);
+    }
 }

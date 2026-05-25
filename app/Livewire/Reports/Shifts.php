@@ -3,8 +3,10 @@
 namespace App\Livewire\Reports;
 
 use App\Enums\WorkSessionStatus;
+use App\Livewire\Concerns\SortsTables;
 use App\Models\Branch;
 use App\Models\WorkSession;
+use App\Services\ReportExcelExportService;
 use App\Services\WorkSessionService;
 use Carbon\CarbonInterface;
 use Flux\Flux;
@@ -16,10 +18,12 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Title('Turnos')]
 class Shifts extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     private const BUSINESS_TIMEZONE = 'America/Mexico_City';
@@ -63,6 +67,17 @@ class Shifts extends Component
         Flux::toast(variant: 'success', text: 'Turno cerrado correctamente.');
     }
 
+    public function exportExcel(ReportExcelExportService $reportExcelExportService): StreamedResponse
+    {
+        $contents = $reportExcelExportService->shifts($this->reportFilters());
+
+        return response()->streamDownload(
+            fn () => print $contents,
+            'reporte-turnos-'.now()->format('Y-m-d-His').'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
+    }
+
     protected function shiftsQuery(): Builder
     {
         return WorkSession::query()
@@ -98,9 +113,9 @@ class Shifts extends Component
     #[Computed]
     public function sessions()
     {
-        return $this->shiftsQuery()
-            ->latest('work_date')
-            ->latest('clock_in_at')
+        $query = $this->shiftsQuery();
+
+        return ($this->sortBy === '' ? $query->latest('work_date')->latest('clock_in_at') : $this->applySorting($query))
             ->paginate($this->perPage);
     }
 
@@ -127,5 +142,33 @@ class Shifts extends Component
         return view('livewire.reports.shifts', [
             'statuses' => WorkSessionStatus::cases(),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function reportFilters(): array
+    {
+        return [
+            'branch_id' => $this->branch_id,
+            'status' => $this->status !== '' ? $this->status : null,
+            'search' => $this->search !== '' ? $this->search : null,
+            'date_from' => $this->date_from !== '' ? $this->date_from : null,
+            'date_to' => $this->date_to !== '' ? $this->date_to : null,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'work_date' => 'work_date',
+            'clock_in_at' => 'clock_in_at',
+            'clock_out_at' => 'clock_out_at',
+            'sales_count' => 'sales_count',
+            'status' => 'status',
+        ];
     }
 }

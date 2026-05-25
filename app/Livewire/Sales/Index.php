@@ -3,6 +3,7 @@
 namespace App\Livewire\Sales;
 
 use App\Enums\PaymentMethod;
+use App\Livewire\Concerns\SortsTables;
 use App\Models\Sale;
 use App\Support\InitialIndexViewModeResolver;
 use Illuminate\Contracts\View\View;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Title('Ventas')]
 class Index extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'search', keep: true)]
@@ -118,8 +120,8 @@ class Index extends Component
 
     public function render(): View
     {
-        $sales = $this->salesQuery()
-            ->latest('sold_at')
+        $query = $this->salesQuery();
+        $sales = ($this->sortBy === '' ? $query->latest('sold_at') : $this->applySorting($query))
             ->paginate($this->perPage);
 
         return view('livewire.sales.index', [
@@ -127,5 +129,19 @@ class Index extends Component
             'stats' => $this->stats(),
             'paymentMethods' => PaymentMethod::cases(),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'id' => 'id',
+            'sold_at' => 'sold_at',
+            'status' => 'status',
+            'payment_method' => 'payment_method',
+            'total' => 'total',
+        ];
     }
 }

@@ -25,10 +25,16 @@
             </div>
         </div>
 
-        <flux:tabs variant="segmented" class="w-auto! ml-2" size="sm">
-            <flux:tab wire:click="$set('presentationMode', 'visual')" icon="chart-bar-square" icon:variant="outline" :data-current="$presentationMode === 'visual'" />
-            <flux:tab wire:click="$set('presentationMode', 'detail')" icon="list-bullet" icon:variant="outline" :data-current="$presentationMode === 'detail'" />
-        </flux:tabs>
+        <div class="flex items-center gap-3">
+            <flux:button type="button" icon="arrow-down-tray" wire:click="exportExcel">
+                Exportar Excel
+            </flux:button>
+
+            <flux:tabs variant="segmented" class="w-auto! ml-2" size="sm">
+                <flux:tab wire:click="$set('presentationMode', 'visual')" icon="chart-bar-square" icon:variant="outline" :data-current="$presentationMode === 'visual'" />
+                <flux:tab wire:click="$set('presentationMode', 'detail')" icon="list-bullet" icon:variant="outline" :data-current="$presentationMode === 'detail'" />
+            </flux:tabs>
+        </div>
     </div>
 
     <flux:card class="grid gap-4 xl:grid-cols-4">

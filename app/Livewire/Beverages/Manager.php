@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Beverages;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\Beverage;
 use App\Support\InitialIndexViewModeResolver;
 use Flux\Flux;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Title('Bebidas')]
 class Manager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'per_page', keep: true)]
@@ -103,9 +105,9 @@ class Manager extends Component
 
     protected function beverageQuery(): Builder
     {
-        return Beverage::query()
-            ->with(['category', 'customizationOptions.type', 'sizePrices.size'])
-            ->latest();
+        $query = Beverage::query()->with(['category', 'customizationOptions.type', 'sizePrices.size']);
+
+        return $this->sortBy === '' ? $query->latest() : $this->applySorting($query);
     }
 
     /**
@@ -132,5 +134,18 @@ class Manager extends Component
         return view('livewire.beverages.manager', [
             'beverages' => $this->beverageQuery()->paginate($this->perPage),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'base_price' => 'base_price',
+            'is_active' => 'is_active',
+            'created_at' => 'created_at',
+        ];
     }
 }

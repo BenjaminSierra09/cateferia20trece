@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Enums\PaymentMethod;
 use App\Models\Beverage;
-use App\Models\BranchCustomizationPriceOverride;
+use App\Models\BranchBeverageSizeAvailability;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\WorkSession;
+use App\Support\CustomizationPriceResolver;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\UploadedFile;
@@ -20,6 +21,7 @@ class VoiceSaleDraftService
 {
     public function __construct(
         protected HttpFactory $http,
+        protected CustomizationPriceResolver $customizationPriceResolver,
     ) {}
 
     /**
@@ -359,47 +361,76 @@ TEXT;
     protected function catalogSnapshotFor(WorkSession $workSession): array
     {
         $beverages = Beverage::query()
-            ->with(['category', 'sizePrices.size', 'customizationOptions.type'])
+            ->with([
+                'category',
+                'sizePrices.size',
+                'customizationOptions.type',
+                'customizationOptions.sizePrices.size',
+                'customizationOptions.branchSizePriceOverrides' => fn ($query) => $query->where('branch_id', $workSession->branch_id),
+                'customizationTypeSettings',
+            ])
             ->where('is_active', true)
             ->orderBy('name')
             ->get()
             ->map(function (Beverage $beverage) use ($workSession): array {
+                $blockedSizeIds = BranchBeverageSizeAvailability::query()
+                    ->where('branch_id', $workSession->branch_id)
+                    ->where('beverage_id', $beverage->id)
+                    ->where('is_available', false)
+                    ->pluck('size_id')
+                    ->map(fn (mixed $sizeId): int => (int) $sizeId)
+                    ->all();
+
+                $typeSettings = $beverage->customizationTypeSettings->keyBy('customization_type_id');
+
+                $availableSizes = $beverage->sizePrices
+                    ->filter(fn ($sizePrice) => (bool) $sizePrice->size?->is_active && ! in_array((int) $sizePrice->size_id, $blockedSizeIds, true))
+                    ->map(function ($sizePrice) use ($beverage, $workSession): array {
+                        $price = DB::table('branch_beverage_price_overrides')
+                            ->where('branch_id', $workSession->branch_id)
+                            ->where('beverage_id', $beverage->id)
+                            ->where('size_id', $sizePrice->size_id)
+                            ->value('price');
+
+                        return [
+                            'size_id' => $sizePrice->size_id,
+                            'name' => $sizePrice->size?->name,
+                            'capacity_label' => $sizePrice->size?->capacity_label,
+                            'price' => round((float) ($price ?? $sizePrice->price), 2),
+                        ];
+                    })
+                    ->values();
+
                 return [
                     'id' => $beverage->id,
                     'name' => $beverage->name,
                     'category' => $beverage->category?->name,
-                    'is_hot' => $beverage->is_hot,
-                    'sizes' => $beverage->sizePrices
-                        ->filter(fn ($sizePrice) => (bool) $sizePrice->size?->is_active)
-                        ->map(function ($sizePrice) use ($beverage, $workSession): array {
-                            $price = DB::table('branch_beverage_price_overrides')
-                                ->where('branch_id', $workSession->branch_id)
-                                ->where('beverage_id', $beverage->id)
-                                ->where('size_id', $sizePrice->size_id)
-                                ->value('price');
-
-                            return [
-                                'size_id' => $sizePrice->size_id,
-                                'name' => $sizePrice->size?->name,
-                                'capacity_label' => $sizePrice->size?->capacity_label,
-                                'price' => round((float) ($price ?? $sizePrice->price), 2),
-                            ];
-                        })
-                        ->values()
-                        ->all(),
+                    'sizes' => $availableSizes->all(),
                     'customizations' => $beverage->customizationOptions
                         ->filter(fn ($option) => (bool) $option->is_available)
-                        ->map(function ($option) use ($workSession): array {
-                            $price = BranchCustomizationPriceOverride::query()
-                                ->where('branch_id', $workSession->branch_id)
-                                ->where('customization_option_id', $option->id)
-                                ->value('price');
+                        ->sortBy(fn ($option): string => sprintf(
+                            '%010d-%s-%s',
+                            (int) ($typeSettings->get($option->customization_type_id)?->sort_order ?? PHP_INT_MAX),
+                            $option->type?->name ?? '',
+                            $option->name,
+                        ))
+                        ->map(function ($option) use ($availableSizes, $typeSettings, $workSession): array {
+                            $setting = $typeSettings->get($option->customization_type_id);
 
                             return [
                                 'id' => $option->id,
                                 'name' => $option->name,
                                 'type' => $option->type?->name,
-                                'price' => round((float) ($price ?? $option->price), 2),
+                                'type_sort_order' => (int) ($setting?->sort_order ?? PHP_INT_MAX),
+                                'type_is_open_by_default' => (bool) ($setting?->is_open_by_default ?? false),
+                                'is_default' => (bool) $option->pivot?->is_default,
+                                'price' => $this->customizationPriceResolver->resolve($option, null, $workSession->branch_id),
+                                'size_prices' => $availableSizes
+                                    ->map(fn (array $size): array => [
+                                        'size_id' => $size['size_id'],
+                                        'price' => $this->customizationPriceResolver->resolve($option, (int) $size['size_id'], $workSession->branch_id),
+                                    ])
+                                    ->all(),
                             ];
                         })
                         ->values()

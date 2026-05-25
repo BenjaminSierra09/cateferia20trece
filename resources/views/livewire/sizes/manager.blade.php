@@ -18,13 +18,13 @@
             </div>
         </div>
 
-        <flux:table :paginate="$sizes">
+        <flux:table :paginate="$sizes" class="w-full">
             <flux:table.columns>
-                <flux:table.column>Tamaño</flux:table.column>
-                <flux:table.column>Etiqueta</flux:table.column>
-                <flux:table.column>Onzas</flux:table.column>
-                <flux:table.column>Usos</flux:table.column>
-                <flux:table.column>Estado</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">Tamaño</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'capacity_label'" :direction="$sortDirection" wire:click="sort('capacity_label')">Etiqueta</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'capacity_ounces'" :direction="$sortDirection" wire:click="sort('capacity_ounces')">Onzas</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'beverage_prices_count'" :direction="$sortDirection" wire:click="sort('beverage_prices_count')">Usos</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection" wire:click="sort('is_active')">Estado</flux:table.column>
                 <flux:table.column>Acciones</flux:table.column>
             </flux:table.columns>
 

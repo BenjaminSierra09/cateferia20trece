@@ -31,12 +31,12 @@
 
         @if ($viewMode === 'list')
             <div class="overflow-x-auto">
-                <flux:table :paginate="$users" class="min-w-[760px]">
+                <flux:table :paginate="$users" class="w-full">
                     <flux:table.columns>
-                        <flux:table.column>Nombre</flux:table.column>
-                        <flux:table.column>Usuario</flux:table.column>
-                        <flux:table.column>Rol</flux:table.column>
-                        <flux:table.column>Estado</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">Nombre</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'email'" :direction="$sortDirection" wire:click="sort('email')">Usuario</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'role'" :direction="$sortDirection" wire:click="sort('role')">Rol</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'is_active'" :direction="$sortDirection" wire:click="sort('is_active')">Estado</flux:table.column>
                         <flux:table.column>Acciones</flux:table.column>
                     </flux:table.columns>
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Categories;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\BeverageCategory;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -13,6 +14,7 @@ use Livewire\WithPagination;
 #[Title('Categorías')]
 class Manager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'per_page', keep: true)]
@@ -33,11 +35,24 @@ class Manager extends Component
 
     public function render(): View
     {
+        $query = BeverageCategory::query()->withCount('beverages');
+
         return view('livewire.categories.manager', [
-            'categories' => BeverageCategory::query()
-                ->withCount('beverages')
-                ->latest()
+            'categories' => ($this->sortBy === '' ? $query->latest() : $this->applySorting($query))
                 ->paginate($this->perPage),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'beverages_count' => 'beverages_count',
+            'is_active' => 'is_active',
+            'created_at' => 'created_at',
+        ];
     }
 }

@@ -6,12 +6,14 @@ use App\Enums\PaymentMethod;
 use App\Models\Beverage;
 use App\Models\BeverageCategory;
 use App\Models\BranchBeveragePriceOverride;
+use App\Models\BranchBeverageSizeAvailability;
 use App\Models\Customer;
 use App\Models\CustomerQrCode;
 use App\Models\CustomizationOption;
 use App\Models\Product;
 use App\Services\SaleService;
 use App\Services\WorkSessionService;
+use App\Support\CustomizationPriceResolver;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -66,6 +68,17 @@ class Pos extends Component
         $currentSession = app(WorkSessionService::class)->currentFor(auth()->user());
 
         if ($sizePrice === null) {
+            return;
+        }
+
+        if ($currentSession !== null && BranchBeverageSizeAvailability::query()
+            ->where('branch_id', $currentSession->branch_id)
+            ->where('beverage_id', $beverageId)
+            ->where('size_id', $sizeId)
+            ->where('is_available', false)
+            ->exists()) {
+            Flux::toast(variant: 'danger', text: 'Este tamaño no está disponible en la sucursal actual.');
+
             return;
         }
 
@@ -317,9 +330,16 @@ class Pos extends Component
 
     public function cartItemUnitPrice(array $item): float
     {
+        $currentSession = app(WorkSessionService::class)->currentFor(auth()->user());
+        $branchId = $currentSession?->branch_id;
+        $sizeId = isset($item['size_id']) ? (int) $item['size_id'] : null;
+        $priceResolver = app(CustomizationPriceResolver::class);
+
         $customizationTotal = CustomizationOption::query()
+            ->with(['sizePrices', 'branchSizePriceOverrides' => fn ($query) => $query->when($branchId !== null, fn ($branchQuery) => $branchQuery->where('branch_id', $branchId))])
             ->whereIn('id', $item['customization_option_ids'] ?? [])
-            ->sum('price');
+            ->get()
+            ->sum(fn (CustomizationOption $option): float => $priceResolver->resolve($option, $sizeId, $branchId));
 
         return round(
             (float) ($item['base_price'] ?? $item['unit_price'] ?? 0)

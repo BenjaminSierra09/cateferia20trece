@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\PublicCustomerRegistrationController;
 use App\Http\Controllers\PublicPagesController;
+use App\Livewire\AztecSymbols\Form as AztecSymbolForm;
+use App\Livewire\AztecSymbols\Manager as AztecSymbolManager;
 use App\Livewire\Beverages\Create as BeverageCreate;
 use App\Livewire\Beverages\Manager as BeverageManager;
 use App\Livewire\Branches\Create as BranchCreate;
@@ -66,6 +68,8 @@ Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])-
     Route::livewire('customers', CustomerManager::class)->name('dashboard.customers.index');
     Route::livewire('customers/create', CustomerForm::class)->name('dashboard.customers.create');
     Route::livewire('customers/{customer}/edit', CustomerForm::class)->name('dashboard.customers.edit');
+    Route::livewire('aztec-symbols', AztecSymbolManager::class)->name('dashboard.aztec-symbols.index');
+    Route::livewire('aztec-symbols/{aztecSymbol}/edit', AztecSymbolForm::class)->name('dashboard.aztec-symbols.edit');
     Route::livewire('sales', SalesIndex::class)->name('dashboard.sales.index');
     Route::livewire('sales/{sale}', SalesShow::class)->name('dashboard.sales.show');
     Route::livewire('team', TeamManager::class)->name('dashboard.team.index');

@@ -10,6 +10,7 @@ use App\Models\CustomizationOption;
 use App\Models\CustomizationType;
 use App\Models\Size;
 use App\Models\User;
+use App\Support\BeverageTemperatureCustomization;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -20,6 +21,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(AztecSymbolSeeder::class);
+
         // Create branches
         $branchCentro = Branch::factory()->create([
             'name' => 'Matriz Centro',
@@ -186,6 +189,7 @@ class DatabaseSeeder extends Seeder
 
             // Attach customization options to beverages
             $beverage->customizationOptions()->attach($allCustomizationOptionIds);
+            app(BeverageTemperatureCustomization::class)->applyToBeverage($beverage, (bool) $beverage->is_hot);
         }
 
         // Create users

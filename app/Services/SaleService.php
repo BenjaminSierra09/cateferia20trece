@@ -7,7 +7,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
 use App\Mail\SaleReceipt;
 use App\Models\Beverage;
-use App\Models\BranchCustomizationPriceOverride;
+use App\Models\BranchBeverageSizeAvailability;
 use App\Models\Customer;
 use App\Models\CustomizationOption;
 use App\Models\Product;
@@ -16,6 +16,7 @@ use App\Models\SaleItem;
 use App\Models\Size;
 use App\Models\User;
 use App\Models\WorkSession;
+use App\Support\CustomizationPriceResolver;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -26,6 +27,7 @@ class SaleService
     public function __construct(
         protected CustomerDebtService $customerDebtService,
         protected RewardProgramService $rewardProgramService,
+        protected CustomizationPriceResolver $customizationPriceResolver,
     ) {}
 
     /**
@@ -176,6 +178,15 @@ class SaleService
                 ->findOrFail($item['beverage_id']);
             $size = Size::query()->findOrFail($item['size_id']);
 
+            if (BranchBeverageSizeAvailability::query()
+                ->where('branch_id', $workSession->branch_id)
+                ->where('beverage_id', $beverage->id)
+                ->where('size_id', $size->id)
+                ->where('is_available', false)
+                ->exists()) {
+                throw new InvalidArgumentException('El tamaño seleccionado no está disponible en esta sucursal.');
+            }
+
             $branchOverride = DB::table('branch_beverage_price_overrides')
                 ->where('branch_id', $workSession->branch_id)
                 ->where('beverage_id', $beverage->id)
@@ -188,18 +199,16 @@ class SaleService
                 ?? 0;
 
             foreach (Arr::wrap($item['customization_option_ids'] ?? []) as $customizationOptionId) {
-                $option = CustomizationOption::query()->with('type')->findOrFail($customizationOptionId);
-                $override = BranchCustomizationPriceOverride::query()
-                    ->where('branch_id', $workSession->branch_id)
-                    ->where('customization_option_id', $option->id)
-                    ->value('price');
+                $option = CustomizationOption::query()
+                    ->with(['type', 'sizePrices', 'branchSizePriceOverrides' => fn ($query) => $query->where('branch_id', $workSession->branch_id)])
+                    ->findOrFail($customizationOptionId);
 
                 $customizations[] = [
                     'customization_option_id' => $option->id,
                     'customization_type_name' => $option->type?->name,
                     'customization_name' => $option->name,
                     'quantity' => 1,
-                    'price' => $override ?? $option->price,
+                    'price' => $this->customizationPriceResolver->resolve($option, $size->id, $workSession->branch_id),
                 ];
             }
 

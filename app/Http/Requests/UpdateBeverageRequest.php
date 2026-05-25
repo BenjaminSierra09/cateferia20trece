@@ -27,7 +27,6 @@ class UpdateBeverageRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'image_path' => ['nullable', 'string', 'max:255'],
-            'is_hot' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
             'size_prices' => ['sometimes', 'array', 'min:1'],
             'size_prices.*.size_id' => ['required_with:size_prices', 'integer', 'exists:sizes,id', 'distinct'],

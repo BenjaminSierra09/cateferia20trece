@@ -38,3 +38,37 @@ test('administrators can view the dedicated shifts report', function () {
         ->assertOk()
         ->assertSee('Turnos de empleados');
 });
+
+test('administrators can sort the shifts table with flux sortable columns', function () {
+    $branch = Branch::factory()->create();
+    $admin = User::factory()->admin()->create();
+    $firstEmployee = User::factory()->employee()->create(['name' => 'Primera']);
+    $secondEmployee = User::factory()->employee()->create(['name' => 'Segunda']);
+
+    WorkSession::factory()->create([
+        'user_id' => $firstEmployee->id,
+        'branch_id' => $branch->id,
+        'work_date' => '2026-05-20',
+        'clock_in_at' => '2026-05-20 08:00:00',
+        'clock_out_at' => '2026-05-20 16:00:00',
+        'status' => WorkSessionStatus::Closed,
+    ]);
+    WorkSession::factory()->create([
+        'user_id' => $secondEmployee->id,
+        'branch_id' => $branch->id,
+        'work_date' => '2026-05-21',
+        'clock_in_at' => '2026-05-21 08:00:00',
+        'clock_out_at' => '2026-05-21 16:00:00',
+        'status' => WorkSessionStatus::Closed,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(Shifts::class)
+        ->call('sort', 'work_date')
+        ->assertSet('sortBy', 'work_date')
+        ->assertSet('sortDirection', 'asc')
+        ->assertSeeInOrder(['Primera', 'Segunda'])
+        ->call('sort', 'work_date')
+        ->assertSet('sortDirection', 'desc')
+        ->assertSeeInOrder(['Segunda', 'Primera']);
+});

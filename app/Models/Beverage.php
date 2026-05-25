@@ -49,11 +49,28 @@ class Beverage extends Model
     }
 
     /**
+     * Get the branch-specific size availability rules for the beverage.
+     */
+    public function branchSizeAvailabilities(): HasMany
+    {
+        return $this->hasMany(BranchBeverageSizeAvailability::class);
+    }
+
+    /**
+     * Get the per-beverage customization category settings.
+     */
+    public function customizationTypeSettings(): HasMany
+    {
+        return $this->hasMany(BeverageCustomizationTypeSetting::class);
+    }
+
+    /**
      * Get the available customization options for the beverage.
      */
     public function customizationOptions(): BelongsToMany
     {
         return $this->belongsToMany(CustomizationOption::class)
+            ->withPivot('is_default')
             ->withTimestamps();
     }
 

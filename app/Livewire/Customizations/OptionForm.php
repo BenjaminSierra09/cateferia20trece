@@ -3,8 +3,12 @@
 namespace App\Livewire\Customizations;
 
 use App\Models\Beverage;
+use App\Models\Branch;
+use App\Models\BranchCustomizationSizePriceOverride;
 use App\Models\CustomizationOption;
+use App\Models\CustomizationOptionSizePrice;
 use App\Models\CustomizationType;
+use App\Models\Size;
 use App\Support\CatalogImageManager;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -31,6 +35,16 @@ class OptionForm extends Component
     public bool $is_available = true;
 
     public $option_image;
+
+    /**
+     * @var array<int, float|string>
+     */
+    public array $size_prices = [];
+
+    /**
+     * @var array<int, array<int, float|string|null>>
+     */
+    public array $branch_size_price_overrides = [];
 
     /**
      * @var array<int>
@@ -77,6 +91,8 @@ class OptionForm extends Component
             $this->selected_beverage_ids = $this->relatedBeverageIds();
             $this->synced_beverage_ids = $this->selected_beverage_ids;
         }
+
+        $this->hydratePricingRows();
     }
 
     public function save(): void
@@ -87,6 +103,11 @@ class OptionForm extends Component
             'option_price' => ['required', 'numeric', 'min:0'],
             'is_available' => ['boolean'],
             'option_image' => ['nullable', 'image', 'max:3072'],
+            'size_prices' => ['nullable', 'array'],
+            'size_prices.*' => ['nullable', 'numeric', 'min:0'],
+            'branch_size_price_overrides' => ['nullable', 'array'],
+            'branch_size_price_overrides.*' => ['nullable', 'array'],
+            'branch_size_price_overrides.*.*' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $optionImagePath = $this->customizationOption?->image_path;
@@ -104,6 +125,8 @@ class OptionForm extends Component
             'price' => $validated['option_price'],
             'is_available' => $validated['is_available'],
         ]);
+
+        $this->syncCustomizationPrices($option);
 
         Flux::toast(variant: 'success', text: $this->customizationOption ? 'Opción actualizada.' : 'Opción creada.');
 
@@ -149,6 +172,8 @@ class OptionForm extends Component
         return view('livewire.customizations.option-form', [
             'customizationTypes' => CustomizationType::query()->where('is_active', true)->orderBy('name')->get(),
             'beverages' => $beverages,
+            'sizes' => Size::query()->where('is_active', true)->orderBy('capacity_ounces')->orderBy('name')->get(),
+            'branches' => Branch::query()->where('is_active', true)->orderBy('name')->get(),
         ])->layout('layouts.app');
     }
 
@@ -232,6 +257,77 @@ class OptionForm extends Component
             ->orderBy('name')
             ->pluck('beverages.id')
             ->all();
+    }
+
+    protected function hydratePricingRows(): void
+    {
+        $sizePrices = $this->customizationOption?->sizePrices()->pluck('price', 'size_id') ?? collect();
+        $overrides = $this->customizationOption?->branchSizePriceOverrides()->get() ?? collect();
+
+        Size::query()
+            ->where('is_active', true)
+            ->orderBy('capacity_ounces')
+            ->orderBy('name')
+            ->get()
+            ->each(function (Size $size) use ($sizePrices): void {
+                $this->size_prices[$size->id] = (float) ($sizePrices->get($size->id) ?? $this->option_price);
+            });
+
+        Branch::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->each(function (Branch $branch) use ($overrides): void {
+                foreach (array_keys($this->size_prices) as $sizeId) {
+                    $override = $overrides
+                        ->where('branch_id', $branch->id)
+                        ->firstWhere('size_id', (int) $sizeId);
+
+                    $this->branch_size_price_overrides[$branch->id][$sizeId] = $override?->price;
+                }
+            });
+    }
+
+    protected function syncCustomizationPrices(CustomizationOption $option): void
+    {
+        $sizes = Size::query()->where('is_active', true)->get();
+        $branches = Branch::query()->where('is_active', true)->get();
+
+        foreach ($sizes as $size) {
+            $price = round((float) ($this->size_prices[$size->id] ?? $this->option_price), 2);
+
+            CustomizationOptionSizePrice::query()->updateOrCreate([
+                'customization_option_id' => $option->id,
+                'size_id' => $size->id,
+            ], [
+                'price' => $price,
+            ]);
+        }
+
+        foreach ($branches as $branch) {
+            foreach ($sizes as $size) {
+                $basePrice = round((float) ($this->size_prices[$size->id] ?? $this->option_price), 2);
+                $overridePrice = $this->branch_size_price_overrides[$branch->id][$size->id] ?? null;
+
+                if ($overridePrice === null || $overridePrice === '' || round((float) $overridePrice, 2) === $basePrice) {
+                    BranchCustomizationSizePriceOverride::query()
+                        ->where('branch_id', $branch->id)
+                        ->where('customization_option_id', $option->id)
+                        ->where('size_id', $size->id)
+                        ->delete();
+
+                    continue;
+                }
+
+                BranchCustomizationSizePriceOverride::query()->updateOrCreate([
+                    'branch_id' => $branch->id,
+                    'customization_option_id' => $option->id,
+                    'size_id' => $size->id,
+                ], [
+                    'price' => round((float) $overridePrice, 2),
+                ]);
+            }
+        }
     }
 
     protected function persistForImageGeneration(): CustomizationOption

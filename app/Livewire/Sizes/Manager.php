@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Sizes;
 
+use App\Livewire\Concerns\SortsTables;
 use App\Models\Size;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -13,6 +14,7 @@ use Livewire\WithPagination;
 #[Title('Tamaños')]
 class Manager extends Component
 {
+    use SortsTables;
     use WithPagination;
 
     #[Url(as: 'per_page', keep: true)]
@@ -33,11 +35,25 @@ class Manager extends Component
 
     public function render(): View
     {
+        $query = Size::query()->withCount('beveragePrices');
+
         return view('livewire.sizes.manager', [
-            'sizes' => Size::query()
-                ->withCount('beveragePrices')
-                ->latest()
+            'sizes' => ($this->sortBy === '' ? $query->latest() : $this->applySorting($query))
                 ->paginate($this->perPage),
         ])->layout('layouts.app');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'name' => 'name',
+            'capacity_label' => 'capacity_label',
+            'capacity_ounces' => 'capacity_ounces',
+            'beverage_prices_count' => 'beverage_prices_count',
+            'is_active' => 'is_active',
+        ];
     }
 }

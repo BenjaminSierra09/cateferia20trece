@@ -61,12 +61,12 @@
             </div>
 
             <div class="overflow-x-auto">
-                <flux:table :paginate="$customizationOptions" class="min-w-[780px]">
+                <flux:table :paginate="$customizationOptions" class="w-full">
                     <flux:table.columns>
-                        <flux:table.column>Opción</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">Opción</flux:table.column>
                         <flux:table.column>Tipo</flux:table.column>
-                        <flux:table.column>Precio</flux:table.column>
-                        <flux:table.column>Disponibilidad</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'price'" :direction="$sortDirection" wire:click="sort('price')">Precio</flux:table.column>
+                        <flux:table.column sortable :sorted="$sortBy === 'is_available'" :direction="$sortDirection" wire:click="sort('is_available')">Disponibilidad</flux:table.column>
                         <flux:table.column>Acciones</flux:table.column>
                     </flux:table.columns>
 

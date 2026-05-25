@@ -44,12 +44,12 @@
 
         <flux:table :paginate="$sales">
             <flux:table.columns>
-                <flux:table.column class="max-md:hidden">Folio</flux:table.column>
-                <flux:table.column class="max-md:hidden">Fecha</flux:table.column>
-                <flux:table.column class="max-md:hidden">Estado</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'id'" :direction="$sortDirection" wire:click="sort('id')" class="max-md:hidden">Folio</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'sold_at'" :direction="$sortDirection" wire:click="sort('sold_at')" class="max-md:hidden">Fecha</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')" class="max-md:hidden">Estado</flux:table.column>
                 <flux:table.column>Cliente</flux:table.column>
                 <flux:table.column>Compra</flux:table.column>
-                <flux:table.column>Ingreso</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'total'" :direction="$sortDirection" wire:click="sort('total')">Ingreso</flux:table.column>
                 <flux:table.column></flux:table.column>
             </flux:table.columns>
 

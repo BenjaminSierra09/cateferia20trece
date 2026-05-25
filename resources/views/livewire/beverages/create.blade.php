@@ -53,10 +53,6 @@
                             <option value="{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:radio.group wire:model="temperature" label="Temperatura">
-                        <flux:radio value="hot" label="Caliente" description="Ideal para cafés, tés e infusiones." />
-                        <flux:radio value="cold" label="Fría" description="Ideal para frappés, bebidas heladas y refrescantes." />
-                    </flux:radio.group>
                     <flux:field variant="inline">
                         <flux:label>Activa</flux:label>
                         <flux:switch wire:model.live="is_active" />
@@ -74,6 +70,12 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">
+                            <flux:button type="button" variant="ghost" size="sm" wire:click="collapseAllCustomizationTypes" icon="chevron-up-down">
+                                Comprimir todas
+                            </flux:button>
+                            <flux:button type="button" variant="ghost" size="sm" wire:click="expandAllCustomizationTypes" icon="arrows-pointing-out">
+                                Expandir todas
+                            </flux:button>
                             <flux:button type="button" variant="ghost" size="sm" wire:click="selectAllCustomizationOptions" icon="check-circle">
                                 Seleccionar todas
                             </flux:button>
@@ -88,20 +90,52 @@
                             Primero crea tipos y opciones de personalización para poder vincularlas a la bebida.
                         </flux:callout>
                     @else
-                        <div class="grid gap-4 lg:grid-cols-2">
+                        <div wire:sort="sortCustomizationType" class="space-y-3">
                             @foreach ($customizationTypes as $type)
-                                <div class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
-                                    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-                                        <div>
-                                            <div class="font-medium text-zinc-900 dark:text-white">{{ $type->name }}</div>
-                                            <div class="text-sm text-zinc-500">
-                                                {{ $type->selection_mode === 'single' ? 'Una opción a la vez' : 'Se permiten múltiples opciones' }}
+                                @php
+                                    $isCollapsed = in_array($type->id, array_map('intval', $collapsed_customization_type_ids), true);
+                                    $selectedCount = $type->options->pluck('id')->intersect(array_map('intval', $selected_customization_option_ids))->count();
+                                    $isTemperatureType = $type->slug === \App\Support\BeverageTemperatureCustomization::TypeSlug;
+                                @endphp
+                                <div wire:key="customization-type-{{ $type->id }}" wire:sort:item="{{ $type->id }}" class="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div class="flex min-w-0 items-start gap-3">
+                                            <div @if (! $isTemperatureType) wire:sort:handle @endif>
+                                                <flux:icon.bars-3 class="mt-0.5 size-5 shrink-0 cursor-grab text-zinc-400" />
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="flex flex-wrap items-center gap-2 font-medium text-zinc-900 dark:text-white">
+                                                    {{ $type->name }}
+                                                    @if ($isTemperatureType)
+                                                        <flux:badge color="orange">Primera</flux:badge>
+                                                    @endif
+                                                </div>
+                                                <div class="text-sm text-zinc-500">
+                                                    {{ $type->selection_mode === 'single' ? 'Una opción a la vez' : 'Se permiten múltiples opciones' }}
+                                                </div>
                                             </div>
                                         </div>
 
+                                        <div wire:sort:ignore class="flex flex-wrap items-center gap-2">
+                                            <flux:field variant="inline" class="rounded-xl bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
+                                                <flux:label class="text-xs">Abierta</flux:label>
+                                                <flux:switch wire:model.live="customization_type_settings.{{ $type->id }}.is_open_by_default" />
+                                                <flux:error name="customization_type_settings.{{ $type->id }}.is_open_by_default" />
+                                            </flux:field>
+                                            <flux:badge color="zinc">{{ $selectedCount }}/{{ $type->options->count() }} opciones</flux:badge>
+                                            <flux:button type="button" variant="ghost" size="sm" :icon="$isCollapsed ? 'chevron-down' : 'chevron-up'" wire:click="toggleCustomizationTypeOptions({{ $type->id }})">
+                                                {{ $isCollapsed ? 'Ver opciones' : 'Ocultar' }}
+                                            </flux:button>
+                                        </div>
+                                    </div>
+
+                                    <div wire:sort:ignore class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                                        <div class="text-xs text-zinc-500">
+                                            Orden {{ ($customization_type_settings[$type->id]['sort_order'] ?? 0) + 1 }}
+                                        </div>
+
                                         <div class="flex items-center gap-2">
-                                            <flux:badge color="zinc">{{ $type->options->count() }} opciones</flux:badge>
-                                            @if ($type->options->isNotEmpty())
+                                            @if ($type->options->isNotEmpty() && ! $isTemperatureType)
                                                 <flux:button type="button" variant="ghost" size="sm" wire:click="selectAllCustomizationOptions({{ $type->id }})">
                                                     Todas
                                                 </flux:button>
@@ -113,17 +147,34 @@
                                     </div>
 
                                     @if ($type->options->isEmpty())
-                                        <flux:text size="sm" class="text-zinc-500">No hay opciones disponibles en este tipo.</flux:text>
+                                        <div wire:sort:ignore class="mt-3">
+                                            <flux:text size="sm" class="text-zinc-500">No hay opciones disponibles en este tipo.</flux:text>
+                                        </div>
+                                    @elseif ($isCollapsed)
+                                        <div wire:sort:ignore class="mt-3 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-900">
+                                            {{ $selectedCount }} seleccionadas de {{ $type->options->count() }} opciones
+                                        </div>
                                     @else
-                                        <div class="grid gap-3">
+                                        <div wire:sort:ignore class="mt-3 grid gap-3">
                                             @foreach ($type->options as $option)
-                                                <label class="flex items-start gap-3 rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-700">
-                                                    <flux:checkbox wire:model.live="selected_customization_option_ids" value="{{ $option->id }}" />
-                                                    <div class="min-w-0">
-                                                        <div class="font-medium text-zinc-900 dark:text-white">{{ $option->name }}</div>
-                                                        <div class="text-sm text-zinc-500">${{ number_format($option->price, 2) }}</div>
-                                                    </div>
-                                                </label>
+                                                @php
+                                                    $isSelected = in_array($option->id, array_map('intval', $selected_customization_option_ids), true);
+                                                @endphp
+                                                <div class="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                                                    <label class="flex min-w-0 flex-1 items-start gap-3">
+                                                        <flux:checkbox wire:model.live="selected_customization_option_ids" value="{{ $option->id }}" :disabled="$isTemperatureType" />
+                                                        <div class="min-w-0">
+                                                            <div class="font-medium text-zinc-900 dark:text-white">{{ $option->name }}</div>
+                                                            <div class="text-sm text-zinc-500">${{ number_format($option->price, 2) }}</div>
+                                                        </div>
+                                                    </label>
+
+                                                    <flux:field variant="inline" class="shrink-0">
+                                                        <flux:label class="text-xs text-zinc-500">Default</flux:label>
+                                                        <flux:checkbox wire:model.live="default_customization_option_ids" value="{{ $option->id }}" :disabled="! $isSelected" />
+                                                        <flux:error name="default_customization_option_ids" />
+                                                    </flux:field>
+                                                </div>
                                             @endforeach
                                         </div>
                                     @endif
@@ -139,7 +190,7 @@
                     <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <flux:heading size="sm">Precios por tamaño</flux:heading>
-                            <flux:text>Activa solo los tamaños que realmente venderás y define un precio base sencillo de revisar.</flux:text>
+                            <flux:text>Activa solo los tamaños que realmente venderás y define precio y disponibilidad por sucursal.</flux:text>
                         </div>
                         <flux:badge color="sky" class="rounded-full px-3 py-1">{{ count($size_pricing) }} tamaños disponibles</flux:badge>
                     </div>
@@ -186,21 +237,33 @@
                                 @if ($pricing['enabled'])
                                     <div class="mt-5 space-y-3 rounded-3xl bg-zinc-50/90 p-4 ring-1 ring-inset ring-zinc-200/70 dark:bg-zinc-900/50 dark:ring-zinc-700/70">
                                         <div>
-                                            <div class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Precios por sucursal</div>
-                                            <div class="text-xs text-zinc-500">Si no completas un valor, esa sucursal usará el precio general de este tamaño.</div>
+                                            <div class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Sucursales</div>
+                                            <div class="text-xs text-zinc-500">Desactiva el tamaño donde no se venda. Si no completas un precio, esa sucursal usará el precio general.</div>
                                         </div>
 
                                         <div class="grid gap-3 md:grid-cols-2">
                                             @foreach ($branches as $branch)
-                                                <flux:input
-                                                    wire:model="size_pricing.{{ $index }}.branch_prices.{{ $branch->id }}"
-                                                    :label="$branch->name"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    class="min-w-0"
-                                                    placeholder="Usar precio general"
-                                                />
+                                                @php
+                                                    $branchAvailability = $pricing['branch_availability'][$branch->id] ?? $pricing['branch_availability'][(string) $branch->id] ?? true;
+                                                @endphp
+                                                <div class="space-y-3 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                                                    <flux:field variant="inline" class="justify-between">
+                                                        <flux:label>{{ $branch->name }}</flux:label>
+                                                        <flux:switch wire:model.live="size_pricing.{{ $index }}.branch_availability.{{ $branch->id }}" />
+                                                        <flux:error name="size_pricing.{{ $index }}.branch_availability.{{ $branch->id }}" />
+                                                    </flux:field>
+
+                                                    <flux:input
+                                                        wire:model="size_pricing.{{ $index }}.branch_prices.{{ $branch->id }}"
+                                                        label="Precio en sucursal"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        :disabled="! $branchAvailability"
+                                                        class="min-w-0"
+                                                        placeholder="Usar precio general"
+                                                    />
+                                                </div>
                                             @endforeach
                                         </div>
                                     </div>
