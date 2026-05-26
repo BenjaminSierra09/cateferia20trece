@@ -42,6 +42,7 @@ class CustomerController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'birthday' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:5000'],
             'is_active' => ['sometimes', 'boolean'],
             'qr_codes' => ['sometimes', 'array'],
             'qr_codes.*.uuid' => ['required', 'uuid', 'distinct'],
@@ -53,7 +54,7 @@ class CustomerController extends Controller
             'reward_year' => (int) now()->format('Y'),
             'annual_drink_count' => 0,
             'reward_tier' => RewardTier::Bronze,
-            ...collect($validated)->except('qr_codes')->all(),
+            ...$this->customerPayload($validated),
         ]);
 
         if (array_key_exists('qr_codes', $validated)) {
@@ -75,13 +76,14 @@ class CustomerController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'birthday' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:5000'],
             'is_active' => ['sometimes', 'boolean'],
             'qr_codes' => ['sometimes', 'array'],
             'qr_codes.*.uuid' => ['required', 'uuid', 'distinct'],
             'qr_codes.*.is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $customer->update(collect($validated)->except('qr_codes')->all());
+        $customer->update($this->customerPayload($validated));
 
         if (array_key_exists('qr_codes', $validated)) {
             $this->syncQrCodes($customer, collect($validated['qr_codes']));
@@ -132,5 +134,21 @@ class CustomerController extends Controller
                 ],
             );
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    protected function customerPayload(array $validated): array
+    {
+        $payload = collect($validated)->except('qr_codes')->all();
+
+        if (array_key_exists('notes', $payload)) {
+            $notes = trim((string) ($payload['notes'] ?? ''));
+            $payload['notes'] = $notes !== '' ? $notes : null;
+        }
+
+        return $payload;
     }
 }

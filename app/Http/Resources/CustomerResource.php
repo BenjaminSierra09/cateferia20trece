@@ -22,6 +22,7 @@ class CustomerResource extends JsonResource
             'phone' => $this->phone,
             'birthday' => $this->birthday?->toDateString(),
             'email' => $this->email,
+            'notes' => $this->notes,
             'reward_balance' => $this->availableRewardBalance(),
             'gross_reward_balance' => $this->reward_balance,
             'reward_year' => $this->reward_year,

@@ -155,6 +155,7 @@ test('v1 api can create update and deassign customer qr uuids', function () {
         'phone' => '+524151234567',
         'birthday' => '1996-02-09',
         'email' => 'citlali@cafeteria20trece.com',
+        'notes' => 'Aplicar promoción familiar cuando venga con su tarjeta.',
         'qr_codes' => [
             ['uuid' => $firstUuid, 'is_active' => true],
             ['uuid' => $secondUuid, 'is_active' => true],
@@ -166,18 +167,21 @@ test('v1 api can create update and deassign customer qr uuids', function () {
     $storeResponse->assertSuccessful()
         ->assertJsonPath('data.name', 'Citlali Rivera')
         ->assertJsonPath('data.birthday', '1996-02-09')
+        ->assertJsonPath('data.notes', 'Aplicar promoción familiar cuando venga con su tarjeta.')
         ->assertJsonCount(2, 'data.qr_codes');
 
     expect(CustomerQrCode::query()->where('customer_id', $customerId)->count())->toBe(2);
 
     $this->patchJson("/api/v1/customers/{$customerId}", [
         'name' => 'Citlali Rivera López',
+        'notes' => '',
         'qr_codes' => [
             ['uuid' => $secondUuid, 'is_active' => true],
         ],
     ])
         ->assertSuccessful()
         ->assertJsonPath('data.name', 'Citlali Rivera López')
+        ->assertJsonPath('data.notes', null)
         ->assertJsonCount(1, 'data.qr_codes')
         ->assertJsonPath('data.qr_codes.0.uuid', $secondUuid);
 
@@ -434,13 +438,15 @@ test('v1 api exposes tonalpohualli data for customer search and qr lookup', func
         ->assertSuccessful()
         ->assertJsonPath('data.0.name', 'Citlali Rivera')
         ->assertJsonPath('data.0.tonalpohualli.nahua', $reading['nahua'])
-        ->assertJsonPath('data.0.tonalpohualli.espanol', $reading['espanol']);
+        ->assertJsonPath('data.0.tonalpohualli.espanol', $reading['espanol'])
+        ->assertJsonPath('data.0.tonalpohualli.tonalli_display', $reading['tonalli_display']);
 
     $this->getJson("/api/v1/qr/{$qrCode->uuid}")
         ->assertSuccessful()
         ->assertJsonPath('customer.id', $customer->id)
         ->assertJsonPath('customer.tonalpohualli.nahua', $reading['nahua'])
-        ->assertJsonPath('customer.tonalpohualli.trecena', $reading['trecena']);
+        ->assertJsonPath('customer.tonalpohualli.trecena', $reading['trecena'])
+        ->assertJsonPath('customer.tonalpohualli.trecena_display', $reading['trecena_display']);
 });
 
 test('v1 api records customer debts and payments and exposes debt balances', function () {

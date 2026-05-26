@@ -67,13 +67,18 @@ class BeverageResource extends JsonResource
             : collect();
 
         return $this->customizationOptions
-            ->each(function (CustomizationOption $option) use ($settings): void {
+            ->map(function (CustomizationOption $option) use ($settings): CustomizationOption {
+                $option = clone $option;
                 $setting = $settings->get($option->customization_type_id);
 
                 if ($option->type instanceof CustomizationType) {
-                    $option->type->setAttribute('sort_order', $setting?->sort_order);
-                    $option->type->setAttribute('is_open_by_default', (bool) ($setting?->is_open_by_default ?? false));
+                    $type = clone $option->type;
+                    $type->setAttribute('sort_order', $setting?->sort_order);
+                    $type->setAttribute('is_open_by_default', (bool) ($setting?->is_open_by_default ?? false));
+                    $option->setRelation('type', $type);
                 }
+
+                return $option;
             })
             ->sortBy(fn (CustomizationOption $option): string => sprintf(
                 '%010d-%s-%s',

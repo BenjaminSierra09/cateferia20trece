@@ -20,6 +20,7 @@
             />
             <flux:date-picker wire:model.live="birthday" label="Cumpleaños" max="today" selectable-header />
             <flux:input wire:model="email" label="Correo" type="email" class="md:col-span-2" />
+            <flux:textarea wire:model="notes" label="Notas" rows="4" class="md:col-span-2" />
 
             <div class="md:col-span-2 flex justify-end">
                 <flux:button type="submit" variant="primary">Guardar cliente</flux:button>

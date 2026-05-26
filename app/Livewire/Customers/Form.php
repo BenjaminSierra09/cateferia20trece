@@ -30,6 +30,8 @@ class Form extends Component
 
     public string $email = '';
 
+    public string $notes = '';
+
     public string $qr_uuid = '';
 
     public string $debt_amount = '';
@@ -45,6 +47,7 @@ class Form extends Component
             $this->phone = $this->customer->phone ?? '';
             $this->birthday = $this->customer->birthday?->toDateString() ?? '';
             $this->email = $this->customer->email ?? '';
+            $this->notes = $this->customer->notes ?? '';
         }
     }
 
@@ -55,7 +58,13 @@ class Form extends Component
             'phone' => ['nullable', 'string', 'max:50', 'regex:'.self::PHONE_REGEX],
             'birthday' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:5000'],
         ], $this->messages(), $this->validationAttributes());
+
+        foreach (['phone', 'birthday', 'email', 'notes'] as $field) {
+            $value = trim($validated[$field] ?? '');
+            $validated[$field] = $value !== '' ? $value : null;
+        }
 
         $customer = Customer::query()->updateOrCreate(
             ['id' => $this->customer?->id],
@@ -129,6 +138,7 @@ class Form extends Component
     {
         return [
             'phone' => 'teléfono',
+            'notes' => 'notas',
             'debt_amount' => 'monto',
         ];
     }

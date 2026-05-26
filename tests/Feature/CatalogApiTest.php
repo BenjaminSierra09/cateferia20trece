@@ -182,6 +182,52 @@ test('catalog api exposes customization order open state and default options per
         ->assertJsonPath('beverages.0.customizations.1.type.is_open_by_default', false);
 });
 
+test('catalog api keeps customization category settings isolated per beverage', function () {
+    Queue::fake();
+
+    $category = BeverageCategory::factory()->create();
+    $size = Size::factory()->create(['name' => 'Mediano', 'capacity_label' => '12 oz']);
+    $milkType = CustomizationType::factory()->create(['name' => 'Leches', 'selection_mode' => 'single']);
+    $intensityType = CustomizationType::factory()->create(['name' => 'Intensidad', 'selection_mode' => 'single']);
+    $milk = CustomizationOption::factory()->create(['customization_type_id' => $milkType->id, 'name' => 'Entera']);
+    $intensity = CustomizationOption::factory()->create(['customization_type_id' => $intensityType->id, 'name' => 'Normal']);
+    $latte = Beverage::factory()->create(['beverage_category_id' => $category->id, 'name' => 'Latte']);
+    $frappe = Beverage::factory()->create(['beverage_category_id' => $category->id, 'name' => 'Frappe']);
+
+    foreach ([$latte, $frappe] as $beverage) {
+        $beverage->sizePrices()->create(['size_id' => $size->id, 'price' => 65]);
+        $beverage->customizationOptions()->attach([
+            $milk->id => ['is_default' => false],
+            $intensity->id => ['is_default' => false],
+        ]);
+    }
+
+    $latte->customizationTypeSettings()->createMany([
+        ['customization_type_id' => $milkType->id, 'sort_order' => 1, 'is_open_by_default' => false],
+        ['customization_type_id' => $intensityType->id, 'sort_order' => 2, 'is_open_by_default' => true],
+    ]);
+    $frappe->customizationTypeSettings()->createMany([
+        ['customization_type_id' => $intensityType->id, 'sort_order' => 1, 'is_open_by_default' => true],
+        ['customization_type_id' => $milkType->id, 'sort_order' => 2, 'is_open_by_default' => true],
+    ]);
+
+    $payload = $this->getJson(route('api.catalog'))->assertSuccessful()->json('beverages');
+    $byName = collect($payload)->keyBy('name');
+
+    expect(data_get($byName, 'Latte.customizations.0.type.name'))->toBe('Leches')
+        ->and(data_get($byName, 'Latte.customizations.0.type.sort_order'))->toBe(1)
+        ->and(data_get($byName, 'Latte.customizations.0.type.is_open_by_default'))->toBeFalse()
+        ->and(data_get($byName, 'Latte.customizations.1.type.name'))->toBe('Intensidad')
+        ->and(data_get($byName, 'Latte.customizations.1.type.sort_order'))->toBe(2)
+        ->and(data_get($byName, 'Latte.customizations.1.type.is_open_by_default'))->toBeTrue()
+        ->and(data_get($byName, 'Frappe.customizations.0.type.name'))->toBe('Intensidad')
+        ->and(data_get($byName, 'Frappe.customizations.0.type.sort_order'))->toBe(1)
+        ->and(data_get($byName, 'Frappe.customizations.0.type.is_open_by_default'))->toBeTrue()
+        ->and(data_get($byName, 'Frappe.customizations.1.type.name'))->toBe('Leches')
+        ->and(data_get($byName, 'Frappe.customizations.1.type.sort_order'))->toBe(2)
+        ->and(data_get($byName, 'Frappe.customizations.1.type.is_open_by_default'))->toBeTrue();
+});
+
 test('catalog api exposes temperature first with migrated default option', function () {
     Queue::fake();
 

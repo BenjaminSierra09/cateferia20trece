@@ -14,12 +14,14 @@ test('customer form stores phone numbers in international format', function () {
         ->test(CustomerForm::class)
         ->set('name', 'Cliente Demo')
         ->set('phone', '+524151234567')
+        ->set('notes', 'Descuento especial autorizado.')
         ->call('save');
 
     $customer = Customer::query()->where('name', 'Cliente Demo')->first();
 
     expect($customer)->not->toBeNull();
     expect($customer->phone)->toBe('+524151234567');
+    expect($customer->notes)->toBe('Descuento especial autorizado.');
 });
 
 test('branch form preserves international phone numbers on update', function () {

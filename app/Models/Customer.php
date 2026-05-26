@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 #[ObservedBy([CustomerObserver::class])]
-#[Fillable(['name', 'phone', 'birthday', 'email', 'reward_balance', 'reward_year', 'annual_drink_count', 'reward_tier', 'is_active'])]
+#[Fillable(['name', 'phone', 'birthday', 'email', 'notes', 'reward_balance', 'reward_year', 'annual_drink_count', 'reward_tier', 'is_active'])]
 class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
@@ -122,6 +122,8 @@ class Customer extends Model
         $calendar = app(TonalpohualliCalendar::class);
 
         $data = $calendar->resolve($this->birthday->toImmutable());
+        $data['tonalli_display'] = $data['tonalli'] ?? null;
+        $data['trecena_display'] = $data['trecena'] ?? null;
 
         // The calendar currently returns 'tonalli' with a leading coefficient like "12 - Quiahuitl".
         // For compact list display we strip the leading number and keep only the sign name.
