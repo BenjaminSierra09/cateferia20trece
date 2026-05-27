@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Exceptions\MercadoPagoPointException;
 use App\Models\Branch;
 use App\Models\MercadoPagoPointOrder;
 use App\Models\Sale;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -86,20 +88,7 @@ class MercadoPagoPointService
             'request_payload' => $payload,
         ]);
 
-        $response = $this->client($branch)
-            ->withHeader('X-Idempotency-Key', $idempotencyKey)
-            ->post('/v1/orders', $payload)
-            ->throw()
-            ->json();
-
-        $pointOrder->update([
-            'mercado_pago_order_id' => data_get($response, 'id'),
-            'status' => data_get($response, 'status', $pointOrder->status),
-            'response_payload' => $response,
-            'sent_at' => now(),
-        ]);
-
-        return $pointOrder->fresh();
+        return $this->sendOrderRequest($branch, $pointOrder, $idempotencyKey, $payload);
     }
 
     public function createManualPaymentOrder(
@@ -143,20 +132,7 @@ class MercadoPagoPointService
             'request_payload' => $payload,
         ]);
 
-        $response = $this->client($branch)
-            ->withHeader('X-Idempotency-Key', $idempotencyKey)
-            ->post('/v1/orders', $payload)
-            ->throw()
-            ->json();
-
-        $pointOrder->update([
-            'mercado_pago_order_id' => data_get($response, 'id'),
-            'status' => data_get($response, 'status', $pointOrder->status),
-            'response_payload' => $response,
-            'sent_at' => now(),
-        ]);
-
-        return $pointOrder->fresh();
+        return $this->sendOrderRequest($branch, $pointOrder, $idempotencyKey, $payload);
     }
 
     public function createPrintAction(Sale $sale, string $terminalId, ?string $terminalName = null): array
@@ -200,6 +176,45 @@ class MercadoPagoPointService
             ->timeout(15)
             ->connectTimeout(5)
             ->retry(2, 250);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function sendOrderRequest(
+        Branch $branch,
+        MercadoPagoPointOrder $pointOrder,
+        string $idempotencyKey,
+        array $payload,
+    ): MercadoPagoPointOrder {
+        try {
+            $response = $this->client($branch)
+                ->withHeader('X-Idempotency-Key', $idempotencyKey)
+                ->post('/v1/orders', $payload)
+                ->throw()
+                ->json();
+        } catch (RequestException $exception) {
+            $responsePayload = $exception->response->json();
+
+            $pointOrder->update([
+                'status' => 'failed',
+                'response_payload' => is_array($responsePayload)
+                    ? $responsePayload
+                    : ['message' => $exception->getMessage()],
+                'sent_at' => now(),
+            ]);
+
+            throw MercadoPagoPointException::fromRequestException($exception);
+        }
+
+        $pointOrder->update([
+            'mercado_pago_order_id' => data_get($response, 'id'),
+            'status' => data_get($response, 'status', $pointOrder->status),
+            'response_payload' => $response,
+            'sent_at' => now(),
+        ]);
+
+        return $pointOrder->fresh();
     }
 
     private function printContent(Sale $sale, ?string $terminalName): string

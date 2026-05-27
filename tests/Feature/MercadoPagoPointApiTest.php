@@ -129,6 +129,42 @@ test('branches can create manual mercado pago point payment orders', function ()
         && $request['config']['point']['terminal_id'] === 'NEWLAND_N950__ABC123');
 });
 
+test('mercado pago terminal busy errors are returned with friendly messages', function () {
+    Sanctum::actingAs(User::factory()->create());
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.mercadopago.com/v1/orders' => Http::response([
+            'errors' => [
+                [
+                    'code' => 'already_queued_order_on_terminal',
+                    'message' => 'There is already a queued order on the terminal.',
+                ],
+            ],
+        ], 409),
+    ]);
+
+    $branch = Branch::factory()->create([
+        'mercado_pago_is_active' => true,
+        'mercado_pago_access_token' => 'APP_USR-secret-token',
+    ]);
+
+    $this->postJson("/api/v1/branches/{$branch->id}/mercado-pago/payment-order", [
+        'amount' => 77.25,
+        'terminal_id' => 'NEWLAND_N950__ABC123',
+        'terminal_name' => 'Caja principal',
+    ])
+        ->assertConflict()
+        ->assertJsonPath('code', 'already_queued_order_on_terminal')
+        ->assertJsonPath('message', 'La terminal Point ya tiene un cobro pendiente. Termina o cancela ese cobro en la terminal antes de enviar otro.')
+        ->assertJsonPath('errors.mercado_pago.0', 'La terminal Point ya tiene un cobro pendiente. Termina o cancela ese cobro en la terminal antes de enviar otro.');
+
+    $pointOrder = MercadoPagoPointOrder::query()->where('branch_id', $branch->id)->first();
+
+    expect($pointOrder)->not->toBeNull()
+        ->and($pointOrder->status)->toBe('failed')
+        ->and($pointOrder->response_payload['errors'][0]['code'])->toBe('already_queued_order_on_terminal');
+});
+
 test('sales can send mercado pago point print actions', function () {
     Sanctum::actingAs(User::factory()->create());
     Http::preventStrayRequests();

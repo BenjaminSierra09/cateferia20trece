@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\MercadoPagoPointException;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Sale;
 use App\Services\MercadoPagoPointService;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class MercadoPagoPointOrderController extends Controller
 {
-    public function manual(Request $request, Branch $branch, MercadoPagoPointService $mercadoPagoPointService): array
+    public function manual(Request $request, Branch $branch, MercadoPagoPointService $mercadoPagoPointService): array|JsonResponse
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:1'],
@@ -31,6 +34,8 @@ class MercadoPagoPointOrderController extends Controller
                 description: $validated['description'] ?? null,
                 printOnTerminal: $validated['print_on_terminal'] ?? 'seller_ticket',
             );
+        } catch (MercadoPagoPointException $exception) {
+            return $this->mercadoPagoErrorResponse($exception);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages([
                 'mercado_pago' => [$exception->getMessage()],
@@ -51,7 +56,7 @@ class MercadoPagoPointOrderController extends Controller
         ];
     }
 
-    public function store(Request $request, Sale $sale, MercadoPagoPointService $mercadoPagoPointService): array
+    public function store(Request $request, Sale $sale, MercadoPagoPointService $mercadoPagoPointService): array|JsonResponse
     {
         $validated = $request->validate([
             'terminal_id' => ['required', 'string', 'max:255'],
@@ -66,6 +71,8 @@ class MercadoPagoPointOrderController extends Controller
                 terminalName: $validated['terminal_name'] ?? null,
                 printOnTerminal: $validated['print_on_terminal'] ?? 'seller_ticket',
             );
+        } catch (MercadoPagoPointException $exception) {
+            return $this->mercadoPagoErrorResponse($exception);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages([
                 'mercado_pago' => [$exception->getMessage()],
@@ -86,7 +93,7 @@ class MercadoPagoPointOrderController extends Controller
         ];
     }
 
-    public function print(Request $request, Sale $sale, MercadoPagoPointService $mercadoPagoPointService): array
+    public function print(Request $request, Sale $sale, MercadoPagoPointService $mercadoPagoPointService): array|JsonResponse
     {
         $validated = $request->validate([
             'terminal_id' => ['required', 'string', 'max:255'],
@@ -99,6 +106,8 @@ class MercadoPagoPointOrderController extends Controller
                 terminalId: $validated['terminal_id'],
                 terminalName: $validated['terminal_name'] ?? null,
             );
+        } catch (RequestException $exception) {
+            return $this->mercadoPagoErrorResponse(MercadoPagoPointException::fromRequestException($exception));
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages([
                 'mercado_pago' => [$exception->getMessage()],
@@ -106,5 +115,16 @@ class MercadoPagoPointOrderController extends Controller
         }
 
         return ['data' => $action];
+    }
+
+    private function mercadoPagoErrorResponse(MercadoPagoPointException $exception): JsonResponse
+    {
+        return response()->json([
+            'message' => $exception->getMessage(),
+            'code' => $exception->mercadoPagoCode,
+            'errors' => [
+                'mercado_pago' => [$exception->getMessage()],
+            ],
+        ], $exception->statusCode);
     }
 }
