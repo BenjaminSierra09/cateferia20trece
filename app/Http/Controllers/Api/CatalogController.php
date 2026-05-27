@@ -21,7 +21,25 @@ class CatalogController extends Controller
         $branchId = $request->integer('branch_id') ?: null;
 
         return response()->json([
-            'branches' => Branch::query()->where('is_active', true)->get(['id', 'name', 'city']),
+            'branches' => Branch::query()
+                ->where('is_active', true)
+                ->get([
+                    'id',
+                    'name',
+                    'city',
+                    'mercado_pago_is_active',
+                    'mercado_pago_access_token',
+                    'mercado_pago_default_terminal_id',
+                    'mercado_pago_default_terminal_name',
+                ])
+                ->map(fn (Branch $branch): array => [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'city' => $branch->city,
+                    'mercado_pago_enabled' => $branch->mercado_pago_is_active && filled($branch->mercado_pago_access_token),
+                    'mercado_pago_default_terminal_id' => $branch->mercado_pago_default_terminal_id,
+                    'mercado_pago_default_terminal_name' => $branch->mercado_pago_default_terminal_name,
+                ]),
             'sizes' => Size::query()->where('is_active', true)->get(['id', 'name', 'capacity_label']),
             'customization_types' => CustomizationType::query()
                 ->with(['options' => fn ($query) => $query

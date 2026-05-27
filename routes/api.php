@@ -11,6 +11,9 @@ use App\Http\Controllers\Api\CustomerDebtMovementController;
 use App\Http\Controllers\Api\CustomerFavoriteBeverageController;
 use App\Http\Controllers\Api\CustomizationOptionController;
 use App\Http\Controllers\Api\CustomizationTypeController;
+use App\Http\Controllers\Api\MercadoPagoPointOrderController;
+use App\Http\Controllers\Api\MercadoPagoTerminalController;
+use App\Http\Controllers\Api\MercadoPagoWebhookController;
 use App\Http\Controllers\Api\MetaController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\QrLookupController;
@@ -52,13 +55,25 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             ->name('customers.reward-transactions.store');
         Route::get('customers/{customer}/favorite-beverages', CustomerFavoriteBeverageController::class)
             ->name('customers.favorite-beverages');
+        Route::get('branches/{branch}/mercado-pago/terminals', [MercadoPagoTerminalController::class, 'index'])
+            ->name('branches.mercado-pago.terminals.index');
+        Route::patch('branches/{branch}/mercado-pago/default-terminal', [MercadoPagoTerminalController::class, 'update'])
+            ->name('branches.mercado-pago.default-terminal.update');
+        Route::post('branches/{branch}/mercado-pago/payment-order', [MercadoPagoPointOrderController::class, 'manual'])
+            ->name('branches.mercado-pago.payment-order.store');
         Route::apiResource('users', UserController::class);
         Route::apiResource('work-sessions', WorkSessionController::class)->except(['destroy']);
         Route::apiResource('sales', SaleController::class)->only(['index', 'store', 'show']);
+        Route::post('sales/{sale}/mercado-pago/payment-order', [MercadoPagoPointOrderController::class, 'store'])
+            ->name('sales.mercado-pago.payment-order.store');
+        Route::post('sales/{sale}/mercado-pago/print', [MercadoPagoPointOrderController::class, 'print'])
+            ->name('sales.mercado-pago.print.store');
         Route::post('sales/voice-drafts', VoiceSaleDraftController::class)->name('sales.voice-drafts.store');
         Route::apiResource('reward-transactions', RewardTransactionController::class)->only(['index', 'show']);
     });
 });
+
+Route::post('mercado-pago/webhook', MercadoPagoWebhookController::class)->name('api.mercado-pago.webhook');
 
 Route::get('catalog', CatalogController::class)->name('api.catalog');
 Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'show', 'update', 'destroy']);

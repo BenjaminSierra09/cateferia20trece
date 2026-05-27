@@ -27,6 +27,16 @@ class Create extends Component
 
     public bool $is_active = true;
 
+    public bool $mercado_pago_is_active = false;
+
+    public string $mercado_pago_access_token = '';
+
+    public string $mercado_pago_public_key = '';
+
+    public string $mercado_pago_default_terminal_id = '';
+
+    public string $mercado_pago_default_terminal_name = '';
+
     public function mount(?Branch $branch = null): void
     {
         $this->branch = $branch?->exists ? $branch : null;
@@ -38,6 +48,9 @@ class Create extends Component
             $this->phone = $this->branch->phone ?? '';
             $this->operating_hours = $this->branch->operating_hours ?? '07:00 - 21:00';
             $this->is_active = $this->branch->is_active;
+            $this->mercado_pago_is_active = $this->branch->mercado_pago_is_active;
+            $this->mercado_pago_default_terminal_id = $this->branch->mercado_pago_default_terminal_id ?? '';
+            $this->mercado_pago_default_terminal_name = $this->branch->mercado_pago_default_terminal_name ?? '';
         }
     }
 
@@ -50,7 +63,20 @@ class Create extends Component
             'phone' => ['nullable', 'string', 'max:50', 'regex:'.self::PHONE_REGEX],
             'operating_hours' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
+            'mercado_pago_is_active' => ['boolean'],
+            'mercado_pago_access_token' => ['nullable', 'string'],
+            'mercado_pago_public_key' => ['nullable', 'string'],
+            'mercado_pago_default_terminal_id' => ['nullable', 'string', 'max:255'],
+            'mercado_pago_default_terminal_name' => ['nullable', 'string', 'max:255'],
         ], $this->messages(), $this->validationAttributes());
+
+        if (blank($validated['mercado_pago_access_token'])) {
+            unset($validated['mercado_pago_access_token']);
+        }
+
+        if (blank($validated['mercado_pago_public_key'])) {
+            unset($validated['mercado_pago_public_key']);
+        }
 
         $branch = Branch::query()->updateOrCreate(
             ['id' => $this->branch?->id],
@@ -88,6 +114,9 @@ class Create extends Component
     {
         return [
             'phone' => 'teléfono',
+            'mercado_pago_access_token' => 'Access Token de Mercado Pago',
+            'mercado_pago_public_key' => 'Public Key de Mercado Pago',
+            'mercado_pago_default_terminal_id' => 'terminal predeterminada de Mercado Pago',
         ];
     }
 }

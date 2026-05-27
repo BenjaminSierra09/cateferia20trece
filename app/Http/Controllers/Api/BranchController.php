@@ -39,6 +39,11 @@ class BranchController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'operating_hours' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
+            'mercado_pago_is_active' => ['sometimes', 'boolean'],
+            'mercado_pago_access_token' => ['nullable', 'string'],
+            'mercado_pago_public_key' => ['nullable', 'string'],
+            'mercado_pago_default_terminal_id' => ['nullable', 'string', 'max:255'],
+            'mercado_pago_default_terminal_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         $branch = Branch::query()->create($validated);
@@ -60,6 +65,11 @@ class BranchController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'operating_hours' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
+            'mercado_pago_is_active' => ['sometimes', 'boolean'],
+            'mercado_pago_access_token' => ['nullable', 'string'],
+            'mercado_pago_public_key' => ['nullable', 'string'],
+            'mercado_pago_default_terminal_id' => ['nullable', 'string', 'max:255'],
+            'mercado_pago_default_terminal_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         $branch->update($validated);

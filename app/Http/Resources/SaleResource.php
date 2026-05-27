@@ -38,6 +38,14 @@ class SaleResource extends JsonResource
             'discount_concept' => $this->discount_concept,
             'notes' => $this->notes,
             'items' => SaleItemResource::collection($this->whenLoaded('items')),
+            'mercado_pago_point_order' => $this->whenLoaded('mercadoPagoPointOrder', fn () => [
+                'id' => $this->mercadoPagoPointOrder?->id,
+                'terminal_id' => $this->mercadoPagoPointOrder?->terminal_id,
+                'terminal_name' => $this->mercadoPagoPointOrder?->terminal_name,
+                'mercado_pago_order_id' => $this->mercadoPagoPointOrder?->mercado_pago_order_id,
+                'status' => $this->mercadoPagoPointOrder?->status,
+                'amount' => $this->mercadoPagoPointOrder?->amount,
+            ]),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

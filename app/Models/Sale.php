@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['branch_id', 'user_id', 'customer_id', 'work_session_id', 'sold_at', 'payment_method', 'payment_breakdown', 'status', 'subtotal', 'discount_total', 'reward_redeemed_total', 'total', 'discount_concept', 'notes'])]
 class Sale extends Model
@@ -82,6 +83,14 @@ class Sale extends Model
     public function debtMovements(): HasMany
     {
         return $this->hasMany(CustomerDebtMovement::class);
+    }
+
+    /**
+     * Get the Mercado Pago Point order linked to the sale.
+     */
+    public function mercadoPagoPointOrder(): HasOne
+    {
+        return $this->hasOne(MercadoPagoPointOrder::class);
     }
 
     /**

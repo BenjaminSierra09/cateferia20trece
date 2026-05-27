@@ -27,6 +27,7 @@ class SaleController extends Controller
                 'items.beverage',
                 'items.product',
                 'items.customizations',
+                'mercadoPagoPointOrder',
             ])
             ->when($request->filled('branch_id'), fn ($query) => $query->where('branch_id', $request->integer('branch_id')))
             ->when($request->filled('customer_id'), fn ($query) => $query->where('customer_id', $request->integer('customer_id')))
@@ -122,6 +123,7 @@ class SaleController extends Controller
             'items.beverage',
             'items.product',
             'items.customizations',
+            'mercadoPagoPointOrder',
         ]));
     }
 
@@ -135,6 +137,7 @@ class SaleController extends Controller
             'items.beverage',
             'items.product',
             'items.customizations',
+            'mercadoPagoPointOrder',
         ]));
     }
 
