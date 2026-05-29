@@ -4,15 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreVoiceSaleDraftRequest;
-use App\Http\Resources\SaleResource;
 use App\Models\CustomerQrCode;
 use App\Models\User;
-use App\Services\SaleService;
 use App\Services\VoiceSaleDraftService;
 use App\Services\WorkSessionService;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
-use InvalidArgumentException;
 
 class VoiceSaleDraftController extends Controller
 {
@@ -21,7 +18,6 @@ class VoiceSaleDraftController extends Controller
      */
     public function __invoke(
         StoreVoiceSaleDraftRequest $request,
-        SaleService $saleService,
         VoiceSaleDraftService $voiceSaleDraftService,
         WorkSessionService $workSessionService,
     ): JsonResponse {
@@ -52,18 +48,6 @@ class VoiceSaleDraftController extends Controller
             customerUuid: $customerUuid,
         );
 
-        try {
-            $sale = $saleService->register($draft['sale_payload'], $user, $workSession);
-        } catch (InvalidArgumentException $exception) {
-            throw new HttpResponseException(response()->json([
-                'message' => $exception->getMessage(),
-                'errors' => [
-                    'audio' => [$exception->getMessage()],
-                ],
-                'draft' => $draft,
-            ], 422));
-        }
-
         return response()->json([
             'transcript' => $draft['transcript'],
             'submitted_at' => $draft['submitted_at'],
@@ -71,15 +55,6 @@ class VoiceSaleDraftController extends Controller
             'branch' => $draft['branch'],
             'assumptions' => $draft['assumptions'],
             'sale_payload' => $draft['sale_payload'],
-            'sale' => (new SaleResource($sale->load([
-                'branch',
-                'user',
-                'customer.qrCodes',
-                'items.size',
-                'items.beverage',
-                'items.product',
-                'items.customizations',
-            ])))->resolve(),
         ], 201);
     }
 

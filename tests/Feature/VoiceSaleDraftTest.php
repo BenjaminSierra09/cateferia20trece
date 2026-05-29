@@ -18,7 +18,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 
-test('voice sale draft endpoint transcribes audio and registers the interpreted sale', function () {
+test('voice sale draft endpoint transcribes audio and returns the interpreted cart draft', function () {
     config()->set('ai.providers.openai.key', 'test-key');
     config()->set('ai.providers.openai.url', 'https://api.openai.test/v1');
 
@@ -107,17 +107,16 @@ test('voice sale draft endpoint transcribes audio and registers the interpreted 
         ->assertJsonPath('transcript', 'Vendí un capuchio grande con leche de almendra y una galleta. Pagaron con tarjeta.')
         ->assertJsonPath('sale_payload.user_id', $user->id)
         ->assertJsonPath('sale_payload.payment_method', PaymentMethod::Card->value)
+        ->assertJsonPath('sale_payload.notes', 'Interpretado desde audio')
         ->assertJsonPath('sale_payload.items.0.beverage_id', $beverage->id)
+        ->assertJsonPath('sale_payload.items.0.item_type', 'beverage')
         ->assertJsonPath('sale_payload.items.0.size_id', $size->id)
         ->assertJsonPath('sale_payload.items.0.customization_option_ids.0', $option->id)
         ->assertJsonPath('sale_payload.items.1.product_id', $product->id)
-        ->assertJsonPath('sale.payment_method', PaymentMethod::Card->value)
-        ->assertJsonPath('sale.items.0.beverage_id', $beverage->id)
-        ->assertJsonPath('sale.items.1.product_id', $product->id)
+        ->assertJsonPath('sale_payload.items.1.item_type', 'product')
         ->assertJsonPath('assumptions.0', 'Se corrigió "capuchio" a "Capuchino".');
 
-    expect(Sale::query()->count())->toBe(1)
-        ->and((float) Sale::query()->first()->total)->toBe(97.0);
+    expect(Sale::query()->count())->toBe(0);
 
     Http::assertSentCount(2);
     Http::assertSent(function (Request $request): bool {
@@ -190,11 +189,10 @@ test('voice sale draft endpoint defaults payment method to cash when omitted by 
 
     $response->assertCreated()
         ->assertJsonPath('sale_payload.payment_method', PaymentMethod::Cash->value)
-        ->assertJsonPath('sale.payment_method', PaymentMethod::Cash->value)
-        ->assertJsonPath('sale.items.0.item_name', 'Pan de 20 pesos');
+        ->assertJsonPath('sale_payload.items.0.item_type', 'temporary')
+        ->assertJsonPath('sale_payload.items.0.item_name', 'Pan de 20 pesos');
 
-    expect(Sale::query()->count())->toBe(1)
-        ->and((float) Sale::query()->first()->total)->toBe(40.0);
+    expect(Sale::query()->count())->toBe(0);
 });
 
 test('voice sale draft endpoint assigns the sale to a customer when customer uuid is provided', function () {
@@ -259,10 +257,9 @@ test('voice sale draft endpoint assigns the sale to a customer when customer uui
     ]);
 
     $response->assertCreated()
-        ->assertJsonPath('sale_payload.customer_id', $customer->id)
-        ->assertJsonPath('sale.customer.id', $customer->id);
+        ->assertJsonPath('sale_payload.customer_id', $customer->id);
 
-    expect(Sale::query()->sole()->customer_id)->toBe($customer->id);
+    expect(Sale::query()->count())->toBe(0);
 
     Http::assertSent(function (Request $request) use ($qrCode): bool {
         if (! str_ends_with($request->url(), '/responses')) {
@@ -340,8 +337,8 @@ test('voice sale draft endpoint reads structured output text from the raw output
     ]);
 
     $response->assertCreated()
-        ->assertJsonPath('sale.payment_method', PaymentMethod::Cash->value)
-        ->assertJsonPath('sale.items.0.product_id', $product->id);
+        ->assertJsonPath('sale_payload.payment_method', PaymentMethod::Cash->value)
+        ->assertJsonPath('sale_payload.items.0.product_id', $product->id);
 });
 
 test('voice sale draft endpoint rejects an unknown customer uuid', function () {

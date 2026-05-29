@@ -482,6 +482,7 @@ TEXT;
         return collect($items)
             ->map(function (array $item): array {
                 $normalized = [
+                    'item_type' => $item['item_type'] ?? 'temporary',
                     'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
                     'special_instructions' => filled($item['special_instructions'] ?? null)
                         ? Str::limit(trim((string) $item['special_instructions']), 255, '')
