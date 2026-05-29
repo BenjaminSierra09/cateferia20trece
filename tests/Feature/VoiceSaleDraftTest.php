@@ -270,6 +270,31 @@ test('voice sale draft endpoint assigns the sale to a customer when customer uui
     });
 });
 
+test('voice sale draft endpoint rejects inactive customer qr codes', function () {
+    config()->set('ai.providers.openai.key', 'test-key');
+    config()->set('ai.providers.openai.url', 'https://api.openai.test/v1');
+
+    $branch = Branch::factory()->create(['name' => 'Canal']);
+    $user = User::factory()->assignedToBranch($branch)->create();
+    $customer = Customer::factory()->create(['name' => 'Benjamin Sierra']);
+    $qrCode = CustomerQrCode::factory()->for($customer)->create([
+        'uuid' => '266ed10f-df8c-49b4-859c-271d01d58e93',
+        'is_active' => true,
+    ]);
+
+    $customer->update(['is_active' => false]);
+    app(WorkSessionService::class)->start($user, $branch);
+
+    Sanctum::actingAs($user);
+
+    $this->post(route('api.v1.sales.voice-drafts.store'), [
+        'audio' => UploadedFile::fake()->create('venta.m4a', 200, 'audio/mp4'),
+        'customer_uuid' => $qrCode->uuid,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.customer_uuid.0', 'El QR del cliente no existe o ya no está asignado.');
+});
+
 test('voice sale draft endpoint reads structured output text from the raw output array when output_text is absent', function () {
     config()->set('ai.providers.openai.key', 'test-key');
     config()->set('ai.providers.openai.url', 'https://api.openai.test/v1');

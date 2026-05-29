@@ -449,6 +449,36 @@ test('v1 api exposes tonalpohualli data for customer search and qr lookup', func
         ->assertJsonPath('customer.tonalpohualli.trecena_display', $reading['trecena_display']);
 });
 
+test('v1 api excludes inactive customers from search results and qr lookup', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $activeCustomer = Customer::factory()->create([
+        'name' => 'Citlali Activa',
+        'is_active' => true,
+    ]);
+
+    $inactiveCustomer = Customer::factory()->create([
+        'name' => 'Citlali Inactiva',
+        'is_active' => true,
+    ]);
+
+    $inactiveQrCode = CustomerQrCode::factory()->create([
+        'customer_id' => $inactiveCustomer->id,
+        'uuid' => 'inactive-customer-qr',
+        'is_active' => true,
+    ]);
+
+    $inactiveCustomer->update(['is_active' => false]);
+
+    $this->getJson('/api/v1/customers?search=Citlali')
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $activeCustomer->id);
+
+    $this->getJson("/api/v1/qr/{$inactiveQrCode->uuid}")
+        ->assertNotFound();
+});
+
 test('v1 api records customer debts and payments and exposes debt balances', function () {
     $branch = Branch::factory()->create(['name' => 'Centro']);
     $user = User::factory()->assignedToBranch($branch)->create();

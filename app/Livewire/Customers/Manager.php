@@ -87,7 +87,10 @@ class Manager extends Component
             return;
         }
 
-        Customer::query()->whereKey($this->selectedCustomerIds)->update(['is_active' => false]);
+        Customer::query()
+            ->whereKey($this->selectedCustomerIds)
+            ->get()
+            ->each(fn (Customer $customer) => $customer->deactivateAndAnonymize());
 
         $this->clearSelection();
 
@@ -110,7 +113,12 @@ class Manager extends Component
     public function toggleActive(int $customerId): void
     {
         $customer = Customer::query()->findOrFail($customerId);
-        $customer->update(['is_active' => ! $customer->is_active]);
+
+        if ($customer->is_active) {
+            $customer->deactivateAndAnonymize();
+        } else {
+            $customer->update(['is_active' => true]);
+        }
 
         Flux::toast(text: $customer->is_active ? 'Cliente reactivado.' : 'Cliente desactivado.');
     }

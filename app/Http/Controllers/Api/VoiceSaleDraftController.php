@@ -65,7 +65,9 @@ class VoiceSaleDraftController extends Controller
         }
 
         $customerId = CustomerQrCode::query()
+            ->where('is_active', true)
             ->where('uuid', $customerUuid)
+            ->whereHas('customer', fn ($query) => $query->active())
             ->value('customer_id');
 
         if ($customerId === null) {

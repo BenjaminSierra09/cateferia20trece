@@ -305,6 +305,34 @@ test('customer observer does not resend welcome qr credential when phone formatt
     Http::assertSentCount(2);
 });
 
+test('customer observer anonymizes personal data and disables qr codes when a customer is deactivated', function () {
+    $customer = Customer::factory()->create([
+        'name' => 'Benjamin Sierra',
+        'phone' => '+52 415 123 4567',
+        'birthday' => '1991-08-15',
+        'email' => 'benjamin@example.com',
+        'notes' => 'Cliente frecuente',
+        'is_active' => true,
+    ]);
+
+    $customer->qrCodes()->create([
+        'uuid' => (string) Str::uuid(),
+        'is_active' => true,
+    ]);
+
+    $customer->update(['is_active' => false]);
+
+    $customer->refresh();
+
+    expect($customer->is_active)->toBeFalse()
+        ->and($customer->name)->toContain('Cliente desactivado')
+        ->and($customer->phone)->not->toBe('+52 415 123 4567')
+        ->and($customer->birthday)->toBeNull()
+        ->and($customer->email)->toEndWith('@redacted.local')
+        ->and($customer->notes)->toBeNull()
+        ->and($customer->qrCodes()->where('is_active', true)->exists())->toBeFalse();
+});
+
 test('customer observer skips whatsapp delivery when evolution api key is missing', function () {
     config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
     config()->set('services.evolution.api_key', null);

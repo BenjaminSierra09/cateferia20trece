@@ -49,7 +49,7 @@ test('beverage manager supports grid mode and bulk deactivate', function () {
 });
 
 test('customer manager can select visible rows and bulk deactivate', function () {
-    Customer::factory()->count(2)->create(['is_active' => true]);
+    $customers = Customer::factory()->count(2)->create(['is_active' => true]);
 
     $component = Livewire::test(CustomerManager::class)
         ->call('togglePageSelection');
@@ -58,7 +58,12 @@ test('customer manager can select visible rows and bulk deactivate', function ()
 
     $component->call('deactivateSelected');
 
+    $deactivatedCustomer = Customer::query()->findOrFail($customers->first()->id);
+
     expect(Customer::query()->where('is_active', false)->count())->toBe(2);
+    expect($deactivatedCustomer->name)->toContain('Cliente desactivado');
+    expect(CustomerQrCode::query()->where('customer_id', $customers->first()->id)->where('is_active', true)->exists())
+        ->toBeFalse();
 });
 
 test('customer manager can resend the welcome whatsapp message', function () {

@@ -9,6 +9,7 @@ use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
@@ -19,6 +20,11 @@ class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
     use HasFactory;
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -103,6 +109,33 @@ class Customer extends Model
     public function hasDebt(): bool
     {
         return $this->debtBalance() > 0;
+    }
+
+    public function deactivateAndAnonymize(): void
+    {
+        if (! $this->is_active) {
+            return;
+        }
+
+        $this->forceFill($this->deactivationAnonymizedAttributes())->save();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function deactivationAnonymizedAttributes(): array
+    {
+        $token = Str::upper(Str::random(6));
+        $phone = '999'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT).str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+
+        return [
+            'name' => "Cliente desactivado {$token}",
+            'phone' => $phone,
+            'birthday' => null,
+            'email' => "disabled+{$this->id}-{$token}@redacted.local",
+            'notes' => null,
+            'is_active' => false,
+        ];
     }
 
     /**

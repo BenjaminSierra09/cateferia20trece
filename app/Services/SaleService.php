@@ -39,8 +39,12 @@ class SaleService
     {
         return DB::transaction(function () use ($payload, $user, $workSession): Sale {
             $customer = isset($payload['customer_id'])
-                ? Customer::query()->find($payload['customer_id'])
+                ? Customer::query()->active()->find($payload['customer_id'])
                 : null;
+
+            if (isset($payload['customer_id']) && $payload['customer_id'] !== null && $customer === null) {
+                throw new InvalidArgumentException('El cliente seleccionado ya no está activo.');
+            }
 
             $lineItems = collect(Arr::wrap($payload['items'] ?? []))
                 ->map(fn (array $item): array => $this->resolveLineItem($item, $workSession))

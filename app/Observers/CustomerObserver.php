@@ -11,6 +11,20 @@ use Throwable;
 class CustomerObserver
 {
     /**
+     * Handle the Customer "updating" event.
+     */
+    public function updating(Customer $customer): void
+    {
+        if (! $customer->isDirty('is_active')) {
+            return;
+        }
+
+        if ((bool) $customer->getOriginal('is_active') && ! $customer->is_active) {
+            $customer->forceFill($customer->deactivationAnonymizedAttributes());
+        }
+    }
+
+    /**
      * Handle the Customer "created" event.
      */
     public function created(Customer $customer): void
@@ -33,6 +47,18 @@ class CustomerObserver
      */
     public function updated(Customer $customer): void
     {
+        if ($customer->wasChanged('is_active') && ! $customer->is_active) {
+            $customer->qrCodes()->update([
+                'is_active' => false,
+            ]);
+
+            return;
+        }
+
+        if (! $customer->is_active) {
+            return;
+        }
+
         if (! $customer->wasChanged('phone')) {
             return;
         }

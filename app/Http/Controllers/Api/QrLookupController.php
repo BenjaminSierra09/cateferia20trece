@@ -15,7 +15,9 @@ class QrLookupController extends Controller
     {
         $qrCode = CustomerQrCode::query()
             ->with(['customer.qrCodes', 'customer.debtMovements'])
+            ->where('is_active', true)
             ->where('uuid', $uuid)
+            ->whereHas('customer', fn ($query) => $query->active())
             ->first();
 
         if ($qrCode === null) {

@@ -19,6 +19,7 @@ class CustomerController extends Controller
         $search = $request->string('search')->toString();
 
         $customers = Customer::query()
+            ->active()
             ->with(['qrCodes', 'debtMovements'])
             ->withCount('sales')
             ->when($search !== '', function ($query) use ($search) {
