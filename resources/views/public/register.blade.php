@@ -2,20 +2,20 @@
     title="Registro de cliente"
     description="Regístrate como cliente y obtén tu QR público para consultar saldo, recompensas e historial."
 >
-    <section class="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div class="rounded-[2rem] border border-white/60 bg-white/80 p-8 shadow-xl shadow-[#8B5E34]/10 backdrop-blur">
-            <span class="inline-flex rounded-full border border-[#8B5E34]/15 bg-[#8B5E34]/10 px-4 py-2 text-sm font-semibold text-[#6F4324]">
-                <flux:icon.user-plus class="mr-2 size-4" /> Registro público
+    <section class="grid items-start gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <div class="u-reveal u-card p-8 sm:p-10">
+            <span class="inline-flex items-center gap-2 rounded-full border border-coffee/15 bg-coffee/10 px-4 py-2 text-sm font-semibold text-cacao">
+                <flux:icon.user-plus class="size-4" /> Registro público
             </span>
 
-            <h1 class="mt-4 text-4xl font-black tracking-tight">Obtén tu QR de cliente</h1>
-            <p class="mt-4 max-w-2xl text-base leading-8 text-[#6B5B4A]">
+            <h1 class="mt-6 font-serif text-4xl font-semibold leading-[1.05] tracking-tight text-espresso sm:text-5xl">Obtén tu QR de cliente</h1>
+            <p class="mt-4 max-w-xl text-base leading-8 text-mocha">
                 Regístrate una sola vez para consultar tu cuenta, recompensas y compras recientes desde cualquier dispositivo.
             </p>
 
             @if ($errors->any())
-                <div class="mt-6 rounded-[1.5rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">
-                    Revisa la información capturada e intenta nuevamente.
+                <div class="mt-6 rounded-2xl border border-rose-300/70 bg-rose-50 px-5 py-4 text-sm text-rose-800">
+                    <span class="inline-flex items-center gap-2"><flux:icon.exclamation-triangle class="size-4" /> Revisa la información capturada e intenta nuevamente.</span>
                 </div>
             @endif
 
@@ -59,17 +59,17 @@
 
                 <input type="hidden" name="recaptcha_token" id="recaptcha_token" value="{{ old('recaptcha_token') }}">
 
-                <div class="flex items-start gap-3 rounded-[1.5rem] border border-[#8B5E34]/10 bg-[#F7F1E8]/80 px-4 py-4">
+                <div class="flex items-start gap-3 rounded-2xl border border-coffee/15 bg-crema/60 px-4 py-4">
                     <input
                         id="privacy_consent"
                         name="privacy_consent"
                         type="checkbox"
                         value="1"
                         @checked(old('privacy_consent'))
-                        class="mt-1 size-4 rounded border border-[#8B5E34]/30 text-[#6F4324] accent-[#6F4324] focus:ring-2 focus:ring-[#8B5E34]/30"
+                        class="mt-1 size-4 rounded border border-coffee/40 text-cacao accent-[#6b4226] focus:ring-2 focus:ring-terracotta/30"
                     >
-                    <label for="privacy_consent" class="cursor-pointer text-sm leading-7 text-[#6B5B4A]">
-                        Acepto el <a href="{{ route('public.privacy') }}" class="font-semibold text-[#6F4324] underline underline-offset-4">aviso de privacidad</a> y autorizo el uso de mis datos para administrar mi cuenta de cliente.
+                    <label for="privacy_consent" class="cursor-pointer text-sm leading-7 text-mocha">
+                        Acepto el <a href="{{ route('public.privacy') }}" class="font-semibold text-terracotta underline underline-offset-4">aviso de privacidad</a> y autorizo el uso de mis datos para administrar mi cuenta de cliente.
                     </label>
                 </div>
 
@@ -81,36 +81,40 @@
                     <p class="text-sm font-medium text-rose-700">{{ $message }}</p>
                 @enderror
 
-                <div id="recaptcha-status" class="hidden rounded-[1.5rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800"></div>
+                <div id="recaptcha-status" class="hidden rounded-2xl border border-rose-300/70 bg-rose-50 px-5 py-4 text-sm text-rose-800"></div>
 
-                <div class="flex flex-wrap gap-3">
-                    <flux:button type="submit" variant="primary" class="w-full sm:w-auto" data-test="public-register-button">
-                        Obtener mi QR
-                    </flux:button>
+                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <button type="submit" class="u-btn u-btn--accent" data-test="public-register-button">
+                        <flux:icon.qr-code class="size-5" /> Obtener mi QR
+                    </button>
 
-                    <a
-                        href="{{ route('public.lookup') }}"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#8B5E34]/20 bg-white px-5 py-3 text-sm font-bold text-[#6F4324] transition hover:bg-[#8B5E34]/5 sm:w-auto"
-                    >
-                        <flux:icon.qr-code class="size-4" /> Ya tengo QR
+                    <a href="{{ route('public.lookup') }}" class="u-btn u-btn--outline">
+                        <flux:icon.qr-code class="size-5" /> Ya tengo QR
                     </a>
                 </div>
             </form>
         </div>
 
         <div class="space-y-6">
-            <article class="rounded-[1.75rem] border border-white/60 bg-white/80 p-7 shadow-lg shadow-[#8B5E34]/5">
-                <h2 class="inline-flex items-center gap-3 text-2xl font-bold"><flux:icon.sparkles class="size-6 text-[#8B5E34]" /> Qué recibes al registrarte</h2>
-                <ul class="mt-4 space-y-3 text-sm leading-7 text-[#6B5B4A]">
-                    <li>Tu QR personal listo para mostrar en sucursal.</li>
-                    <li>Acceso a saldo a favor, visitas y recompensas.</li>
-                    <li>Historial reciente de compras y bebidas favoritas.</li>
+            <article class="u-reveal u-card p-7" data-delay="1">
+                <h2 class="flex items-center gap-3 font-serif text-2xl font-semibold text-espresso"><flux:icon.sparkles class="size-6 text-terracotta" /> Qué recibes al registrarte</h2>
+                <ul class="mt-5 space-y-3 text-sm leading-7 text-mocha">
+                    @foreach ([
+                        'Tu QR personal listo para mostrar en sucursal.',
+                        'Acceso a saldo a favor, visitas y recompensas.',
+                        'Historial reciente de compras y bebidas favoritas.',
+                    ] as $perk)
+                        <li class="flex items-start gap-3">
+                            <flux:icon.check-circle class="mt-0.5 size-5 shrink-0 text-sage" />
+                            <span>{{ $perk }}</span>
+                        </li>
+                    @endforeach
                 </ul>
             </article>
 
-            <article class="rounded-[1.75rem] border border-white/60 bg-white/80 p-7 shadow-lg shadow-[#8B5E34]/5">
-                <h2 class="inline-flex items-center gap-3 text-2xl font-bold"><flux:icon.shield-check class="size-6 text-[#8B5E34]" /> Seguridad</h2>
-                <p class="mt-4 text-sm leading-7 text-[#6B5B4A]">
+            <article class="u-reveal u-card p-7" data-delay="2">
+                <h2 class="flex items-center gap-3 font-serif text-2xl font-semibold text-espresso"><flux:icon.shield-check class="size-6 text-terracotta" /> Seguridad</h2>
+                <p class="mt-4 text-sm leading-7 text-mocha">
                     Este formulario puede validar Recaptcha de Google para reducir registros automatizados. En ambientes locales o de prueba puede permanecer desactivado.
                 </p>
             </article>

@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\PublicArcoRequestController;
 use App\Http\Controllers\PublicCustomerRegistrationController;
+use App\Http\Controllers\PublicInvoiceRequestController;
 use App\Http\Controllers\PublicPagesController;
 use App\Livewire\AztecSymbols\Form as AztecSymbolForm;
 use App\Livewire\AztecSymbols\Manager as AztecSymbolManager;
@@ -33,10 +35,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicPagesController::class, 'home'])->name('home');
 Route::get('terminos-y-condiciones', [PublicPagesController::class, 'terms'])->name('public.terms');
 Route::get('aviso-de-privacidad', [PublicPagesController::class, 'privacy'])->name('public.privacy');
+Route::post('aviso-de-privacidad/solicitud-arco', [PublicArcoRequestController::class, 'store'])->name('public.arco.store');
 Route::get('recompensas', [PublicPagesController::class, 'rewards'])->name('public.rewards');
 Route::get('mi-cuenta', [PublicPagesController::class, 'lookup'])->name('public.lookup');
 Route::get('registro-cliente', [PublicCustomerRegistrationController::class, 'create'])->name('public.register');
 Route::post('registro-cliente', [PublicCustomerRegistrationController::class, 'store'])->name('public.register.store');
+Route::get('facturacion', [PublicInvoiceRequestController::class, 'create'])->name('public.invoice');
+Route::post('facturacion', [PublicInvoiceRequestController::class, 'store'])->name('public.invoice.store');
 Route::get('qr/{uuid}', [PublicPagesController::class, 'customerPortal'])->name('public.qr.show');
 
 Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])->group(function () {

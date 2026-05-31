@@ -47,4 +47,12 @@ return [
         'instance_id' => env('EVOLUTION_INSTANCE_ID', 'CAFETERIA20TRECE'),
     ],
 
+    'privacy' => [
+        'email' => env('PRIVACY_CONTACT_EMAIL', 'privacidad@cafe20trece.com'),
+    ],
+
+    'invoicing' => [
+        'email' => env('INVOICE_CONTACT_EMAIL', 'facturacion@cafe20trece.com'),
+    ],
+
 ];
