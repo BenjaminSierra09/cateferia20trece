@@ -54,7 +54,9 @@ class ListFavoriteBeveragesTool implements Tool
     {
         return [
             'limit' => $schema->integer()
-                ->description('Cuántas bebidas favoritas devolver (1-5). Por defecto 3.'),
+                ->description('Cuántas bebidas favoritas devolver (1-5). Usa null para el valor por defecto (3).')
+                ->required()
+                ->nullable(),
         ];
     }
 }

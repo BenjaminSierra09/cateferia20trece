@@ -107,7 +107,8 @@ class CafeInfoTool implements Tool
         return [
             'topic' => $schema->string()
                 ->enum(['horarios', 'ubicacion', 'recompensas', 'privacidad', 'arco', 'terminos', 'facturacion', 'contacto', 'todo'])
-                ->description('Tema sobre el que pregunta el cliente. Por defecto "todo".'),
+                ->description('Tema sobre el que pregunta el cliente. Usa "todo" para información general.')
+                ->required(),
         ];
     }
 }

@@ -50,14 +50,21 @@ class BrowseMenuTool implements Tool
     {
         return [
             'category' => $schema->string()
-                ->description('Filtra bebidas por nombre o slug de categoría (coincidencia parcial), p. ej. "café".'),
+                ->description('Filtra bebidas por nombre o slug de categoría (coincidencia parcial), p. ej. "café". Usa null para no filtrar por categoría.')
+                ->required()
+                ->nullable(),
             'temperature' => $schema->string()
                 ->enum(['hot', 'cold', 'any'])
-                ->description('Filtra bebidas por temperatura. Por defecto "any".'),
+                ->description('Filtra bebidas por temperatura. Usa "any" para no filtrar.')
+                ->required(),
             'search' => $schema->string()
-                ->description('Búsqueda parcial por nombre (aplica a bebidas y productos).'),
+                ->description('Búsqueda parcial por nombre (aplica a bebidas y productos). Usa null si no hay búsqueda.')
+                ->required()
+                ->nullable(),
             'include_products' => $schema->boolean()
-                ->description('Incluir productos de comida además de bebidas. Por defecto true.'),
+                ->description('Incluir productos de comida además de bebidas. Usa null para el valor por defecto (true).')
+                ->required()
+                ->nullable(),
         ];
     }
 }

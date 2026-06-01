@@ -138,17 +138,25 @@ class PlaceOrderTool implements Tool
                         ->description('Nombre de la bebida o producto tal como aparece en el menú.')
                         ->required(),
                     'size' => $schema->string()
-                        ->description('Tamaño elegido si aplica, p. ej. "Grande".'),
+                        ->description('Tamaño elegido si aplica, p. ej. "Grande". Usa null si no aplica.')
+                        ->required()
+                        ->nullable(),
                     'quantity' => $schema->integer()
-                        ->description('Cantidad. Por defecto 1.'),
+                        ->description('Cantidad. Usa null para 1 por defecto.')
+                        ->required()
+                        ->nullable(),
                     'modifications' => $schema->array()
                         ->items($schema->string())
-                        ->description('Modificaciones o personalizaciones, p. ej. "sin azúcar", "leche de almendra".'),
+                        ->description('Modificaciones o personalizaciones, p. ej. "sin azúcar", "leche de almendra". Usa null si no hay.')
+                        ->required()
+                        ->nullable(),
                 ]))
                 ->description('Lista de productos del pedido.')
                 ->required(),
             'note' => $schema->string()
-                ->description('Nota opcional para el personal (alergias, instrucciones especiales).'),
+                ->description('Nota opcional para el personal (alergias, instrucciones especiales). Usa null si no hay nota.')
+                ->required()
+                ->nullable(),
         ];
     }
 }
