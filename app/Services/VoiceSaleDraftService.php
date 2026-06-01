@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PaymentMethod;
+use App\Exceptions\UnusableAudioException;
 use App\Models\Beverage;
 use App\Models\BranchBeverageSizeAvailability;
 use App\Models\Product;
@@ -103,14 +104,11 @@ class VoiceSaleDraftService
             throw new RuntimeException('No se pudo leer el audio recibido.');
         }
 
+        [$fileName, $contentType] = $this->resolveAudioUpload($audio);
+
         try {
             $response = $this->openAiClient()
-                ->attach(
-                    'file',
-                    $stream,
-                    $audio->getClientOriginalName(),
-                    ['Content-Type' => $audio->getMimeType() ?: 'application/octet-stream'],
-                )
+                ->attach('file', $stream, $fileName, ['Content-Type' => $contentType])
                 ->asMultipart()
                 ->post('/audio/transcriptions', [
                     'model' => config('ai.voice_sale.transcription_model'),
@@ -120,6 +118,12 @@ class VoiceSaleDraftService
                 ])
                 ->throw();
         } catch (RequestException $exception) {
+            // A 400 here means the file itself is unusable (empty, noisy, corrupted
+            // or an unsupported container) — an expected user error, not a system fault.
+            if ($exception->response->status() === 400) {
+                throw new UnusableAudioException(previous: $exception);
+            }
+
             throw new RuntimeException('No fue posible transcribir el audio con OpenAI.', previous: $exception);
         } finally {
             fclose($stream);
@@ -128,10 +132,37 @@ class VoiceSaleDraftService
         $transcript = trim((string) $response->json('text'));
 
         if ($transcript === '') {
-            throw new RuntimeException('OpenAI no devolvió una transcripción utilizable.');
+            throw new UnusableAudioException('El audio no contiene voz que podamos transcribir; intenta grabarlo de nuevo.');
         }
 
         return $transcript;
+    }
+
+    /**
+     * Resolve a filename and content type OpenAI can recognize for the upload.
+     *
+     * OpenAI infers the audio container from the multipart filename extension,
+     * so we derive it from the real bytes (`guessExtension`) instead of trusting
+     * the client-provided name, which is often missing or uses an unsupported
+     * container such as `.opus` and triggers a 400 "corrupted or unsupported".
+     *
+     * @return array{0: string, 1: string}
+     */
+    protected function resolveAudioUpload(UploadedFile $audio): array
+    {
+        $supported = ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm'];
+
+        $extension = strtolower((string) $audio->guessExtension());
+
+        if (! in_array($extension, $supported, true)) {
+            $clientExtension = strtolower($audio->getClientOriginalExtension());
+            $extension = in_array($clientExtension, $supported, true) ? $clientExtension : 'm4a';
+        }
+
+        return [
+            'audio.'.$extension,
+            $audio->getMimeType() ?: 'application/octet-stream',
+        ];
     }
 
     /**

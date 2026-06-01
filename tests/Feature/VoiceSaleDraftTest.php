@@ -385,6 +385,108 @@ test('voice sale draft endpoint rejects an unknown customer uuid', function () {
         ->assertJsonValidationErrors(['customer_uuid']);
 });
 
+test('voice sale draft uploads audio with an OpenAI-supported extension even when the client name is unusable', function () {
+    config()->set('ai.providers.openai.key', 'test-key');
+    config()->set('ai.providers.openai.url', 'https://api.openai.test/v1');
+
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+
+    app(WorkSessionService::class)->start($user, $branch);
+
+    Http::fake([
+        'https://api.openai.test/v1/audio/transcriptions' => Http::response([
+            'text' => 'Vendí un pan del día.',
+        ]),
+        'https://api.openai.test/v1/responses' => Http::response([
+            'output_text' => json_encode([
+                'payment_method' => PaymentMethod::Cash->value,
+                'payment_breakdown' => [
+                    'cash' => null,
+                    'card' => null,
+                    'transfer' => null,
+                    'reward_balance' => null,
+                    'debt' => null,
+                ],
+                'reward_redeemed_total' => 0,
+                'discount_total' => 0,
+                'discount_concept' => null,
+                'notes' => null,
+                'assumptions' => [],
+                'items' => [],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]),
+    ]);
+
+    Sanctum::actingAs($user);
+
+    // WhatsApp/Android voice notes arrive as opus, a container OpenAI rejects by its extension.
+    $response = $this->post(route('api.v1.sales.voice-drafts.store'), [
+        'audio' => UploadedFile::fake()->create('nota-de-voz.opus', 200, 'audio/ogg'),
+    ]);
+
+    $response->assertCreated();
+
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/audio/transcriptions')
+        && $request->hasFile('file', null, 'audio.ogg'));
+});
+
+test('voice sale draft returns a friendly 422 (not a logged 500) when OpenAI rejects the audio as unusable', function () {
+    config()->set('ai.providers.openai.key', 'test-key');
+    config()->set('ai.providers.openai.url', 'https://api.openai.test/v1');
+
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+
+    app(WorkSessionService::class)->start($user, $branch);
+
+    Http::fake([
+        'https://api.openai.test/v1/audio/transcriptions' => Http::response([
+            'error' => [
+                'message' => 'Audio file might be corrupted or unsupported',
+                'type' => 'invalid_request_error',
+            ],
+        ], 400),
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson(route('api.v1.sales.voice-drafts.store'), [
+        'audio' => UploadedFile::fake()->create('venta.m4a', 200, 'audio/mp4'),
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['audio']);
+
+    // We bail before interpreting the transcript, so OpenAI Responses is never called.
+    Http::assertSentCount(1);
+});
+
+test('voice sale draft returns a friendly 422 when the transcription comes back empty (silence or noise)', function () {
+    config()->set('ai.providers.openai.key', 'test-key');
+    config()->set('ai.providers.openai.url', 'https://api.openai.test/v1');
+
+    $branch = Branch::factory()->create();
+    $user = User::factory()->assignedToBranch($branch)->create();
+
+    app(WorkSessionService::class)->start($user, $branch);
+
+    Http::fake([
+        'https://api.openai.test/v1/audio/transcriptions' => Http::response(['text' => '   ']),
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson(route('api.v1.sales.voice-drafts.store'), [
+        'audio' => UploadedFile::fake()->create('venta.wav', 200, 'audio/wav'),
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['audio']);
+
+    Http::assertSentCount(1);
+});
+
 test('voice sale draft endpoint requires an open work session', function () {
     config()->set('ai.providers.openai.key', 'test-key');
 

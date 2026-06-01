@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\UnusableAudioException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreVoiceSaleDraftRequest;
 use App\Models\CustomerQrCode;
@@ -38,15 +39,25 @@ class VoiceSaleDraftController extends Controller
         $customerUuid = $request->string('customer_uuid')->toString() ?: null;
         $customerId = $this->resolveCustomerIdFromUuid($customerUuid);
 
-        $draft = $voiceSaleDraftService->fromAudio(
-            audio: $request->file('audio'),
-            user: $user,
-            workSession: $workSession,
-            language: $request->string('language')->toString() ?: 'es',
-            notes: $request->string('notes')->toString() ?: null,
-            customerId: $customerId,
-            customerUuid: $customerUuid,
-        );
+        try {
+            $draft = $voiceSaleDraftService->fromAudio(
+                audio: $request->file('audio'),
+                user: $user,
+                workSession: $workSession,
+                language: $request->string('language')->toString() ?: 'es',
+                notes: $request->string('notes')->toString() ?: null,
+                customerId: $customerId,
+                customerUuid: $customerUuid,
+            );
+        } catch (UnusableAudioException $exception) {
+            // Expected user error (empty/noisy/corrupted audio): respond cleanly and don't log it.
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'errors' => [
+                    'audio' => [$exception->getMessage()],
+                ],
+            ], 422);
+        }
 
         return response()->json([
             'transcript' => $draft['transcript'],

@@ -104,7 +104,7 @@ test('a valid invoice request is sent to accounting over WhatsApp and email', fu
             && $mail->invoicePaymentMethod === '04 - Tarjeta de crédito';
     });
 
-    Http::assertSent(fn (Request $request): bool => $request['number'] === '524181878244'
+    Http::assertSent(fn (Request $request): bool => $request['number'] === '5214181878244'
         && str_contains($request['text'], 'Codigo de facturacion: MfiYIvI')
         && str_contains($request['text'], 'Total: $104.82')
         && str_contains($request['text'], 'Metodo registrado en venta: Tarjeta')

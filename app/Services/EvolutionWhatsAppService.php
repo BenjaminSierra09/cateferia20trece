@@ -227,8 +227,32 @@ class EvolutionWhatsAppService
 
     protected function normalizePhoneNumber(?string $phone): ?string
     {
-        $normalized = preg_replace('/\D+/', '', (string) $phone) ?? '';
+        $digits = preg_replace('/\D+/', '', (string) $phone) ?? '';
 
-        return $normalized !== '' ? $normalized : null;
+        if ($digits === '') {
+            return null;
+        }
+
+        return $this->toMexicanWhatsAppNumber($digits);
+    }
+
+    /**
+     * Format Mexican numbers into the WhatsApp jid convention (52 + 1 + 10 digits).
+     *
+     * WhatsApp registers Mexican mobiles with a "1" after the country code, so a
+     * stored "52##########" or a bare "##########" must become "521##########".
+     * Numbers that don't match the Mexican shape are returned untouched.
+     */
+    protected function toMexicanWhatsAppNumber(string $digits): string
+    {
+        if (strlen($digits) === 10) {
+            return '521'.$digits;
+        }
+
+        if (strlen($digits) === 12 && str_starts_with($digits, '52')) {
+            return '521'.substr($digits, 2);
+        }
+
+        return $digits;
     }
 }
