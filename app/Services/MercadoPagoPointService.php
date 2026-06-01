@@ -146,7 +146,7 @@ class MercadoPagoPointService
 
         $payload = [
             'type' => 'print',
-            'external_reference' => sprintf('sale_%d_print_%s', $sale->id, Str::lower(Str::random(6))),
+            'external_reference' => sprintf('billing_%s_print_%s', $sale->ensureBillingToken(), Str::lower(Str::random(6))),
             'config' => [
                 'point' => [
                     'terminal_id' => $terminalId,
@@ -219,10 +219,13 @@ class MercadoPagoPointService
 
     private function printContent(Sale $sale, ?string $terminalName): string
     {
+        $billingToken = $sale->ensureBillingToken();
+        $billingUrl = route('public.invoice', ['token' => $billingToken]);
+        $soldAt = $sale->sold_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'Sin fecha';
         $lines = [
             '{center}{w}Cafe 20Trece{/w}{/center}',
             '{center}Ticket de venta{/center}',
-            sprintf('{center}Venta %d{/center}', $sale->id),
+            sprintf('{center}%s{/center}', $soldAt),
             '--------------------------------',
             sprintf('{left}Sucursal: %s{/left}', $sale->branch?->name ?? 'Sin sucursal'),
             sprintf('{left}Terminal: %s{/left}', $terminalName ?? 'Point'),
@@ -239,6 +242,9 @@ class MercadoPagoPointService
 
         $lines[] = '--------------------------------';
         $lines[] = sprintf('{left}TOTAL $%s{/left}', number_format((float) $sale->total, 2));
+        $lines[] = sprintf('{center}Codigo de facturacion: %s{/center}', $billingToken);
+        $lines[] = '{center}Escanea para solicitar tu factura{/center}';
+        $lines[] = sprintf('{qr}%s{/qr}', $billingUrl);
         $lines[] = '{br}{center}Gracias por tu compra{/center}{br}';
 
         return implode('{br}', $lines);

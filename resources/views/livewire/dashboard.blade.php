@@ -6,6 +6,77 @@
             <flux:text>Análisis integral de todas las sucursales y métricas clave</flux:text>
         </div>
 
+        {{-- Resumen de hoy --}}
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <flux:card>
+                <flux:subheading>Ingreso de hoy</flux:subheading>
+                <flux:heading size="xl" class="mt-2">${{ number_format($this->todayIncome['income'], 2) }}</flux:heading>
+                <flux:text size="sm" class="mt-1 text-zinc-500">{{ $this->todayIncome['sales'] }} ventas {{ $selectedBranch ? 'en la sucursal' : 'en todas las sucursales' }}</flux:text>
+            </flux:card>
+
+            <flux:card>
+                <flux:subheading>Turnos de hoy</flux:subheading>
+                <flux:heading size="xl" class="mt-2">{{ count($this->todayShifts) }}</flux:heading>
+                <flux:text size="sm" class="mt-1 text-zinc-500">{{ collect($this->todayShifts)->where('is_open', true)->count() }} abiertos</flux:text>
+            </flux:card>
+
+            <flux:card>
+                <flux:subheading>Inventario en alerta</flux:subheading>
+                <flux:heading size="xl" class="mt-2">{{ $this->lowStock->count() }}</flux:heading>
+                <flux:text size="sm" class="mt-1">
+                    <flux:link :href="route('dashboard.inventory.index')" wire:navigate>Ver inventario</flux:link>
+                </flux:text>
+            </flux:card>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <flux:card class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <flux:heading size="lg">Ventas por turno (hoy)</flux:heading>
+                    <flux:button :href="route('dashboard.reports.shifts')" variant="ghost" size="xs" icon="arrow-up-right" wire:navigate>Reporte</flux:button>
+                </div>
+                @forelse ($this->todayShifts as $shift)
+                    <div wire:key="shift-{{ $shift['id'] }}" class="flex items-center justify-between gap-4 border-b border-zinc-100 pb-3 last:border-0 last:pb-0 dark:border-zinc-800">
+                        <div class="min-w-0">
+                            <flux:text class="font-medium">{{ $shift['user'] }}</flux:text>
+                            <flux:subheading>
+                                {{ $shift['branch'] }} · {{ $shift['sales'] }} ventas
+                                @if ($shift['is_open'])
+                                    <flux:badge size="sm" color="emerald" inset="top bottom">Abierto</flux:badge>
+                                @endif
+                            </flux:subheading>
+                        </div>
+                        <flux:heading size="sm">${{ number_format($shift['total'], 2) }}</flux:heading>
+                    </div>
+                @empty
+                    <flux:text>Aún no hay turnos registrados hoy.</flux:text>
+                @endforelse
+            </flux:card>
+
+            <flux:card class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <flux:heading size="lg">Inventario bajo</flux:heading>
+                    <flux:button :href="route('dashboard.inventory.index')" variant="ghost" size="xs" icon="arrow-up-right" wire:navigate>Inventario</flux:button>
+                </div>
+                @forelse ($this->lowStock as $stock)
+                    <div wire:key="low-{{ $stock->id }}" class="flex items-center justify-between gap-4 border-b border-zinc-100 pb-3 last:border-0 last:pb-0 dark:border-zinc-800">
+                        <div class="min-w-0">
+                            <flux:text class="font-medium">{{ $stock->item?->name }}</flux:text>
+                            <flux:subheading>{{ $stock->branch?->name }}</flux:subheading>
+                        </div>
+                        <div class="text-right">
+                            <flux:text class="font-semibold {{ (float) $stock->quantity < 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400' }}">
+                                {{ (float) $stock->quantity }} {{ $stock->item?->unit->abbreviation() }}
+                            </flux:text>
+                            <flux:subheading>mín {{ (float) $stock->min_quantity }}</flux:subheading>
+                        </div>
+                    </div>
+                @empty
+                    <flux:text>Todo el inventario está por encima del mínimo.</flux:text>
+                @endforelse
+            </flux:card>
+        </div>
+
         <div class="space-y-3">
             <div class="grid gap-4 md:grid-cols-2">
                 <flux:field>

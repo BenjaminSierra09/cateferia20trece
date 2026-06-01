@@ -36,6 +36,21 @@ class PublicInvoiceRequest extends FormRequest
     ];
 
     /**
+     * Common SAT c_FormaPago values used by in-store sales.
+     *
+     * @var array<string, string>
+     */
+    public const PAYMENT_FORMS = [
+        '01' => 'Efectivo',
+        '02' => 'Cheque nominativo',
+        '03' => 'SPEI / Transferencia electrónica de fondos',
+        '04' => 'Tarjeta de crédito',
+        '05' => 'Monedero electrónico',
+        '28' => 'Tarjeta de débito',
+        '29' => 'Tarjeta de servicios',
+    ];
+
+    /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
@@ -49,6 +64,8 @@ class PublicInvoiceRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'billing_token' => trim((string) $this->input('billing_token')),
+            'invoice_payment_method' => trim((string) $this->input('invoice_payment_method')),
             'rfc' => strtoupper(trim((string) $this->input('rfc'))),
             'codigo_postal' => trim((string) $this->input('codigo_postal')),
         ]);
@@ -68,7 +85,8 @@ class PublicInvoiceRequest extends FormRequest
             'codigo_postal' => ['required', 'string', 'regex:/^\d{5}$/'],
             'email' => ['required', 'email', 'max:255'],
             'telefono' => ['required', 'string', 'max:50'],
-            'numero_venta' => ['required', 'string', 'max:50'],
+            'billing_token' => ['bail', 'required', 'string', 'regex:/^[A-Za-z]{7}$/', 'exists:sales,billing_token'],
+            'invoice_payment_method' => ['required', 'string', Rule::in(array_keys(self::PAYMENT_FORMS))],
             // Honeypot: real users leave this empty.
             'website' => ['nullable', 'max:0'],
         ];
@@ -88,7 +106,8 @@ class PublicInvoiceRequest extends FormRequest
             'codigo_postal' => 'código postal',
             'email' => 'correo electrónico',
             'telefono' => 'teléfono',
-            'numero_venta' => 'número de venta',
+            'billing_token' => 'código de facturación',
+            'invoice_payment_method' => 'método de pago',
         ];
     }
 
@@ -102,6 +121,9 @@ class PublicInvoiceRequest extends FormRequest
         return [
             'rfc.regex' => 'Captura un RFC válido (12 o 13 caracteres).',
             'codigo_postal.regex' => 'El código postal debe tener 5 dígitos.',
+            'billing_token.regex' => 'El código de facturación debe tener 7 letras.',
+            'billing_token.exists' => 'No encontramos una venta con ese código de facturación.',
+            'invoice_payment_method.in' => 'Selecciona un método de pago válido.',
             'website.max' => 'No fue posible procesar la solicitud.',
         ];
     }

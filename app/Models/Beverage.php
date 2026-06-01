@@ -81,4 +81,12 @@ class Beverage extends Model
     {
         return $this->hasMany(SaleItem::class);
     }
+
+    /**
+     * Get the recipe lines (inventory consumption per size) for the beverage.
+     */
+    public function recipeLines(): HasMany
+    {
+        return $this->hasMany(BeverageRecipeLine::class);
+    }
 }

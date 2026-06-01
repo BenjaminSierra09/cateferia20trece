@@ -24,4 +24,12 @@ class Product extends Model
     {
         return $this->hasMany(SaleItem::class);
     }
+
+    /**
+     * Get the recipe lines (inventory consumption) for the product.
+     */
+    public function recipeLines(): HasMany
+    {
+        return $this->hasMany(ProductRecipeLine::class);
+    }
 }

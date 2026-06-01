@@ -15,13 +15,17 @@ class InvoiceRequestMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
+        public string $billingToken,
         public string $rfc,
         public string $razonSocial,
         public string $regimenFiscal,
         public string $codigoPostal,
         public string $email,
         public string $telefono,
-        public string $numeroVenta,
+        public ?string $saleTotal = null,
+        public ?string $soldAt = null,
+        public ?string $paymentMethod = null,
+        public ?string $invoicePaymentMethod = null,
     ) {}
 
     /**
@@ -30,7 +34,7 @@ class InvoiceRequestMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Solicitud de factura - venta '.$this->numeroVenta,
+            subject: 'Solicitud de factura - '.$this->billingToken,
             replyTo: [new Address($this->email, $this->razonSocial)],
         );
     }
@@ -51,7 +55,11 @@ class InvoiceRequestMail extends Mailable
                 'codigoPostal' => $this->codigoPostal,
                 'email' => $this->email,
                 'telefono' => $this->telefono,
-                'numeroVenta' => $this->numeroVenta,
+                'billingToken' => $this->billingToken,
+                'saleTotal' => $this->saleTotal,
+                'soldAt' => $this->soldAt,
+                'paymentMethod' => $this->paymentMethod,
+                'invoicePaymentMethod' => $this->invoicePaymentMethod,
             ],
         );
     }

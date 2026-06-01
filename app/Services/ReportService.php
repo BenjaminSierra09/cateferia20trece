@@ -2,7 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\SaleStatus;
+use App\Enums\WorkSessionStatus;
+use App\Models\BranchInventoryStock;
 use App\Models\Sale;
+use App\Models\WorkSession;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -94,6 +99,74 @@ class ReportService
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Total completed income and sale count for a single day.
+     *
+     * @return array{income: float, sales: int}
+     */
+    public function incomeForDate(?int $branchId, CarbonInterface $date): array
+    {
+        $sales = Sale::query()
+            ->where('status', SaleStatus::Completed->value)
+            ->whereDate('sold_at', $date->toDateString())
+            ->when($branchId, fn (Builder $builder, int $id) => $builder->where('branch_id', $id))
+            ->get(['total']);
+
+        return [
+            'income' => round((float) $sales->sum('total'), 2),
+            'sales' => $sales->count(),
+        ];
+    }
+
+    /**
+     * Per-shift sales summary for a single day.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function salesByShiftForDate(?int $branchId, CarbonInterface $date): array
+    {
+        return WorkSession::query()
+            ->with(['user', 'branch'])
+            ->whereDate('work_date', $date->toDateString())
+            ->when($branchId, fn (Builder $builder, int $id) => $builder->where('branch_id', $id))
+            ->withCount(['sales as completed_sales_count' => fn (Builder $builder) => $builder->where('status', SaleStatus::Completed->value)])
+            ->withSum(['sales as completed_sales_total' => fn (Builder $builder) => $builder->where('status', SaleStatus::Completed->value)], 'total')
+            ->orderByDesc('clock_in_at')
+            ->get()
+            ->map(fn (WorkSession $session): array => [
+                'id' => $session->id,
+                'user' => $session->user?->name ?? 'Sin colaborador',
+                'branch' => $session->branch?->name ?? 'Sin sucursal',
+                'is_open' => $session->status === WorkSessionStatus::Open,
+                'clock_in' => $session->clock_in_at,
+                'clock_out' => $session->clock_out_at,
+                'sales' => (int) $session->completed_sales_count,
+                'total' => round((float) $session->completed_sales_total, 2),
+            ])
+            ->all();
+    }
+
+    /**
+     * Branch inventory rows at or below their alert threshold (or negative).
+     *
+     * @return Collection<int, BranchInventoryStock>
+     */
+    public function lowStockAlerts(?int $branchId, int $limit = 50): Collection
+    {
+        return BranchInventoryStock::query()
+            ->with(['item', 'branch'])
+            ->when($branchId, fn (Builder $builder, int $id) => $builder->where('branch_id', $id))
+            ->whereHas('item', fn (Builder $builder) => $builder->where('is_active', true))
+            ->where(function (Builder $builder): void {
+                $builder
+                    ->where(fn (Builder $inner) => $inner->whereColumn('quantity', '<=', 'min_quantity')->where('min_quantity', '>', 0))
+                    ->orWhere('quantity', '<', 0);
+            })
+            ->orderBy('quantity')
+            ->limit($limit)
+            ->get();
     }
 
     /**

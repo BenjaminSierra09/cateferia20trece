@@ -24,4 +24,12 @@ class CustomizationType extends Model
     {
         return $this->hasMany(CustomizationOption::class);
     }
+
+    /**
+     * Get the recipe lines (inventory consumption) for this customization category.
+     */
+    public function recipeLines(): HasMany
+    {
+        return $this->hasMany(CustomizationRecipeLine::class);
+    }
 }

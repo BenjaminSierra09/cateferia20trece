@@ -37,7 +37,7 @@ class SaleService
      */
     public function register(array $payload, User $user, WorkSession $workSession): Sale
     {
-        return DB::transaction(function () use ($payload, $user, $workSession): Sale {
+        $sale = DB::transaction(function () use ($payload, $user, $workSession): Sale {
             $customer = isset($payload['customer_id'])
                 ? Customer::query()->active()->find($payload['customer_id'])
                 : null;
@@ -128,11 +128,17 @@ class SaleService
 
             return $sale;
         });
+
+        $this->deductInventoryForSale($sale);
+
+        return $sale;
     }
 
     public function cancel(Sale $sale): Sale
     {
-        return DB::transaction(function () use ($sale): Sale {
+        $wasCancelled = false;
+
+        $result = DB::transaction(function () use ($sale, &$wasCancelled): Sale {
             $sale->loadMissing(['customer', 'debtMovements']);
 
             if (! $sale->canBeCancelled()) {
@@ -148,8 +154,16 @@ class SaleService
                 $this->rewardProgramService->rebuildForCustomer($sale->customer);
             }
 
+            $wasCancelled = true;
+
             return $sale->fresh(['branch', 'user', 'customer', 'items.customizations', 'debtMovements']);
         });
+
+        if ($wasCancelled) {
+            $this->reverseInventoryForSale($result);
+        }
+
+        return $result;
     }
 
     /**
@@ -162,6 +176,31 @@ class SaleService
         }
 
         Mail::to($sale->customer->email)->queue(new SaleReceipt($sale));
+    }
+
+    /**
+     * Deduct branch inventory for a completed sale based on recipes.
+     * Best-effort: a recipe/inventory error must never block or roll back a sale.
+     */
+    protected function deductInventoryForSale(Sale $sale): void
+    {
+        try {
+            app(InventoryDeductionService::class)->consume($sale);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    /**
+     * Reverse a cancelled sale's inventory consumption. Best-effort.
+     */
+    protected function reverseInventoryForSale(Sale $sale): void
+    {
+        try {
+            app(InventoryDeductionService::class)->reverse($sale);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**

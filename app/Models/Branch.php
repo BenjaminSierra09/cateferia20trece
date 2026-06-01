@@ -63,6 +63,22 @@ class Branch extends Model
     }
 
     /**
+     * Get the per-item inventory stock rows for the branch.
+     */
+    public function inventoryStocks(): HasMany
+    {
+        return $this->hasMany(BranchInventoryStock::class);
+    }
+
+    /**
+     * Get the inventory movement ledger entries for the branch.
+     */
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    /**
      * Get the customization price overrides for the branch.
      */
     public function customizationSizePriceOverrides(): HasMany

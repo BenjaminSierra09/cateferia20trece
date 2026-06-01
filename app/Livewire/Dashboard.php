@@ -50,6 +50,37 @@ class Dashboard extends Component
     }
 
     /**
+     * Today's income and sale count for the selected branch (ignores the date range).
+     *
+     * @return array{income: float, sales: int}
+     */
+    #[Computed]
+    public function todayIncome(): array
+    {
+        return app(ReportService::class)->incomeForDate($this->selectedBranch, today());
+    }
+
+    /**
+     * Today's per-shift sales summary.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    #[Computed]
+    public function todayShifts(): array
+    {
+        return app(ReportService::class)->salesByShiftForDate($this->selectedBranch, today());
+    }
+
+    /**
+     * Inventory rows at or below their alert threshold for the selected branch.
+     */
+    #[Computed]
+    public function lowStock()
+    {
+        return app(ReportService::class)->lowStockAlerts($this->selectedBranch, 8);
+    }
+
+    /**
      * Reset all filters to default values.
      */
     public function resetFilters(): void

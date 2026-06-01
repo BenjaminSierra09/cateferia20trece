@@ -12,11 +12,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['branch_id', 'user_id', 'customer_id', 'work_session_id', 'sold_at', 'payment_method', 'payment_breakdown', 'status', 'subtotal', 'discount_total', 'reward_redeemed_total', 'total', 'discount_concept', 'notes'])]
+#[Fillable(['billing_token', 'branch_id', 'user_id', 'customer_id', 'work_session_id', 'sold_at', 'payment_method', 'payment_breakdown', 'status', 'subtotal', 'discount_total', 'reward_redeemed_total', 'total', 'discount_concept', 'notes'])]
 class Sale extends Model
 {
     /** @use HasFactory<SaleFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::creating(function (Sale $sale): void {
+            if (blank($sale->billing_token)) {
+                $sale->billing_token = self::newBillingToken();
+            }
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -99,5 +108,70 @@ class Sale extends Model
     public function canBeCancelled(): bool
     {
         return $this->status === SaleStatus::Completed;
+    }
+
+    public function ensureBillingToken(): string
+    {
+        if (filled($this->billing_token)) {
+            return $this->billing_token;
+        }
+
+        $this->forceFill([
+            'billing_token' => self::newBillingToken(),
+        ])->saveQuietly();
+
+        return $this->billing_token;
+    }
+
+    public function paymentMethodSummary(): string
+    {
+        if ($this->payment_method !== PaymentMethod::Mixed || blank($this->payment_breakdown)) {
+            return $this->payment_method->label();
+        }
+
+        $breakdown = collect($this->payment_breakdown)
+            ->map(fn ($amount) => round((float) $amount, 2))
+            ->filter(fn (float $amount): bool => $amount > 0)
+            ->map(function (float $amount, string $method): string {
+                $label = PaymentMethod::tryFrom($method)?->label() ?? $method;
+
+                return sprintf('%s $%s', $label, number_format($amount, 2));
+            })
+            ->values()
+            ->implode(', ');
+
+        return $breakdown !== ''
+            ? $this->payment_method->label().' ('.$breakdown.')'
+            : $this->payment_method->label();
+    }
+
+    public function suggestedInvoicePaymentForm(): ?string
+    {
+        return match ($this->payment_method) {
+            PaymentMethod::Cash => '01',
+            PaymentMethod::Transfer => '03',
+            default => null,
+        };
+    }
+
+    public static function newBillingToken(): string
+    {
+        do {
+            $token = self::randomBillingToken();
+        } while (self::query()->where('billing_token', $token)->exists());
+
+        return $token;
+    }
+
+    private static function randomBillingToken(): string
+    {
+        $alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $token = '';
+
+        for ($i = 0; $i < 7; $i++) {
+            $token .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        return $token;
     }
 }

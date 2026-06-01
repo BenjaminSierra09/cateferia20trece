@@ -1,9 +1,11 @@
 <x-public-layout
     title="Facturación"
-    description="Solicita tu factura (CFDI) de Café 20Trece con tus datos fiscales y el número de venta."
+    description="Solicita tu factura (CFDI) de Café 20Trece con tus datos fiscales y el código de facturación."
 >
     @php
         $inputClass = 'w-full rounded-2xl border border-coffee/25 bg-white px-4 py-3 text-base text-espresso shadow-sm outline-none transition placeholder:text-mocha/55 focus:border-terracotta focus:ring-4 focus:ring-terracotta/15';
+        $tokenValue = old('billing_token', $billingToken);
+        $paymentFormValue = old('invoice_payment_method', $suggestedPaymentForm);
     @endphp
 
     <section class="grid items-start gap-8 lg:grid-cols-[1.05fr_0.95fr]">
@@ -14,7 +16,7 @@
 
             <h1 class="mt-6 font-serif text-4xl font-semibold leading-[1.05] tracking-tight text-espresso sm:text-5xl">Solicita tu factura</h1>
             <p class="mt-4 max-w-xl text-base leading-8 text-mocha">
-                Captura tus datos fiscales y el número de tu venta. Emitiremos tu CFDI y lo enviaremos al correo que indiques.
+                Captura tus datos fiscales y el código de facturación de tu ticket. Emitiremos tu CFDI y lo enviaremos al correo que indiques.
             </p>
 
             @if (session('invoice_status'))
@@ -29,7 +31,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('public.invoice.store') }}" class="mt-8 space-y-5" novalidate>
+            <form method="POST" action="{{ route('public.invoice.store') }}" class="mt-8 space-y-5" data-invoice-form novalidate>
                 @csrf
 
                 {{-- Honeypot --}}
@@ -40,9 +42,26 @@
                 </div>
 
                 <div>
-                    <label for="inv-venta" class="mb-2 block text-sm font-semibold text-cacao">Número de venta</label>
-                    <input id="inv-venta" name="numero_venta" type="text" value="{{ old('numero_venta') }}" required placeholder="Aparece en tu ticket" class="{{ $inputClass }}">
-                    @error('numero_venta')<p class="mt-1.5 text-sm font-medium text-rose-700">{{ $message }}</p>@enderror
+                    <label for="inv-token" class="mb-2 block text-sm font-semibold text-cacao">Código de facturación</label>
+                    <input id="inv-token" name="billing_token" type="text" value="{{ $tokenValue }}" required maxlength="7" autocapitalize="none" autocomplete="off" placeholder="MfiYIvI" class="{{ $inputClass }}">
+                    @error('billing_token')<p class="mt-1.5 text-sm font-medium text-rose-700">{{ $message }}</p>@enderror
+                    @if ($paymentMethod)
+                        <p class="mt-2 inline-flex items-center gap-2 rounded-full border border-coffee/15 bg-coffee/10 px-3 py-1.5 text-sm font-semibold text-cacao">
+                            <flux:icon.credit-card class="size-4" /> Método registrado en venta: {{ $paymentMethod }}
+                        </p>
+                    @endif
+                </div>
+
+                <div>
+                    <label for="inv-payment-method" class="mb-2 block text-sm font-semibold text-cacao">Método de pago</label>
+                    <select id="inv-payment-method" name="invoice_payment_method" required class="{{ $inputClass }}">
+                        <option value="" disabled @selected(! $paymentFormValue)>Selecciona cómo pagaste</option>
+                        @foreach ($paymentForms as $code => $label)
+                            <option value="{{ $code }}" @selected($paymentFormValue === $code)>{{ $code }} - {{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-2 text-sm leading-6 text-mocha">Si pagaste con tarjeta, selecciona si fue crédito o débito.</p>
+                    @error('invoice_payment_method')<p class="mt-1.5 text-sm font-medium text-rose-700">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="grid gap-5 sm:grid-cols-2">
@@ -104,7 +123,7 @@
                 <ul class="mt-5 space-y-3 text-sm leading-7 text-mocha">
                     <li class="flex items-start gap-3"><flux:icon.check-circle class="mt-0.5 size-5 shrink-0 text-sage" /> RFC, razón social y régimen tal como aparecen en tu Constancia de Situación Fiscal.</li>
                     <li class="flex items-start gap-3"><flux:icon.check-circle class="mt-0.5 size-5 shrink-0 text-sage" /> Código postal de tu domicilio fiscal.</li>
-                    <li class="flex items-start gap-3"><flux:icon.check-circle class="mt-0.5 size-5 shrink-0 text-sage" /> El número de venta impreso en tu ticket.</li>
+                    <li class="flex items-start gap-3"><flux:icon.check-circle class="mt-0.5 size-5 shrink-0 text-sage" /> El código de facturación impreso en tu ticket o precargado desde el QR.</li>
                 </ul>
             </article>
 
@@ -118,4 +137,50 @@
             </article>
         </div>
     </section>
+
+    <script>
+        (() => {
+            const storageKey = 'cafe20trece.invoiceData.v1';
+            const form = document.querySelector('[data-invoice-form]');
+
+            if (! form) {
+                return;
+            }
+
+            const fields = ['rfc', 'razon_social', 'regimen_fiscal', 'codigo_postal', 'email', 'telefono'];
+
+            try {
+                const storage = window.localStorage;
+                const stored = JSON.parse(storage.getItem(storageKey) || '{}');
+
+                fields.forEach((name) => {
+                    const input = form.elements[name];
+
+                    if (input && ! input.value && stored[name]) {
+                        input.value = stored[name];
+                    }
+                });
+            } catch (error) {
+                return;
+            }
+
+            form.addEventListener('submit', () => {
+                const data = {};
+
+                fields.forEach((name) => {
+                    const input = form.elements[name];
+
+                    if (input && input.value) {
+                        data[name] = input.value;
+                    }
+                });
+
+                try {
+                    window.localStorage.setItem(storageKey, JSON.stringify(data));
+                } catch (error) {
+                    return;
+                }
+            });
+        })();
+    </script>
 </x-public-layout>

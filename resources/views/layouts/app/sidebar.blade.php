@@ -72,6 +72,12 @@
                     <flux:sidebar.item icon="cube" :href="route('dashboard.products.index')" :current="request()->routeIs('dashboard.products.*')" wire:navigate>
                         {{ __('Productos') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="archive-box" :href="route('dashboard.inventory.index')" :current="request()->routeIs('dashboard.inventory.*')" wire:navigate>
+                        {{ __('Inventario') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="clipboard-document-list" :href="route('dashboard.recipes.index')" :current="request()->routeIs('dashboard.recipes.*')" wire:navigate>
+                        {{ __('Recetas') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 <flux:sidebar.group :heading="__('Relaciones')" class="grid">

@@ -179,7 +179,11 @@ test('sales can send mercado pago point print actions', function () {
         'mercado_pago_is_active' => true,
         'mercado_pago_access_token' => 'APP_USR-secret-token',
     ]);
-    $sale = Sale::factory()->for($branch)->create(['total' => 90]);
+    $sale = Sale::factory()->for($branch)->create([
+        'billing_token' => 'MfiYIvI',
+        'sold_at' => now()->setDate(2026, 6, 1)->setTime(9, 30),
+        'total' => 90,
+    ]);
 
     $this->postJson("/api/v1/sales/{$sale->id}/mercado-pago/print", [
         'terminal_id' => 'NEWLAND_N950__ABC123',
@@ -189,9 +193,15 @@ test('sales can send mercado pago point print actions', function () {
         ->assertJsonPath('data.id', 'ACT123')
         ->assertJsonPath('data.status', 'created');
 
+    $billingUrl = route('public.invoice', ['token' => 'MfiYIvI']);
     Http::assertSent(fn (Request $request): bool => $request['type'] === 'print'
         && $request['config']['point']['terminal_id'] === 'NEWLAND_N950__ABC123'
-        && $request['config']['point']['subtype'] === 'custom');
+        && $request['config']['point']['subtype'] === 'custom'
+        && str_contains($request['external_reference'], 'billing_MfiYIvI_print_')
+        && str_contains($request['content'], '01/06/2026 09:30')
+        && str_contains($request['content'], 'Codigo de facturacion: MfiYIvI')
+        && str_contains($request['content'], "{qr}{$billingUrl}{/qr}")
+        && ! str_contains($request['content'], "Venta {$sale->id}"));
 });
 
 test('mercado pago webhook events are stored and linked to point orders', function () {

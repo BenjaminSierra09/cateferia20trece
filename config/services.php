@@ -53,6 +53,7 @@ return [
 
     'invoicing' => [
         'email' => env('INVOICE_CONTACT_EMAIL', 'facturacion@cafe20trece.com'),
+        'whatsapp' => env('WHATSAPP_CONTABILIDAD', '+524181878244'),
     ],
 
 ];
