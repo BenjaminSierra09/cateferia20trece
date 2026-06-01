@@ -25,6 +25,10 @@ return [
         'response_model' => env('AI_VOICE_SALE_RESPONSE_MODEL', 'gpt-4o-mini'),
     ],
 
+    'whatsapp' => [
+        'model' => env('AI_WHATSAPP_MODEL', 'gpt-4o-mini'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Caching

@@ -163,6 +163,42 @@ class MercadoPagoPointService
             ->json();
     }
 
+    /**
+     * Print a preparation ticket (comanda) for a WhatsApp order.
+     *
+     * This does NOT create a Sale or charge anything — it only prints the order
+     * with the customer's name and any modifications so staff can prepare it.
+     *
+     * @param  array<int, array{name:string, size?:?string, quantity?:int, modifications?:array<int, string>}>  $items
+     * @return array<string, mixed>
+     */
+    public function printOrderTicket(
+        Branch $branch,
+        string $terminalId,
+        ?string $terminalName,
+        string $customerName,
+        array $items,
+        ?string $note = null,
+    ): array {
+        $payload = [
+            'type' => 'print',
+            'external_reference' => sprintf('whatsapp_order_%d_%s', $branch->id, Str::lower(Str::random(8))),
+            'config' => [
+                'point' => [
+                    'terminal_id' => $terminalId,
+                    'subtype' => 'custom',
+                ],
+            ],
+            'content' => $this->orderTicketContent($customerName, $items, $note, $terminalName),
+        ];
+
+        return $this->client($branch)
+            ->withHeader('X-Idempotency-Key', (string) Str::uuid())
+            ->post('/terminals/v1/actions', $payload)
+            ->throw()
+            ->json();
+    }
+
     private function client(Branch $branch): PendingRequest
     {
         if (! $branch->mercado_pago_is_active || blank($branch->mercado_pago_access_token)) {
@@ -243,9 +279,56 @@ class MercadoPagoPointService
         $lines[] = '--------------------------------';
         $lines[] = sprintf('{left}TOTAL $%s{/left}', number_format((float) $sale->total, 2));
         $lines[] = sprintf('{center}Codigo de facturacion: %s{/center}', $billingToken);
-        $lines[] = '{center}Escanea para solicitar tu factura{/center}';
+        $lines[] = '{center}Escanea para facturar{/center}';
         $lines[] = sprintf('{qr}%s{/qr}', $billingUrl);
         $lines[] = '{br}{center}Gracias por tu compra{/center}{br}';
+
+        return implode('{br}', $lines);
+    }
+
+    /**
+     * Build the preparation-ticket (comanda) markup for a WhatsApp order.
+     *
+     * @param  array<int, array{name:string, size?:?string, quantity?:int, modifications?:array<int, string>}>  $items
+     */
+    private function orderTicketContent(string $customerName, array $items, ?string $note, ?string $terminalName): string
+    {
+        $placedAt = now()->timezone(config('app.timezone'))->format('d/m/Y H:i');
+
+        $lines = [
+            '{center}{w}Cafe 20Trece{/w}{/center}',
+            '{center}COMANDA - Pedido WhatsApp{/center}',
+            sprintf('{center}%s{/center}', $placedAt),
+            '--------------------------------',
+            sprintf('{left}Cliente: {w}%s{/w}{/left}', $customerName),
+            sprintf('{left}Terminal: %s{/left}', $terminalName ?? 'Point'),
+            '--------------------------------',
+        ];
+
+        foreach ($items as $item) {
+            $quantity = max(1, (int) ($item['quantity'] ?? 1));
+            $name = (string) ($item['name'] ?? 'Producto');
+            $size = $item['size'] ?? null;
+            $label = filled($size) ? sprintf('%s (%s)', $name, $size) : $name;
+
+            $lines[] = sprintf('{left}%d x %s{/left}', $quantity, $label);
+
+            foreach (($item['modifications'] ?? []) as $modification) {
+                if (filled($modification)) {
+                    $lines[] = sprintf('{left}  + %s{/left}', $modification);
+                }
+            }
+        }
+
+        $lines[] = '--------------------------------';
+
+        if (filled($note)) {
+            $lines[] = sprintf('{left}Nota: %s{/left}', $note);
+            $lines[] = '--------------------------------';
+        }
+
+        $lines[] = '{center}Pedido por WhatsApp - preparar{/center}';
+        $lines[] = '{br}{center}Sin cobro - confirmar con el cliente{/center}{br}';
 
         return implode('{br}', $lines);
     }

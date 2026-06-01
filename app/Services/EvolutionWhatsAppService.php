@@ -25,6 +25,31 @@ class EvolutionWhatsAppService
             && filled($this->baseUrl());
     }
 
+    /**
+     * Send a plain WhatsApp text message to an arbitrary number.
+     *
+     * Used for two-way conversations (concierge replies, registration nudges).
+     * No-ops silently when Evolution is not configured or the number is empty.
+     */
+    public function sendMessage(string $number, string $text): void
+    {
+        if (! $this->isConfigured()) {
+            return;
+        }
+
+        $normalized = $this->normalizePhoneNumber($number);
+
+        if ($normalized === null) {
+            return;
+        }
+
+        $this->sendText(
+            number: $normalized,
+            text: $text,
+            failureMessage: 'No fue posible enviar la respuesta de WhatsApp.',
+        );
+    }
+
     public function sendCustomerCredential(Customer $customer, CustomerQrCode $qrCode): void
     {
         if (! $this->isConfigured()) {
