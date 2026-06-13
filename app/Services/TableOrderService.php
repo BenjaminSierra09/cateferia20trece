@@ -26,8 +26,13 @@ class TableOrderService
     {
         return DB::transaction(function () use ($payload, $user, $workSession): TableOrder {
             $tables = $this->resolveTables($workSession->branch_id, $payload);
+            $tableName = trim((string) ($payload['table_name'] ?? $payload['label'] ?? 'Mesa')) ?: 'Mesa';
 
-            $this->ensureTablesAreAvailable($tables);
+            if ($tables->isNotEmpty()) {
+                $this->ensureTablesAreAvailable($tables);
+            } else {
+                $this->ensureTemporaryTableNameIsAvailable($workSession->branch_id, $tableName);
+            }
 
             $order = TableOrder::create([
                 'branch_id' => $workSession->branch_id,
@@ -35,13 +40,15 @@ class TableOrderService
                 'customer_id' => $payload['customer_id'] ?? null,
                 'work_session_id' => $workSession->id,
                 'status' => TableOrderStatus::Open,
-                'label' => $payload['label'] ?? null,
+                'label' => $payload['label'] ?? $tableName,
                 'guest_count' => max(1, (int) ($payload['guest_count'] ?? 1)),
                 'opened_at' => now(),
                 'notes' => $payload['notes'] ?? null,
             ]);
 
-            $order->tables()->sync($tables->pluck('id'));
+            if ($tables->isNotEmpty()) {
+                $order->tables()->sync($tables->pluck('id'));
+            }
 
             return $order->fresh($this->defaultRelations());
         });
@@ -167,6 +174,19 @@ class TableOrderService
         });
     }
 
+    public function cancel(TableOrder $order): void
+    {
+        $this->ensureOrderIsOpen($order);
+
+        DB::transaction(function () use ($order): void {
+            $order->tables()->detach();
+            $order->forceFill([
+                'status' => TableOrderStatus::Cancelled,
+                'closed_at' => now(),
+            ])->save();
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      * @return Collection<int, DiningTable>
@@ -182,14 +202,7 @@ class TableOrderService
                 ->get();
         }
 
-        $tableName = trim((string) ($payload['table_name'] ?? $payload['label'] ?? 'Mesa'));
-
-        return collect([
-            DiningTable::query()->firstOrCreate(
-                ['branch_id' => $branchId, 'name' => $tableName],
-                ['is_active' => true],
-            ),
-        ]);
+        return collect();
     }
 
     /**
@@ -209,6 +222,19 @@ class TableOrderService
 
         if ($busyTable !== null) {
             throw new InvalidArgumentException(sprintf('La %s ya tiene una cuenta abierta.', $busyTable->name));
+        }
+    }
+
+    protected function ensureTemporaryTableNameIsAvailable(int $branchId, string $tableName): void
+    {
+        $hasOpenOrder = TableOrder::query()
+            ->where('branch_id', $branchId)
+            ->where('status', TableOrderStatus::Open->value)
+            ->where('label', $tableName)
+            ->exists();
+
+        if ($hasOpenOrder) {
+            throw new InvalidArgumentException(sprintf('La %s ya tiene una cuenta abierta.', $tableName));
         }
     }
 

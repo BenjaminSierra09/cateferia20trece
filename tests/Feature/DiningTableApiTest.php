@@ -1,10 +1,10 @@
 <?php
 
+use App\Enums\TableOrderStatus;
 use App\Models\Branch;
 use App\Models\DiningTable;
 use App\Models\TableOrder;
 use App\Models\User;
-use App\Enums\TableOrderStatus;
 use Laravel\Sanctum\Sanctum;
 
 test('dining tables can be created and listed for a branch', function () {

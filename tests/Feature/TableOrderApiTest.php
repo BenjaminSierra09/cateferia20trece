@@ -4,6 +4,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\TableOrderStatus;
 use App\Models\Beverage;
 use App\Models\Branch;
+use App\Models\DiningTable;
 use App\Models\Product;
 use App\Models\Size;
 use App\Models\TableOrder;
@@ -28,8 +29,10 @@ test('pos can open a table, add items and close it as a sale', function () {
     ])
         ->assertOk()
         ->assertJsonPath('data.status', TableOrderStatus::Open->value)
-        ->assertJsonPath('data.tables.0.name', 'Mesa 4')
+        ->assertJsonPath('data.label', 'Mesa 4')
         ->json('data.id');
+
+    expect(DiningTable::query()->count())->toBe(0);
 
     $this->postJson("/api/v1/table-orders/{$orderId}/items", [
         'items' => [[
@@ -84,7 +87,7 @@ test('table orders can be split and merged before closing', function () {
         'source_order_ids' => [$secondOrderId],
     ])
         ->assertOk()
-        ->assertJsonCount(2, 'data.tables')
+        ->assertJsonPath('data.label', 'Mesa 1')
         ->assertJsonCount(2, 'data.items')
         ->json('data');
 
@@ -109,4 +112,28 @@ test('table orders can be split and merged before closing', function () {
         ->assertJsonPath('data.sales.1.total', '45.00');
 
     expect(TableOrder::query()->find($secondOrderId)->status)->toBe(TableOrderStatus::Merged);
+});
+
+test('temporary table orders can be cancelled', function () {
+    $user = User::factory()->create();
+    $branch = Branch::factory()->create();
+    WorkSession::factory()->for($user)->for($branch)->create();
+    Sanctum::actingAs($user);
+
+    $orderId = $this->postJson('/api/v1/table-orders', [
+        'user_id' => $user->id,
+        'table_name' => 'Juan',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.label', 'Juan')
+        ->json('data.id');
+
+    $this->deleteJson("/api/v1/table-orders/{$orderId}")
+        ->assertNoContent();
+
+    expect(TableOrder::query()->find($orderId)->status)->toBe(TableOrderStatus::Cancelled);
+
+    $this->getJson("/api/v1/table-orders?branch_id={$branch->id}")
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
 });

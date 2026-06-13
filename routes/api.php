@@ -71,7 +71,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::apiResource('cash-movements', CashMovementController::class)->only(['index', 'store', 'show']);
         Route::apiResource('cash-register-cuts', CashRegisterCutController::class)->only(['index', 'store', 'show']);
         Route::apiResource('dining-tables', DiningTableController::class)->only(['index', 'store', 'destroy']);
-        Route::apiResource('table-orders', TableOrderController::class)->only(['index', 'store', 'show']);
+        Route::apiResource('table-orders', TableOrderController::class)->only(['index', 'store', 'show', 'destroy']);
         Route::post('table-orders/{tableOrder}/items', [TableOrderController::class, 'addItems'])
             ->name('table-orders.items.store');
         Route::post('table-orders/{tableOrder}/merge', [TableOrderController::class, 'merge'])

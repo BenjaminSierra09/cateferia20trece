@@ -12,6 +12,7 @@ use App\Services\TableOrderService;
 use App\Services\WorkSessionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -65,6 +66,17 @@ class TableOrderController extends Controller
     public function show(TableOrder $tableOrder): TableOrderResource
     {
         return new TableOrderResource($tableOrder->load($this->relations()));
+    }
+
+    public function destroy(TableOrder $tableOrder, TableOrderService $tableOrderService): Response
+    {
+        try {
+            $tableOrderService->cancel($tableOrder);
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['table_order' => [$exception->getMessage()]]);
+        }
+
+        return response()->noContent();
     }
 
     public function addItems(Request $request, TableOrder $tableOrder, TableOrderService $tableOrderService): TableOrderResource
