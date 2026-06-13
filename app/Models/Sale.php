@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['billing_token', 'branch_id', 'user_id', 'customer_id', 'work_session_id', 'sold_at', 'payment_method', 'payment_breakdown', 'status', 'subtotal', 'discount_total', 'reward_redeemed_total', 'total', 'discount_concept', 'notes'])]
+#[Fillable(['billing_token', 'branch_id', 'user_id', 'customer_id', 'work_session_id', 'table_order_id', 'sold_at', 'payment_method', 'payment_breakdown', 'status', 'subtotal', 'discount_total', 'reward_redeemed_total', 'total', 'discount_concept', 'notes'])]
 class Sale extends Model
 {
     /** @use HasFactory<SaleFactory> */
@@ -76,6 +76,11 @@ class Sale extends Model
     public function workSession(): BelongsTo
     {
         return $this->belongsTo(WorkSession::class);
+    }
+
+    public function tableOrder(): BelongsTo
+    {
+        return $this->belongsTo(TableOrder::class);
     }
 
     /**

@@ -22,6 +22,7 @@ class SaleResource extends JsonResource
             'user_id' => $this->user_id,
             'customer_id' => $this->customer_id,
             'work_session_id' => $this->work_session_id,
+            'table_order_id' => $this->table_order_id,
             'sold_at' => $this->sold_at?->toIso8601String(),
             'branch' => $this->whenLoaded('branch', fn () => new BranchResource($this->branch)),
             'user' => $this->whenLoaded('user', fn () => new UserResource($this->user)),

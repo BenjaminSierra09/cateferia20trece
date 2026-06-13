@@ -6,6 +6,12 @@
             <flux:text>Análisis integral de todas las sucursales y métricas clave</flux:text>
         </div>
 
+        @if ($this->overview['limited_by_permissions'] ?? false)
+            <flux:callout icon="shield-check" color="amber">
+                {{ $this->overview['permission_notice'] }}
+            </flux:callout>
+        @endif
+
         {{-- Resumen de hoy --}}
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <flux:card>

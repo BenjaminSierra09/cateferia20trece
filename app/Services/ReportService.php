@@ -6,6 +6,7 @@ use App\Enums\SaleStatus;
 use App\Enums\WorkSessionStatus;
 use App\Models\BranchInventoryStock;
 use App\Models\Sale;
+use App\Models\User;
 use App\Models\WorkSession;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,14 +20,15 @@ class ReportService
      * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      */
-    public function overview(array $filters = []): array
+    public function overview(array $filters = [], ?User $viewer = null): array
     {
         $query = Sale::query()
             ->with(['items', 'branch', 'user', 'customer'])
             ->when($filters['branch_id'] ?? null, fn (Builder $builder, int $branchId) => $builder->where('branch_id', $branchId))
             ->when($filters['payment_method'] ?? null, fn (Builder $builder, string $paymentMethod) => $builder->where('payment_method', $paymentMethod))
             ->when($filters['date_from'] ?? null, fn (Builder $builder, string $dateFrom) => $builder->whereDate('sold_at', '>=', $dateFrom))
-            ->when($filters['date_to'] ?? null, fn (Builder $builder, string $dateTo) => $builder->whereDate('sold_at', '<=', $dateTo));
+            ->when($filters['date_to'] ?? null, fn (Builder $builder, string $dateTo) => $builder->whereDate('sold_at', '<=', $dateTo))
+            ->when($viewer?->hasLimitedAccountingView(), fn (Builder $builder) => $this->excludeCashPayments($builder));
 
         $sales = $query->get();
         $completedSales = $sales->where('status.value', 'completed');
@@ -41,6 +43,10 @@ class ReportService
             'sales_by_branch' => $this->salesByBranch($completedSales),
             'sales_by_payment_method' => $this->salesByPaymentMethod($completedSales),
             'sales_timeline' => $this->salesTimeline($completedSales),
+            'limited_by_permissions' => $viewer?->hasLimitedAccountingView() ?? false,
+            'permission_notice' => $viewer?->hasLimitedAccountingView()
+                ? 'Vista limitada por permisos: no incluye ventas ni movimientos de caja en efectivo.'
+                : null,
         ];
     }
 
@@ -106,12 +112,13 @@ class ReportService
      *
      * @return array{income: float, sales: int}
      */
-    public function incomeForDate(?int $branchId, CarbonInterface $date): array
+    public function incomeForDate(?int $branchId, CarbonInterface $date, ?User $viewer = null): array
     {
         $sales = Sale::query()
             ->where('status', SaleStatus::Completed->value)
             ->whereDate('sold_at', $date->toDateString())
             ->when($branchId, fn (Builder $builder, int $id) => $builder->where('branch_id', $id))
+            ->when($viewer?->hasLimitedAccountingView(), fn (Builder $builder) => $this->excludeCashPayments($builder))
             ->get(['total']);
 
         return [
@@ -125,14 +132,18 @@ class ReportService
      *
      * @return array<int, array<string, mixed>>
      */
-    public function salesByShiftForDate(?int $branchId, CarbonInterface $date): array
+    public function salesByShiftForDate(?int $branchId, CarbonInterface $date, ?User $viewer = null): array
     {
         return WorkSession::query()
             ->with(['user', 'branch'])
             ->whereDate('work_date', $date->toDateString())
             ->when($branchId, fn (Builder $builder, int $id) => $builder->where('branch_id', $id))
-            ->withCount(['sales as completed_sales_count' => fn (Builder $builder) => $builder->where('status', SaleStatus::Completed->value)])
-            ->withSum(['sales as completed_sales_total' => fn (Builder $builder) => $builder->where('status', SaleStatus::Completed->value)], 'total')
+            ->withCount(['sales as completed_sales_count' => fn (Builder $builder) => $builder
+                ->where('status', SaleStatus::Completed->value)
+                ->when($viewer?->hasLimitedAccountingView(), fn (Builder $salesBuilder) => $this->excludeCashPayments($salesBuilder))])
+            ->withSum(['sales as completed_sales_total' => fn (Builder $builder) => $builder
+                ->where('status', SaleStatus::Completed->value)
+                ->when($viewer?->hasLimitedAccountingView(), fn (Builder $salesBuilder) => $this->excludeCashPayments($salesBuilder))], 'total')
             ->orderByDesc('clock_in_at')
             ->get()
             ->map(fn (WorkSession $session): array => [
@@ -146,6 +157,11 @@ class ReportService
                 'total' => round((float) $session->completed_sales_total, 2),
             ])
             ->all();
+    }
+
+    public function excludeCashPayments(Builder $builder): Builder
+    {
+        return $builder->whereNotIn('payment_method', ['cash', 'mixed']);
     }
 
     /**

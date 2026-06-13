@@ -5,6 +5,7 @@ namespace App\Livewire\Sales;
 use App\Enums\PaymentMethod;
 use App\Livewire\Concerns\SortsTables;
 use App\Models\Sale;
+use App\Services\ReportService;
 use App\Support\InitialIndexViewModeResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -63,6 +64,7 @@ class Index extends Component
                         ->orWhere('discount_concept', 'like', '%'.$this->search.'%');
                 });
             })
+            ->when(auth()->user()?->hasLimitedAccountingView(), fn ($query) => app(ReportService::class)->excludeCashPayments($query))
             ->when($this->paymentMethod !== '', fn ($query) => $query->where('payment_method', $this->paymentMethod));
     }
 
@@ -127,7 +129,10 @@ class Index extends Component
         return view('livewire.sales.index', [
             'sales' => $sales,
             'stats' => $this->stats(),
-            'paymentMethods' => PaymentMethod::cases(),
+            'paymentMethods' => collect(PaymentMethod::cases())
+                ->reject(fn (PaymentMethod $method): bool => auth()->user()?->hasLimitedAccountingView()
+                    && in_array($method, [PaymentMethod::Cash, PaymentMethod::Mixed], true))
+                ->values(),
         ])->layout('layouts.app');
     }
 

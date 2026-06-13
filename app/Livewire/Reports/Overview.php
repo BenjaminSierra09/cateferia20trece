@@ -49,7 +49,7 @@ class Overview extends Component
 
     public function exportExcel(ReportExcelExportService $reportExcelExportService): StreamedResponse
     {
-        $contents = $reportExcelExportService->overview($this->reportFilters());
+        $contents = $reportExcelExportService->overview($this->reportFilters(), auth()->user());
 
         return response()->streamDownload(
             fn () => print $contents,
@@ -63,7 +63,7 @@ class Overview extends Component
      */
     public function render(): View
     {
-        $overview = app(ReportService::class)->overview($this->reportFilters());
+        $overview = app(ReportService::class)->overview($this->reportFilters(), auth()->user());
 
         $this->branchChart = collect($overview['sales_by_branch'])->map(fn (array $item): array => [
             'branch' => $item['branch'],
@@ -88,7 +88,10 @@ class Overview extends Component
         return view('livewire.reports.overview', [
             'overview' => $overview,
             'branches' => Branch::query()->where('is_active', true)->orderBy('name')->get(),
-            'paymentMethods' => PaymentMethod::cases(),
+            'paymentMethods' => collect(PaymentMethod::cases())
+                ->reject(fn (PaymentMethod $method): bool => auth()->user()?->hasLimitedAccountingView()
+                    && in_array($method, [PaymentMethod::Cash, PaymentMethod::Mixed], true))
+                ->values(),
         ])->layout('layouts.app');
     }
 
@@ -123,9 +126,27 @@ class Overview extends Component
     {
         return [
             'branch_id' => $this->branch_id,
-            'payment_method' => $this->payment_method !== '' ? $this->payment_method : null,
+            'payment_method' => $this->restrictedPaymentMethodOrNull(),
             'date_from' => $this->date_from !== '' ? $this->date_from : null,
             'date_to' => $this->date_to !== '' ? $this->date_to : null,
         ];
+    }
+
+    private function restrictedPaymentMethodOrNull(): ?string
+    {
+        if ($this->payment_method === '') {
+            return null;
+        }
+
+        if (
+            auth()->user()?->hasLimitedAccountingView()
+            && in_array($this->payment_method, [PaymentMethod::Cash->value, PaymentMethod::Mixed->value], true)
+        ) {
+            $this->payment_method = '';
+
+            return null;
+        }
+
+        return $this->payment_method;
     }
 }

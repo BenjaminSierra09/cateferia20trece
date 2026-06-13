@@ -23,6 +23,8 @@ class ReportOverviewResource extends JsonResource
             'top_beverages' => $this['top_beverages'],
             'sales_by_branch' => $this['sales_by_branch'],
             'sales_by_payment_method' => $this['sales_by_payment_method'],
+            'limited_by_permissions' => $this['limited_by_permissions'] ?? false,
+            'permission_notice' => $this['permission_notice'] ?? null,
         ];
     }
 }

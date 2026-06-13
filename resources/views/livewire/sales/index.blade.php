@@ -1,5 +1,11 @@
 <div class="space-y-6">
 
+    @if (auth()->user()?->hasLimitedAccountingView())
+        <flux:callout icon="shield-check" color="amber">
+            Vista limitada por permisos: no incluye ventas pagadas en efectivo ni pagos mixtos.
+        </flux:callout>
+    @endif
+
     <div class="grid gap-4 md:grid-cols-4">
         @foreach ($stats as $stat)
             <div class="relative rounded-2xl bg-zinc-50 px-6 py-4 dark:bg-zinc-700/70">

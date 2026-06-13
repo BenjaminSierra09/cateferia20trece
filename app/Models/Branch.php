@@ -78,6 +78,16 @@ class Branch extends Model
         return $this->hasMany(InventoryMovement::class);
     }
 
+    public function cashMovements(): HasMany
+    {
+        return $this->hasMany(CashMovement::class);
+    }
+
+    public function cashRegisterCuts(): HasMany
+    {
+        return $this->hasMany(CashRegisterCut::class);
+    }
+
     /**
      * Get the customization price overrides for the branch.
      */

@@ -46,9 +46,7 @@ class SaleService
                 throw new InvalidArgumentException('El cliente seleccionado ya no está activo.');
             }
 
-            $lineItems = collect(Arr::wrap($payload['items'] ?? []))
-                ->map(fn (array $item): array => $this->resolveLineItem($item, $workSession))
-                ->values();
+            $lineItems = $this->resolveLineItems(Arr::wrap($payload['items'] ?? []), $workSession);
 
             if ($lineItems->isEmpty()) {
                 throw new InvalidArgumentException('La venta requiere al menos un producto.');
@@ -80,6 +78,7 @@ class SaleService
                 'user_id' => $user->id,
                 'customer_id' => $customer?->id,
                 'work_session_id' => $workSession->id,
+                'table_order_id' => $payload['table_order_id'] ?? null,
                 'sold_at' => now(),
                 'payment_method' => $paymentMethod,
                 'payment_breakdown' => $paymentBreakdown,
@@ -132,6 +131,19 @@ class SaleService
         $this->deductInventoryForSale($sale);
 
         return $sale;
+    }
+
+    /**
+     * Resolve item payloads into persisted sale/table-order values without charging.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    public function resolveLineItems(array $items, WorkSession $workSession): \Illuminate\Support\Collection
+    {
+        return collect($items)
+            ->map(fn (array $item): array => $this->resolveLineItem($item, $workSession))
+            ->values();
     }
 
     public function cancel(Sale $sale): Sale

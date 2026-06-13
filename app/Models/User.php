@@ -58,6 +58,16 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(Sale::class);
     }
 
+    public function cashMovements(): HasMany
+    {
+        return $this->hasMany(CashMovement::class);
+    }
+
+    public function cashRegisterCuts(): HasMany
+    {
+        return $this->hasMany(CashRegisterCut::class);
+    }
+
     /**
      * Get the user's initials
      */
@@ -72,6 +82,16 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canAccessDashboard(): bool
     {
-        return $this->role === UserRole::Admin;
+        return in_array($this->role, [UserRole::Admin, UserRole::Accounting], true);
+    }
+
+    public function canViewCashSensitiveData(): bool
+    {
+        return $this->role !== UserRole::Accounting;
+    }
+
+    public function hasLimitedAccountingView(): bool
+    {
+        return $this->role === UserRole::Accounting;
     }
 }

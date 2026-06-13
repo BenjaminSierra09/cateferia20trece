@@ -37,6 +37,12 @@
         </div>
     </div>
 
+    @if ($overview['limited_by_permissions'] ?? false)
+        <flux:callout icon="shield-check" color="amber">
+            {{ $overview['permission_notice'] }}
+        </flux:callout>
+    @endif
+
     <flux:card class="grid gap-4 xl:grid-cols-4">
         <flux:select wire:model.live="branch_id" label="Sucursal">
             <option value="">Todas</option>

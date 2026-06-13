@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\PaymentMethod;
 use App\Enums\WorkSessionStatus;
 use App\Models\Branch;
+use App\Models\User;
 use App\Models\WorkSession;
 use App\Support\XlsxExporter;
 use Carbon\CarbonInterface;
@@ -23,9 +24,9 @@ class ReportExcelExportService
     /**
      * @param  array<string, mixed>  $filters
      */
-    public function overview(array $filters = []): string
+    public function overview(array $filters = [], ?User $viewer = null): string
     {
-        $overview = $this->reportService->overview($filters);
+        $overview = $this->reportService->overview($filters, $viewer);
 
         return $this->xlsxExporter->build([
             [
@@ -33,6 +34,8 @@ class ReportExcelExportService
                 'rows' => [
                     ['Reporte de ventas'],
                     ['Generado', now()->timezone(self::BUSINESS_TIMEZONE)->format('Y-m-d H:i')],
+                    ['Vista limitada por permisos', $overview['limited_by_permissions'] ? 'Sí' : 'No'],
+                    ['Aviso', $overview['permission_notice'] ?? 'Sin restricciones adicionales'],
                     ['Sucursal', $this->branchLabel($filters['branch_id'] ?? null)],
                     ['Método de pago', $this->paymentMethodLabel($filters['payment_method'] ?? null)],
                     ['Desde', $filters['date_from'] ?? 'Sin filtro'],

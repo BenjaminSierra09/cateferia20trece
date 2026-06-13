@@ -32,6 +32,10 @@ class SaleController extends Controller
             ->when($request->filled('branch_id'), fn ($query) => $query->where('branch_id', $request->integer('branch_id')))
             ->when($request->filled('customer_id'), fn ($query) => $query->where('customer_id', $request->integer('customer_id')))
             ->when($request->filled('user_id'), fn ($query) => $query->where('user_id', $request->integer('user_id')))
+            ->when($request->user()?->hasLimitedAccountingView(), fn ($query) => $query->whereNotIn('payment_method', [
+                PaymentMethod::Cash->value,
+                PaymentMethod::Mixed->value,
+            ]))
             ->when($request->filled('payment_method'), fn ($query) => $query->where('payment_method', $request->string('payment_method')->toString()))
             ->latest('sold_at')
             ->paginate($this->perPage($request, 25));
@@ -129,6 +133,12 @@ class SaleController extends Controller
 
     public function show(Sale $sale): SaleResource
     {
+        abort_if(
+            request()->user()?->hasLimitedAccountingView()
+            && in_array($sale->payment_method, [PaymentMethod::Cash, PaymentMethod::Mixed], true),
+            403,
+        );
+
         return new SaleResource($sale->load([
             'branch',
             'user',

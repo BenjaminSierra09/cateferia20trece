@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Sales;
 
+use App\Enums\PaymentMethod;
 use App\Models\Sale;
 use App\Services\SaleService;
 use Flux\Flux;
@@ -17,6 +18,12 @@ class Show extends Component
 
     public function mount(Sale $sale): void
     {
+        abort_if(
+            auth()->user()?->hasLimitedAccountingView()
+            && in_array($sale->payment_method, [PaymentMethod::Cash, PaymentMethod::Mixed], true),
+            403,
+        );
+
         $this->sale = $sale->load(['branch', 'customer', 'user', 'items.customizations', 'debtMovements']);
     }
 

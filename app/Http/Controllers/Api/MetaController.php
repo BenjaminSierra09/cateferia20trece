@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\PaymentMethod;
+use App\Enums\CashMovementType;
 use App\Enums\RewardTier;
 use App\Enums\RewardTransactionType;
 use App\Enums\SaleStatus;
@@ -19,6 +20,11 @@ class MetaController extends Controller
             'payment_methods' => collect(PaymentMethod::cases())->map(fn (PaymentMethod $method) => [
                 'value' => $method->value,
                 'label' => $method->label(),
+            ])->values(),
+            'cash_movement_types' => collect(CashMovementType::cases())->map(fn (CashMovementType $type) => [
+                'value' => $type->value,
+                'label' => $type->label(),
+                'direction' => $type->direction(),
             ])->values(),
             'reward_tiers' => collect(RewardTier::cases())->map(fn (RewardTier $tier) => [
                 'value' => $tier->value,

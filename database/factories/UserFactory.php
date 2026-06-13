@@ -81,6 +81,13 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function accounting(): static
+    {
+        return $this->state(fn () => [
+            'role' => UserRole::Accounting,
+        ]);
+    }
+
     public function employee(): static
     {
         return $this->state(fn () => [

@@ -54,4 +54,14 @@ class WorkSession extends Model
     {
         return $this->hasMany(Sale::class);
     }
+
+    public function cashMovements(): HasMany
+    {
+        return $this->hasMany(CashMovement::class);
+    }
+
+    public function cashRegisterCuts(): HasMany
+    {
+        return $this->hasMany(CashRegisterCut::class);
+    }
 }

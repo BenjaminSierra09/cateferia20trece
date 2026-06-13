@@ -18,6 +18,6 @@ class ReportController extends Controller
             'payment_method',
             'date_from',
             'date_to',
-        ])));
+        ]), $request->user()));
     }
 }

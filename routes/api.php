@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\AztecSymbolController;
 use App\Http\Controllers\Api\BeverageCategoryController;
 use App\Http\Controllers\Api\BeverageController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\CashMovementController;
+use App\Http\Controllers\Api\CashRegisterCutController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\CustomerDebtMovementController;
@@ -22,6 +24,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RewardTransactionController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SizeController;
+use App\Http\Controllers\Api\TableOrderController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoiceSaleDraftController;
 use App\Http\Controllers\Api\WorkSessionController;
@@ -64,6 +67,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             ->name('branches.mercado-pago.payment-order.store');
         Route::apiResource('users', UserController::class);
         Route::apiResource('work-sessions', WorkSessionController::class)->except(['destroy']);
+        Route::apiResource('cash-movements', CashMovementController::class)->only(['index', 'store', 'show']);
+        Route::apiResource('cash-register-cuts', CashRegisterCutController::class)->only(['index', 'store', 'show']);
+        Route::apiResource('table-orders', TableOrderController::class)->only(['index', 'store', 'show']);
+        Route::post('table-orders/{tableOrder}/items', [TableOrderController::class, 'addItems'])
+            ->name('table-orders.items.store');
+        Route::post('table-orders/{tableOrder}/merge', [TableOrderController::class, 'merge'])
+            ->name('table-orders.merge.store');
+        Route::post('table-orders/{tableOrder}/close', [TableOrderController::class, 'close'])
+            ->name('table-orders.close.store');
         Route::apiResource('sales', SaleController::class)->only(['index', 'store', 'show']);
         Route::post('sales/{sale}/mercado-pago/payment-order', [MercadoPagoPointOrderController::class, 'store'])
             ->name('sales.mercado-pago.payment-order.store');

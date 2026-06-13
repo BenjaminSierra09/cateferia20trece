@@ -46,7 +46,7 @@ class Dashboard extends Component
     #[Computed]
     public function overview(): array
     {
-        return app(ReportService::class)->overview($this->dashboardFilters());
+        return app(ReportService::class)->overview($this->dashboardFilters(), auth()->user());
     }
 
     /**
@@ -57,7 +57,7 @@ class Dashboard extends Component
     #[Computed]
     public function todayIncome(): array
     {
-        return app(ReportService::class)->incomeForDate($this->selectedBranch, today());
+        return app(ReportService::class)->incomeForDate($this->selectedBranch, today(), auth()->user());
     }
 
     /**
@@ -68,7 +68,7 @@ class Dashboard extends Component
     #[Computed]
     public function todayShifts(): array
     {
-        return app(ReportService::class)->salesByShiftForDate($this->selectedBranch, today());
+        return app(ReportService::class)->salesByShiftForDate($this->selectedBranch, today(), auth()->user());
     }
 
     /**
@@ -186,6 +186,7 @@ class Dashboard extends Component
             ->when($this->selectedBranch, fn ($q) => $q->where('branch_id', $this->selectedBranch))
             ->when($this->dateFrom, fn ($q) => $q->whereDate('sold_at', '>=', $this->dateFrom))
             ->when($this->dateTo, fn ($q) => $q->whereDate('sold_at', '<=', $this->dateTo))
+            ->when(auth()->user()?->hasLimitedAccountingView(), fn ($q) => app(ReportService::class)->excludeCashPayments($q))
             ->latest('sold_at')
             ->limit(8)
             ->get();
