@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\CustomerDebtMovementController;
 use App\Http\Controllers\Api\CustomerFavoriteBeverageController;
+use App\Http\Controllers\Api\DiningTableController;
 use App\Http\Controllers\Api\CustomizationOptionController;
 use App\Http\Controllers\Api\CustomizationTypeController;
 use App\Http\Controllers\Api\EvolutionWhatsAppWebhookController;
@@ -69,6 +70,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::apiResource('work-sessions', WorkSessionController::class)->except(['destroy']);
         Route::apiResource('cash-movements', CashMovementController::class)->only(['index', 'store', 'show']);
         Route::apiResource('cash-register-cuts', CashRegisterCutController::class)->only(['index', 'store', 'show']);
+        Route::apiResource('dining-tables', DiningTableController::class)->only(['index', 'store', 'destroy']);
         Route::apiResource('table-orders', TableOrderController::class)->only(['index', 'store', 'show']);
         Route::post('table-orders/{tableOrder}/items', [TableOrderController::class, 'addItems'])
             ->name('table-orders.items.store');

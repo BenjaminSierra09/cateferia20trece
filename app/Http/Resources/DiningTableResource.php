@@ -15,6 +15,8 @@ class DiningTableResource extends JsonResource
             'name' => $this->name,
             'seats' => $this->seats,
             'is_active' => $this->is_active,
+            'is_occupied' => $this->relationLoaded('tableOrders') && $this->tableOrders->isNotEmpty(),
+            'open_table_order_id' => $this->relationLoaded('tableOrders') ? $this->tableOrders->first()?->id : null,
         ];
     }
 }
