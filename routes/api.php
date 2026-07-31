@@ -11,10 +11,9 @@ use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\CustomerDebtMovementController;
 use App\Http\Controllers\Api\CustomerFavoriteBeverageController;
-use App\Http\Controllers\Api\DiningTableController;
 use App\Http\Controllers\Api\CustomizationOptionController;
 use App\Http\Controllers\Api\CustomizationTypeController;
-use App\Http\Controllers\Api\EvolutionWhatsAppWebhookController;
+use App\Http\Controllers\Api\DiningTableController;
 use App\Http\Controllers\Api\MercadoPagoPointOrderController;
 use App\Http\Controllers\Api\MercadoPagoTerminalController;
 use App\Http\Controllers\Api\MercadoPagoWebhookController;
@@ -28,6 +27,7 @@ use App\Http\Controllers\Api\SizeController;
 use App\Http\Controllers\Api\TableOrderController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VoiceSaleDraftController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
 use App\Http\Controllers\Api\WorkSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -90,7 +90,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
 Route::post('mercado-pago/webhook', MercadoPagoWebhookController::class)->name('api.mercado-pago.webhook');
 
-Route::post('whatsapp/webhook', EvolutionWhatsAppWebhookController::class)->name('api.whatsapp.webhook');
+Route::match(['get', 'post'], 'whatsapp/webhook', WhatsAppWebhookController::class)->name('api.whatsapp.webhook');
 
 Route::get('catalog', CatalogController::class)->name('api.catalog');
 Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'show', 'update', 'destroy']);

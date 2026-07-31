@@ -19,6 +19,27 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Ai\Image;
 
+function configureWhatsAppCloudForObserverTests(): void
+{
+    config()->set('services.whatsapp.api_url', 'https://graph.facebook.test');
+    config()->set('services.whatsapp.graph_version', 'v23.0');
+    config()->set('services.whatsapp.access_token', 'test-access-token');
+    config()->set('services.whatsapp.phone_number_id', 'PHONE-ID');
+    config()->set('services.whatsapp.templates.language', 'es_MX');
+    config()->set('services.whatsapp.templates.customer_credential', 'customer_credential');
+}
+
+function fakeWhatsAppCloudForObserverTests(): void
+{
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://graph.facebook.test/v23.0/PHONE-ID/media' => Http::response(['id' => 'MEDIA-ID']),
+        'https://graph.facebook.test/v23.0/PHONE-ID/messages' => Http::response([
+            'messages' => [['id' => 'wamid.credential']],
+        ]),
+    ]);
+}
+
 test('catalog observers generate unique slugs on create', function () {
     $firstCategory = BeverageCategory::factory()->create([
         'name' => 'Café helado',
@@ -204,16 +225,9 @@ test('customer observer creates a qr code automatically on customer creation', f
     expect($customer->qrCodes->first()->customer_id)->toBe($customer->id);
 });
 
-test('customer observer sends welcome qr credential by whatsapp when evolution is configured', function () {
-    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com/message/sendText/San Miguel Live');
-    config()->set('services.evolution.api_key', 'test-api-key');
-    config()->set('services.evolution.instance_id', 'San Miguel Live');
-
-    Http::preventStrayRequests();
-    Http::fake([
-        'https://evolution.benjaminsierra.com/message/sendMedia/*' => Http::response(['status' => 'PENDING'], 201),
-        'https://evolution.benjaminsierra.com/message/sendText/*' => Http::response(['status' => 'PENDING'], 201),
-    ]);
+test('customer observer sends the welcome qr credential through WhatsApp Cloud', function () {
+    configureWhatsAppCloudForObserverTests();
+    fakeWhatsAppCloudForObserverTests();
 
     $customer = Customer::factory()->create([
         'name' => 'Benjamin Sierra',
@@ -224,39 +238,32 @@ test('customer observer sends welcome qr credential by whatsapp when evolution i
     $qrCode = $customer->qrCodes->sole();
 
     Http::assertSentCount(2);
-    Http::assertSent(function (Request $request) use ($customer): bool {
-        return str_contains($request->url(), '/message/sendMedia/')
-            && $request->hasHeader('apikey', 'test-api-key')
-            && $request['number'] === '524151234567'
-            && $request['mediatype'] === 'image'
-            && $request['mimetype'] === 'image/png'
-            && str_contains($request['caption'], $customer->name)
-            && filled($request['media'])
-            && ! array_key_exists('mentioned', $request->data())
-            && ! array_key_exists('mentionsEveryOne', $request->data())
-            && str_ends_with($request['fileName'], '.png');
+    Http::assertSent(function (Request $request): bool {
+        return str_ends_with($request->url(), '/media')
+            && $request->hasHeader('Authorization', 'Bearer test-access-token')
+            && str_contains($request->body(), 'messaging_product')
+            && str_contains($request->body(), 'image/png');
     });
     Http::assertSent(function (Request $request) use ($customer, $qrCode): bool {
-        return str_contains($request->url(), '/message/sendText/')
-            && $request['number'] === '524151234567'
-            && str_contains($request['text'], $customer->name)
-            && ! array_key_exists('mentioned', $request->data())
-            && ! array_key_exists('mentionsEveryOne', $request->data())
-            && str_contains($request['text'], route('public.rewards'))
-            && str_contains($request['text'], route('public.qr.show', ['uuid' => $qrCode->uuid]));
+        if (! str_ends_with($request->url(), '/messages')) {
+            return false;
+        }
+
+        $parameters = $request['template']['components'][1]['parameters'];
+
+        return $request['to'] === '524151234567'
+            && $request['type'] === 'template'
+            && $request['template']['name'] === 'customer_credential'
+            && $request['template']['components'][0]['parameters'][0]['image']['id'] === 'MEDIA-ID'
+            && $parameters[0]['text'] === $customer->name
+            && $parameters[1]['text'] === route('public.rewards')
+            && $parameters[2]['text'] === route('public.qr.show', ['uuid' => $qrCode->uuid]);
     });
 });
 
 test('customer observer resends welcome qr credential when phone changes to a new number', function () {
-    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
-    config()->set('services.evolution.api_key', 'test-api-key');
-    config()->set('services.evolution.instance_id', 'San Miguel Live');
-
-    Http::preventStrayRequests();
-    Http::fake([
-        'https://evolution.benjaminsierra.com/message/sendMedia/*' => Http::response(['status' => 'PENDING'], 201),
-        'https://evolution.benjaminsierra.com/message/sendText/*' => Http::response(['status' => 'PENDING'], 201),
-    ]);
+    configureWhatsAppCloudForObserverTests();
+    fakeWhatsAppCloudForObserverTests();
 
     $customer = Customer::factory()->create([
         'name' => 'Benjamin Sierra',
@@ -271,25 +278,14 @@ test('customer observer resends welcome qr credential when phone changes to a ne
 
     Http::assertSentCount(4);
     Http::assertSent(function (Request $request): bool {
-        return str_contains($request->url(), '/message/sendMedia/')
-            && $request['number'] === '524157654321';
-    });
-    Http::assertSent(function (Request $request): bool {
-        return str_contains($request->url(), '/message/sendText/')
-            && $request['number'] === '524157654321';
+        return str_ends_with($request->url(), '/messages')
+            && $request['to'] === '524157654321';
     });
 });
 
 test('customer observer does not resend welcome qr credential when phone formatting changes only', function () {
-    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
-    config()->set('services.evolution.api_key', 'test-api-key');
-    config()->set('services.evolution.instance_id', 'San Miguel Live');
-
-    Http::preventStrayRequests();
-    Http::fake([
-        'https://evolution.benjaminsierra.com/message/sendMedia/*' => Http::response(['status' => 'PENDING'], 201),
-        'https://evolution.benjaminsierra.com/message/sendText/*' => Http::response(['status' => 'PENDING'], 201),
-    ]);
+    configureWhatsAppCloudForObserverTests();
+    fakeWhatsAppCloudForObserverTests();
 
     $customer = Customer::factory()->create([
         'name' => 'Benjamin Sierra',
@@ -333,10 +329,11 @@ test('customer observer anonymizes personal data and disables qr codes when a cu
         ->and($customer->qrCodes()->where('is_active', true)->exists())->toBeFalse();
 });
 
-test('customer observer skips whatsapp delivery when evolution api key is missing', function () {
-    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
-    config()->set('services.evolution.api_key', null);
-    config()->set('services.evolution.instance_id', 'San Miguel Live');
+test('customer observer skips whatsapp delivery when the Cloud API access token is missing', function () {
+    config()->set('services.whatsapp.api_url', 'https://graph.facebook.test');
+    config()->set('services.whatsapp.graph_version', 'v23.0');
+    config()->set('services.whatsapp.access_token', null);
+    config()->set('services.whatsapp.phone_number_id', 'PHONE-ID');
 
     Http::fake();
 

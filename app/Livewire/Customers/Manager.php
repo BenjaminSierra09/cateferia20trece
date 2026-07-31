@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Customers;
 
+use App\Contracts\WhatsAppService;
 use App\Livewire\Concerns\SortsTables;
 use App\Models\Customer;
-use App\Services\EvolutionWhatsAppService;
 use App\Support\InitialIndexViewModeResolver;
 use App\Support\TonalpohualliCalendar;
 use Flux\Flux;
@@ -123,7 +123,7 @@ class Manager extends Component
         Flux::toast(text: $customer->is_active ? 'Cliente reactivado.' : 'Cliente desactivado.');
     }
 
-    public function sendWelcomeMessage(int $customerId): void
+    public function sendWelcomeMessage(WhatsAppService $whatsApp, int $customerId): void
     {
         $customer = Customer::query()
             ->with('qrCodes')
@@ -144,7 +144,7 @@ class Manager extends Component
         }
 
         try {
-            app(EvolutionWhatsAppService::class)->sendCustomerCredential($customer, $qrCode);
+            $whatsApp->sendCustomerCredential($customer, $qrCode);
         } catch (Throwable $throwable) {
             report($throwable);
 

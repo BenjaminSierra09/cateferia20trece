@@ -2,14 +2,18 @@
 
 namespace App\Observers;
 
+use App\Contracts\WhatsAppService;
 use App\Models\Customer;
 use App\Models\CustomerQrCode;
-use App\Services\EvolutionWhatsAppService;
 use Illuminate\Support\Str;
 use Throwable;
 
 class CustomerObserver
 {
+    public function __construct(
+        protected WhatsAppService $whatsApp,
+    ) {}
+
     /**
      * Handle the Customer "updating" event.
      */
@@ -36,7 +40,7 @@ class CustomerObserver
         ]);
 
         try {
-            app(EvolutionWhatsAppService::class)->sendCustomerCredential($customer, $qrCode);
+            $this->whatsApp->sendCustomerCredential($customer, $qrCode);
         } catch (Throwable $throwable) {
             report($throwable);
         }
@@ -77,7 +81,7 @@ class CustomerObserver
         }
 
         try {
-            app(EvolutionWhatsAppService::class)->sendCustomerCredential($customer, $qrCode);
+            $this->whatsApp->sendCustomerCredential($customer, $qrCode);
         } catch (Throwable $throwable) {
             report($throwable);
         }

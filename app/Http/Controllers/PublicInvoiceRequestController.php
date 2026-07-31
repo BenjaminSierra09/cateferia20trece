@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\WhatsAppService;
 use App\Http\Requests\PublicInvoiceRequest;
 use App\Mail\InvoiceRequestMail;
 use App\Models\Sale;
-use App\Services\EvolutionWhatsAppService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,7 +34,7 @@ class PublicInvoiceRequestController extends Controller
     /**
      * Receive a public invoice request and forward the fiscal data.
      */
-    public function store(PublicInvoiceRequest $request, EvolutionWhatsAppService $whatsAppService): RedirectResponse
+    public function store(PublicInvoiceRequest $request, WhatsAppService $whatsAppService): RedirectResponse
     {
         $data = $request->safe()->except('website');
         $sale = Sale::query()

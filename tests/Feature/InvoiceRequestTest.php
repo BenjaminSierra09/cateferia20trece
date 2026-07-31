@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     config()->set('services.invoicing.email', 'facturacion@example.com');
-    config()->set('services.evolution.api_key', null);
+    config()->set('services.whatsapp.access_token', null);
 });
 
 test('the invoice request page renders with the form and SAT regime catalog', function () {
@@ -68,9 +68,16 @@ test('a valid invoice request is sent to accounting over WhatsApp and email', fu
     Mail::fake();
     Http::preventStrayRequests();
     Http::fake([
-        'evolution.benjaminsierra.com/message/sendText/CAFETERIA20TRECE' => Http::response(['ok' => true]),
+        'https://graph.facebook.test/v23.0/PHONE-ID/messages' => Http::response([
+            'messages' => [['id' => 'wamid.invoice']],
+        ]),
     ]);
-    config()->set('services.evolution.api_key', 'fake-api-key');
+    config()->set('services.whatsapp.api_url', 'https://graph.facebook.test');
+    config()->set('services.whatsapp.graph_version', 'v23.0');
+    config()->set('services.whatsapp.access_token', 'fake-access-token');
+    config()->set('services.whatsapp.phone_number_id', 'PHONE-ID');
+    config()->set('services.whatsapp.templates.language', 'es_MX');
+    config()->set('services.whatsapp.templates.invoice_request', 'invoice_request');
     config()->set('services.invoicing.whatsapp', '+524181878244');
 
     $sale = Sale::factory()->create([
@@ -104,12 +111,18 @@ test('a valid invoice request is sent to accounting over WhatsApp and email', fu
             && $mail->invoicePaymentMethod === '04 - Tarjeta de crédito';
     });
 
-    Http::assertSent(fn (Request $request): bool => $request['number'] === '5214181878244'
-        && str_contains($request['text'], 'Codigo de facturacion: MfiYIvI')
-        && str_contains($request['text'], 'Total: $104.82')
-        && str_contains($request['text'], 'Metodo registrado en venta: Tarjeta')
-        && str_contains($request['text'], 'Metodo de pago para CFDI: 04 - Tarjeta de crédito')
-        && str_contains($request['text'], 'RFC: SIRB960209272'));
+    Http::assertSent(function (Request $request): bool {
+        $text = $request['template']['components'][0]['parameters'][0]['text'];
+
+        return $request['to'] === '524181878244'
+            && $request['type'] === 'template'
+            && $request['template']['name'] === 'invoice_request'
+            && str_contains($text, 'Codigo de facturacion: MfiYIvI')
+            && str_contains($text, 'Total: $104.82')
+            && str_contains($text, 'Metodo registrado en venta: Tarjeta')
+            && str_contains($text, 'Metodo de pago para CFDI: 04 - Tarjeta de crédito')
+            && str_contains($text, 'RFC: SIRB960209272');
+    });
 });
 
 test('an invoice request rejects an invalid RFC and postal code', function () {

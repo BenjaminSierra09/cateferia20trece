@@ -67,14 +67,19 @@ test('customer manager can select visible rows and bulk deactivate', function ()
 });
 
 test('customer manager can resend the welcome whatsapp message', function () {
-    config()->set('services.evolution.api_url', 'https://evolution.benjaminsierra.com');
-    config()->set('services.evolution.api_key', 'test-api-key');
-    config()->set('services.evolution.instance_id', 'San Miguel Live');
+    config()->set('services.whatsapp.api_url', 'https://graph.facebook.test');
+    config()->set('services.whatsapp.graph_version', 'v23.0');
+    config()->set('services.whatsapp.access_token', 'test-access-token');
+    config()->set('services.whatsapp.phone_number_id', 'PHONE-ID');
+    config()->set('services.whatsapp.templates.language', 'es_MX');
+    config()->set('services.whatsapp.templates.customer_credential', 'customer_credential');
 
     Http::preventStrayRequests();
     Http::fake([
-        'https://evolution.benjaminsierra.com/message/sendMedia/*' => Http::response(['status' => 'PENDING'], 201),
-        'https://evolution.benjaminsierra.com/message/sendText/*' => Http::response(['status' => 'PENDING'], 201),
+        'https://graph.facebook.test/v23.0/PHONE-ID/media' => Http::response(['id' => 'MEDIA-ID']),
+        'https://graph.facebook.test/v23.0/PHONE-ID/messages' => Http::response([
+            'messages' => [['id' => 'wamid.credential']],
+        ]),
     ]);
 
     $customer = Customer::factory()->create([
@@ -89,13 +94,13 @@ test('customer manager can resend the welcome whatsapp message', function () {
 
     Http::assertSentCount(4);
     Http::assertSent(function (Request $request) use ($customer): bool {
-        return str_contains($request->url(), '/message/sendMedia/')
-            && $request['number'] === '524151234567'
-            && str_contains($request['caption'], $customer->name);
+        return str_ends_with($request->url(), '/messages')
+            && $request['to'] === '524151234567'
+            && $request['template']['components'][1]['parameters'][0]['text'] === $customer->name;
     });
     Http::assertSent(function (Request $request) use ($qrCode): bool {
-        return str_contains($request->url(), '/message/sendText/')
-            && str_contains($request['text'], route('public.qr.show', ['uuid' => $qrCode->uuid]));
+        return str_ends_with($request->url(), '/messages')
+            && $request['template']['components'][1]['parameters'][2]['text'] === route('public.qr.show', ['uuid' => $qrCode->uuid]);
     });
 });
 

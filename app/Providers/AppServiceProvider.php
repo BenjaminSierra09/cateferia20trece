@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\WhatsAppService;
+use App\Services\WhatsAppCloudService;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -16,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(WhatsAppService::class, WhatsAppCloudService::class);
     }
 
     /**

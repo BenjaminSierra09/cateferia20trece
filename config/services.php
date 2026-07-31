@@ -41,11 +41,18 @@ return [
         'min_score' => env('RECAPTCHA_MIN_SCORE', 0.5),
     ],
 
-    'evolution' => [
-        'api_url' => env('EVOLUTION_API_URL', 'https://evolution.benjaminsierra.com/message/sendText/San Miguel Live'),
-        'api_key' => env('EVOLUTION_API_KEY'),
-        'instance_id' => env('EVOLUTION_INSTANCE_ID', 'CAFETERIA20TRECE'),
-        'webhook_token' => env('EVOLUTION_WEBHOOK_TOKEN'),
+    'whatsapp' => [
+        'api_url' => env('WHATSAPP_API_URL', 'https://graph.facebook.com'),
+        'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v23.0'),
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'templates' => [
+            'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'es_MX'),
+            'customer_credential' => env('WHATSAPP_CUSTOMER_CREDENTIAL_TEMPLATE', 'customer_credential'),
+            'invoice_request' => env('WHATSAPP_INVOICE_REQUEST_TEMPLATE', 'invoice_request'),
+        ],
     ],
 
     'privacy' => [

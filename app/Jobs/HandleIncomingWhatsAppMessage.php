@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Ai\Agents\WhatsAppConcierge;
+use App\Contracts\WhatsAppService;
 use App\Models\WhatsAppConversation;
-use App\Services\EvolutionWhatsAppService;
 use App\Support\CustomerPhoneMatcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -32,7 +32,7 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(CustomerPhoneMatcher $matcher, EvolutionWhatsAppService $whatsApp): void
+    public function handle(CustomerPhoneMatcher $matcher, WhatsAppService $whatsApp): void
     {
         $normalizedPhone = $matcher->normalize($this->phone);
 
