@@ -51,7 +51,7 @@
                                     <flux:icon.arrow-turn-up-right class="size-3.5 shrink-0 text-zinc-400" />
                                 @endif
                                 <span class="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                                    {{ $conversation->latestMessage?->body ?? 'Mensaje sin contenido' }}
+                                    {{ $conversation->latestMessage?->previewText() ?? 'Mensaje sin contenido' }}
                                 </span>
                             </span>
                         </span>
@@ -92,11 +92,27 @@
                         <flux:text size="sm" class="truncate">+{{ $selectedConversation->phone }}</flux:text>
                     </div>
 
-                    @if ($selectedConversation->hasOpenCustomerServiceWindow())
-                        <flux:badge color="emerald" icon="clock" class="max-sm:hidden">Puedes responder</flux:badge>
-                    @else
-                        <flux:badge color="amber" icon="clock" class="max-sm:hidden">Ventana cerrada</flux:badge>
-                    @endif
+                    <div class="flex shrink-0 items-center gap-2">
+                        @if ($selectedConversation->hasOpenCustomerServiceWindow())
+                            <flux:badge color="emerald" icon="clock" class="max-sm:hidden">Puedes responder</flux:badge>
+                        @else
+                            <flux:badge color="amber" icon="clock" class="max-sm:hidden">Ventana cerrada</flux:badge>
+                        @endif
+
+                        <flux:button
+                            wire:click="toggleBot"
+                            :variant="$selectedConversation->isBotPaused() ? 'primary' : 'ghost'"
+                            size="sm"
+                            :icon="$selectedConversation->isBotPaused() ? 'play-circle' : 'pause-circle'"
+                            :aria-label="$selectedConversation->isBotPaused() ? 'Reactivar bot' : 'Pausar bot'"
+                            wire:loading.attr="disabled"
+                            wire:target="toggleBot"
+                        >
+                            <span class="max-sm:hidden">
+                                {{ $selectedConversation->isBotPaused() ? 'Reactivar bot' : 'Pausar bot' }}
+                            </span>
+                        </flux:button>
+                    </div>
                 </header>
 
                 <div
@@ -117,10 +133,37 @@
                         @foreach ($selectedConversation->messages as $message)
                             @php($isOutbound = $message->direction === \App\Enums\WhatsAppMessageDirection::Outbound)
 
-                            <div wire:key="message-{{ $message->id }}" class="flex {{ $isOutbound ? 'justify-end' : 'justify-start' }}">
+                            <div wire:key="message-{{ $message->id }}" class="group flex {{ $isOutbound ? 'justify-end' : 'justify-start' }}">
                                 <div class="max-w-[85%] sm:max-w-[72%]">
                                     <div class="rounded-2xl px-3.5 py-2.5 shadow-sm {{ $isOutbound ? 'rounded-br-sm bg-emerald-600 text-white' : 'rounded-bl-sm border border-zinc-200 bg-white text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100' }}">
-                                        <p class="whitespace-pre-wrap break-words text-sm leading-relaxed">{{ $message->body ?? 'Mensaje sin contenido' }}</p>
+                                        @if ($message->type === 'image')
+                                            @if ($message->media_path)
+                                                <a
+                                                    href="{{ route('dashboard.whatsapp.media', $message) }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="mb-2 block overflow-hidden rounded-xl"
+                                                >
+                                                    <img
+                                                        src="{{ route('dashboard.whatsapp.media', $message) }}"
+                                                        alt="Foto enviada por WhatsApp"
+                                                        class="max-h-80 w-full object-cover"
+                                                        loading="lazy"
+                                                    />
+                                                </a>
+                                            @else
+                                                <div class="mb-1 flex items-center gap-2 text-sm">
+                                                    <flux:icon.photo class="size-4" />
+                                                    <span>Imagen recibida</span>
+                                                </div>
+                                            @endif
+                                        @endif
+
+                                        @if (filled($message->body))
+                                            <p class="whitespace-pre-wrap break-words text-sm leading-relaxed">{{ $message->body }}</p>
+                                        @elseif ($message->type !== 'image')
+                                            <p class="text-sm leading-relaxed">Mensaje sin contenido</p>
+                                        @endif
 
                                         <div class="mt-1 flex items-center justify-end gap-1 text-[0.68rem] {{ $isOutbound ? 'text-emerald-100' : 'text-zinc-400' }}">
                                             @if ($isOutbound && $message->sentBy)
@@ -144,6 +187,38 @@
                                             @endif
                                         </div>
                                     </div>
+
+                                    <div class="mt-1 flex flex-wrap items-center gap-1 {{ $isOutbound ? 'justify-end' : 'justify-start' }}">
+                                        @foreach ($message->reactions as $reaction)
+                                            <span
+                                                class="inline-flex min-h-7 items-center rounded-full border border-zinc-200 bg-white px-2 text-sm shadow-sm dark:border-zinc-700 dark:bg-zinc-800"
+                                                title="{{ $reaction->direction === \App\Enums\WhatsAppMessageDirection::Outbound ? 'Reacción enviada' : 'Reacción recibida' }}"
+                                            >
+                                                {{ $reaction->emoji }}
+                                            </span>
+                                        @endforeach
+
+                                        @if ($message->canReceiveReaction())
+                                            <flux:dropdown position="top" :align="$isOutbound ? 'end' : 'start'">
+                                                <flux:button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="xs"
+                                                    icon="face-smile"
+                                                    aria-label="Reaccionar al mensaje"
+                                                    class="opacity-60 transition group-hover:opacity-100 focus:opacity-100"
+                                                />
+
+                                                <flux:menu>
+                                                    @foreach (['👍' => 'Me gusta', '❤️' => 'Me encanta', '😂' => 'Me divierte', '😮' => 'Me sorprende', '😢' => 'Me entristece', '🙏' => 'Gracias'] as $emoji => $label)
+                                                        <flux:menu.item wire:click="react({{ $message->id }}, '{{ $emoji }}')">
+                                                            <span class="me-2 text-lg">{{ $emoji }}</span> {{ $label }}
+                                                        </flux:menu.item>
+                                                    @endforeach
+                                                </flux:menu>
+                                            </flux:dropdown>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         @endforeach
@@ -157,7 +232,24 @@
                         </flux:callout>
                     @endif
 
+                    @if ($selectedConversation->isBotPaused())
+                        <flux:callout icon="pause-circle" color="sky" class="mb-3">
+                            El bot está pausado en este chat. Puedes seguir respondiendo manualmente.
+                        </flux:callout>
+                    @endif
+
                     <form wire:submit="send">
+                        @if ($photo)
+                            <div class="mb-2 flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-800">
+                                <img src="{{ $photo->temporaryUrl() }}" alt="Foto seleccionada" class="size-16 rounded-lg object-cover" />
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $photo->getClientOriginalName() }}</p>
+                                    <p class="text-xs text-zinc-500">Lista para enviar</p>
+                                </div>
+                                <flux:button type="button" wire:click="removePhoto" variant="ghost" size="sm" icon="x-mark" aria-label="Quitar foto" />
+                            </div>
+                        @endif
+
                         <flux:composer
                             wire:model="reply"
                             name="reply"
@@ -167,6 +259,19 @@
                             placeholder="Escribe un mensaje"
                             :disabled="! $selectedConversation->hasOpenCustomerServiceWindow()"
                         >
+                            <x-slot name="actionsLeading">
+                                <flux:file-upload wire:model="photo" accept="image/jpeg,image/png">
+                                    <flux:button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        icon="photo"
+                                        aria-label="Adjuntar foto"
+                                        :disabled="! $selectedConversation->hasOpenCustomerServiceWindow()"
+                                    />
+                                </flux:file-upload>
+                            </x-slot>
+
                             <x-slot name="actionsTrailing">
                                 <flux:button
                                     type="submit"
@@ -181,6 +286,7 @@
                             </x-slot>
                         </flux:composer>
                         <flux:error name="reply" />
+                        <flux:error name="photo" />
                     </form>
                 </footer>
             @else

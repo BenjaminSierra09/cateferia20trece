@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
+use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
 use App\Enums\WhatsAppMessageDirection;
 use App\Enums\WhatsAppMessageStatus;
@@ -15,6 +16,8 @@ use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 #[Tries(3)]
 #[Backoff([10, 30, 60])]
@@ -33,6 +36,7 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
         public ?string $messageId = null,
         public string $messageType = 'text',
         public ?int $timestamp = null,
+        public ?string $reactionToMessageId = null,
     ) {}
 
     /**
@@ -50,8 +54,11 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(CustomerPhoneMatcher $matcher, SendWhatsAppTextMessage $sendMessage): void
-    {
+    public function handle(
+        CustomerPhoneMatcher $matcher,
+        SendWhatsAppTextMessage $sendMessage,
+        StoreIncomingWhatsAppReaction $storeReaction,
+    ): void {
         $normalizedPhone = $matcher->normalize($this->phone);
 
         if ($normalizedPhone === '') {
@@ -61,6 +68,7 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
         $customer = $matcher->find($this->phone);
         $receivedAt = $this->timestamp !== null
             ? CarbonImmutable::createFromTimestampUTC($this->timestamp)
+                ->setTimezone((string) config('app.timezone'))
             : now();
 
         /** @var WhatsAppConversation $conversation */
@@ -68,10 +76,31 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
         $conversation->fill([
             'profile_name' => filled($this->pushName) ? $this->pushName : $conversation->profile_name,
             'customer_id' => $customer?->id,
-            'last_message_id' => $this->messageId,
-            'last_inbound_at' => $receivedAt,
-            'last_message_at' => $receivedAt,
-        ])->save();
+        ]);
+
+        if ($conversation->last_inbound_at === null || $receivedAt->greaterThan($conversation->last_inbound_at)) {
+            $conversation->last_inbound_at = $receivedAt;
+        }
+
+        if ($this->messageType !== 'reaction'
+            && ($conversation->last_message_at === null || $receivedAt->greaterThanOrEqualTo($conversation->last_message_at))) {
+            $conversation->last_message_id = $this->messageId;
+            $conversation->last_message_at = $receivedAt;
+        }
+
+        $conversation->save();
+
+        if ($this->messageType === 'reaction' && filled($this->reactionToMessageId)) {
+            $storeReaction->execute(
+                conversation: $conversation,
+                targetProviderMessageId: $this->reactionToMessageId,
+                emoji: $this->text,
+                providerMessageId: $this->messageId,
+                reactedAt: $receivedAt,
+            );
+
+            return;
+        }
 
         $messageAttributes = [
             'direction' => WhatsAppMessageDirection::Inbound,
@@ -98,8 +127,14 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
             return;
         }
 
+        if ($conversation->refresh()->isBotPaused()) {
+            return;
+        }
+
         if ($customer === null) {
-            $sendMessage->execute($conversation, $this->registrationMessage());
+            if (! $conversation->refresh()->isBotPaused()) {
+                $sendMessage->execute($conversation, $this->registrationMessage());
+            }
 
             return;
         }
@@ -115,7 +150,18 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
             'conversation_id' => $response->conversationId ?? $conversation->conversation_id,
         ])->save();
 
-        $sendMessage->execute($conversation, $response->text);
+        if (! $conversation->refresh()->isBotPaused()) {
+            $sendMessage->execute($conversation, $response->text);
+        }
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        Log::error('No fue posible procesar un mensaje entrante de WhatsApp.', [
+            'phone' => $this->phone,
+            'provider_message_id' => $this->messageId,
+            'exception' => $exception,
+        ]);
     }
 
     /**

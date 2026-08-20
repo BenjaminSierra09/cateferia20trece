@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['phone', 'profile_name', 'customer_id', 'conversation_id', 'last_message_id', 'last_inbound_at', 'last_outbound_at', 'last_message_at'])]
+#[Fillable(['phone', 'profile_name', 'customer_id', 'conversation_id', 'last_message_id', 'last_inbound_at', 'last_outbound_at', 'last_message_at', 'bot_paused_at', 'bot_paused_by_user_id'])]
 class WhatsAppConversation extends Model
 {
     /** @use HasFactory<WhatsAppConversationFactory> */
@@ -29,6 +29,7 @@ class WhatsAppConversation extends Model
             'last_inbound_at' => 'datetime',
             'last_outbound_at' => 'datetime',
             'last_message_at' => 'datetime',
+            'bot_paused_at' => 'datetime',
         ];
     }
 
@@ -47,12 +48,25 @@ class WhatsAppConversation extends Model
 
     public function latestMessage(): HasOne
     {
-        return $this->hasOne(WhatsAppMessage::class, 'whatsapp_conversation_id')->latestOfMany('sent_at');
+        return $this->hasOne(WhatsAppMessage::class, 'whatsapp_conversation_id')->ofMany([
+            'sent_at' => 'max',
+            'id' => 'max',
+        ]);
+    }
+
+    public function botPausedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'bot_paused_by_user_id');
     }
 
     public function hasOpenCustomerServiceWindow(): bool
     {
         return $this->last_inbound_at?->greaterThanOrEqualTo(now()->subDay()) ?? false;
+    }
+
+    public function isBotPaused(): bool
+    {
+        return $this->bot_paused_at !== null;
     }
 
     public function displayName(): string

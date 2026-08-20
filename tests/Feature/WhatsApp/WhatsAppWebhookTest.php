@@ -5,6 +5,7 @@ use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\HandleIncomingWhatsAppMessage;
 use App\Models\WhatsAppConversation;
 use App\Models\WhatsAppMessage;
+use App\Models\WhatsAppMessageReaction;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -152,6 +153,27 @@ it('dispatches non-text messages so they remain visible in the inbox', function 
     });
 });
 
+it('dispatches a reaction with its target message id', function () {
+    postSignedWhatsAppWebhook($this, whatsAppCloudWebhookPayload([
+        [
+            'from' => '524181878244',
+            'id' => 'wamid.REACTION',
+            'reaction' => [
+                'message_id' => 'wamid.TARGET',
+                'emoji' => '👍',
+            ],
+            'type' => 'reaction',
+        ],
+    ]))->assertOk();
+
+    Queue::assertPushed(HandleIncomingWhatsAppMessage::class, function (HandleIncomingWhatsAppMessage $job): bool {
+        return $job->messageId === 'wamid.REACTION'
+            && $job->messageType === 'reaction'
+            && $job->text === '👍'
+            && $job->reactionToMessageId === 'wamid.TARGET';
+    });
+});
+
 it('updates outbound delivery statuses', function () {
     $conversation = WhatsAppConversation::factory()->create();
     $message = WhatsAppMessage::factory()->create([
@@ -175,6 +197,24 @@ it('updates outbound delivery statuses', function () {
 
     Queue::assertNothingPushed();
     expect($message->refresh()->status)->toBe(WhatsAppMessageStatus::Delivered);
+});
+
+it('updates outbound reaction delivery statuses', function () {
+    $message = WhatsAppMessage::factory()->create();
+    $reaction = WhatsAppMessageReaction::factory()->create([
+        'whatsapp_message_id' => $message->id,
+        'provider_message_id' => 'wamid.REACTION-STATUS',
+        'status' => WhatsAppMessageStatus::Sent,
+    ]);
+    $payload = whatsAppCloudWebhookPayload([]);
+    $payload['entry'][0]['changes'][0]['value']['statuses'] = [[
+        'id' => 'wamid.REACTION-STATUS',
+        'status' => 'delivered',
+    ]];
+
+    postSignedWhatsAppWebhook($this, $payload)->assertOk();
+
+    expect($reaction->refresh()->status)->toBe(WhatsAppMessageStatus::Delivered);
 });
 
 it('rejects webhook payloads with an invalid signature', function () {

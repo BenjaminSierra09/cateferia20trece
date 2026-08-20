@@ -216,6 +216,7 @@ class Dashboard extends Component
         return WhatsAppMessage::query()
             ->with('conversation.customer:id,name,phone')
             ->latest('sent_at')
+            ->latest('id')
             ->limit(5)
             ->get();
     }

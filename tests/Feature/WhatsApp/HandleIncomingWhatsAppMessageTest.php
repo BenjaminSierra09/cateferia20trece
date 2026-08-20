@@ -1,11 +1,13 @@
 <?php
 
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
+use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
 use App\Jobs\HandleIncomingWhatsAppMessage;
 use App\Models\Customer;
 use App\Models\WhatsAppConversation;
 use App\Support\CustomerPhoneMatcher;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 
 function configureWhatsAppCloudForConciergeTests(): void
@@ -19,7 +21,11 @@ function configureWhatsAppCloudForConciergeTests(): void
 function runWhatsAppConciergeJob(string $phone, string $text, ?string $pushName = null, ?string $messageId = null): void
 {
     (new HandleIncomingWhatsAppMessage($phone, $text, $pushName, $messageId))
-        ->handle(app(CustomerPhoneMatcher::class), app(SendWhatsAppTextMessage::class));
+        ->handle(
+            app(CustomerPhoneMatcher::class),
+            app(SendWhatsAppTextMessage::class),
+            app(StoreIncomingWhatsAppReaction::class),
+        );
 }
 
 it('replies to an unregistered number with the registration link and does not use the AI', function () {
@@ -93,4 +99,82 @@ it('ignores duplicate webhook deliveries of the same message', function () {
     // The second (duplicate) delivery is skipped, so only one reply is sent.
     Http::assertSentCount(1);
     expect(WhatsAppConversation::query()->firstWhere('phone', '5214181878244')->messages)->toHaveCount(2);
+});
+
+it('stores Meta timestamps in the application timezone', function () {
+    WhatsAppConcierge::fake();
+    configureWhatsAppCloudForConciergeTests();
+    Http::fake();
+
+    $timestamp = CarbonImmutable::parse('2026-08-20 21:49:00', 'UTC')->timestamp;
+    $job = new HandleIncomingWhatsAppMessage(
+        phone: '5219990001122',
+        text: '¿Hoy hasta qué hora está abierto?',
+        messageId: 'MID-TIMEZONE',
+        timestamp: $timestamp,
+    );
+
+    $job->handle(
+        app(CustomerPhoneMatcher::class),
+        app(SendWhatsAppTextMessage::class),
+        app(StoreIncomingWhatsAppReaction::class),
+    );
+
+    $message = WhatsAppConversation::query()
+        ->firstWhere('phone', '5219990001122')
+        ->messages()
+        ->where('provider_message_id', 'MID-TIMEZONE')
+        ->firstOrFail();
+
+    expect($message->sent_at->format('Y-m-d H:i:s'))->toBe('2026-08-20 15:49:00');
+});
+
+it('records inbound messages without replying while the bot is paused', function () {
+    Customer::factory()->create(['phone' => '+524181878244']);
+    WhatsAppConversation::factory()->create([
+        'phone' => '5214181878244',
+        'bot_paused_at' => now(),
+    ]);
+
+    WhatsAppConcierge::fake();
+    configureWhatsAppCloudForConciergeTests();
+    Http::fake();
+
+    runWhatsAppConciergeJob('5214181878244', 'Necesito ayuda', null, 'MID-PAUSED');
+
+    WhatsAppConcierge::assertNeverPrompted();
+    Http::assertNothingSent();
+
+    $this->assertDatabaseHas('whatsapp_messages', [
+        'provider_message_id' => 'MID-PAUSED',
+        'body' => 'Necesito ayuda',
+    ]);
+});
+
+it('attaches inbound reactions to their target message', function () {
+    $conversation = WhatsAppConversation::factory()->create(['phone' => '5214181878244']);
+    $target = $conversation->messages()->create([
+        'provider_message_id' => 'wamid.TARGET',
+        'direction' => 'outbound',
+        'type' => 'text',
+        'body' => 'Hola',
+        'status' => 'sent',
+        'sent_at' => now(),
+    ]);
+    $job = new HandleIncomingWhatsAppMessage(
+        phone: '5214181878244',
+        text: '❤️',
+        messageId: 'wamid.REACTION',
+        messageType: 'reaction',
+        reactionToMessageId: 'wamid.TARGET',
+    );
+
+    $job->handle(
+        app(CustomerPhoneMatcher::class),
+        app(SendWhatsAppTextMessage::class),
+        app(StoreIncomingWhatsAppReaction::class),
+    );
+
+    expect($conversation->messages()->count())->toBe(1)
+        ->and($target->reactions()->firstOrFail()->emoji)->toBe('❤️');
 });

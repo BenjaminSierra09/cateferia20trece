@@ -146,7 +146,7 @@
                                 </flux:badge>
                             </span>
                             <span class="mt-0.5 block truncate text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ $message->body ?? 'Mensaje sin contenido' }}
+                                {{ $message->previewText() }}
                             </span>
                         </span>
 

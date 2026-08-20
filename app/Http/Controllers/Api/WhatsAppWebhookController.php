@@ -7,6 +7,7 @@ use App\Enums\WhatsAppMessageStatus;
 use App\Http\Controllers\Controller;
 use App\Jobs\HandleIncomingWhatsAppMessage;
 use App\Models\WhatsAppMessage;
+use App\Models\WhatsAppMessageReaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -142,6 +143,9 @@ class WhatsAppWebhookController extends Controller
             messageId: is_string($messageId) ? $messageId : null,
             messageType: $messageType,
             timestamp: is_numeric($timestamp) ? (int) $timestamp : null,
+            reactionToMessageId: is_string(data_get($message, 'reaction.message_id'))
+                ? data_get($message, 'reaction.message_id')
+                : null,
         );
     }
 
@@ -150,20 +154,24 @@ class WhatsAppWebhookController extends Controller
      */
     protected function messageBody(array $message, string $messageType): string
     {
+        if ($messageType === 'reaction') {
+            $emoji = data_get($message, 'reaction.emoji');
+
+            return is_string($emoji) ? trim($emoji) : '';
+        }
+
         $body = match ($messageType) {
             'text' => data_get($message, 'text.body'),
             'button' => data_get($message, 'button.text'),
             'interactive' => data_get($message, 'interactive.button_reply.title')
                 ?? data_get($message, 'interactive.list_reply.title'),
             'document' => data_get($message, 'document.filename'),
-            'reaction' => data_get($message, 'reaction.emoji'),
             default => null,
         };
 
         if (is_string($body) && trim($body) !== '') {
             return match ($messageType) {
                 'document' => '[Documento] '.trim($body),
-                'reaction' => '[Reacción] '.trim($body),
                 default => trim($body),
             };
         }
@@ -205,6 +213,11 @@ class WhatsAppWebhookController extends Controller
 
             $status = WhatsAppMessageStatus::tryFrom($statusValue);
             $message = WhatsAppMessage::query()
+                ->where('provider_message_id', $providerMessageId)
+                ->where('direction', WhatsAppMessageDirection::Outbound)
+                ->first();
+
+            $message ??= WhatsAppMessageReaction::query()
                 ->where('provider_message_id', $providerMessageId)
                 ->where('direction', WhatsAppMessageDirection::Outbound)
                 ->first();

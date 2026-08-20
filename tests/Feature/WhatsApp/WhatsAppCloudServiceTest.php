@@ -39,6 +39,54 @@ it('sends free-form text through the official Graph API', function () {
     });
 });
 
+it('sends a reaction attached to a WhatsApp message', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://graph.facebook.test/v23.0/123456789/messages' => Http::response([
+            'messages' => [['id' => 'wamid.REACTION']],
+        ]),
+    ]);
+
+    $messageId = app(WhatsAppService::class)->sendReaction(
+        '+52 1 418 187 8244',
+        'wamid.TARGET',
+        '❤️',
+    );
+
+    expect($messageId)->toBe('wamid.REACTION');
+    Http::assertSent(fn (Request $request): bool => $request['to'] === '524181878244'
+        && $request['type'] === 'reaction'
+        && $request['reaction']['message_id'] === 'wamid.TARGET'
+        && $request['reaction']['emoji'] === '❤️');
+});
+
+it('uploads and sends a JPEG image with its caption', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://graph.facebook.test/v23.0/123456789/media' => Http::response(['id' => 'MEDIA-IMAGE']),
+        'https://graph.facebook.test/v23.0/123456789/messages' => Http::response([
+            'messages' => [['id' => 'wamid.IMAGE']],
+        ]),
+    ]);
+
+    $messageId = app(WhatsAppService::class)->sendImage(
+        '+52 1 418 187 8244',
+        'jpeg-contents',
+        'foto.jpg',
+        'image/jpeg',
+        'Nuestro menú',
+    );
+
+    expect($messageId)->toBe('wamid.IMAGE');
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/media')
+        && str_contains($request->body(), 'foto.jpg')
+        && str_contains($request->body(), 'image/jpeg'));
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/messages')
+        && $request['type'] === 'image'
+        && $request['image']['id'] === 'MEDIA-IMAGE'
+        && $request['image']['caption'] === 'Nuestro menú');
+});
+
 it('uploads the credential image and sends an approved template', function () {
     $customer = Customer::factory()->make([
         'name' => 'Benjamin Sierra',

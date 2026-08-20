@@ -59,9 +59,82 @@ class WhatsAppCloudService implements WhatsAppService
             failureMessage: 'No fue posible enviar la respuesta de WhatsApp.',
         );
 
-        $messageId = $response->json('messages.0.id');
+        return $this->messageIdFrom($response);
+    }
 
-        return is_string($messageId) && $messageId !== '' ? $messageId : null;
+    public function sendReaction(string $number, string $messageId, string $emoji): ?string
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $normalizedNumber = $this->normalizePhoneNumber($number);
+
+        if ($normalizedNumber === null || $messageId === '' || $emoji === '') {
+            return null;
+        }
+
+        $response = $this->sendPayload(
+            payload: [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $normalizedNumber,
+                'type' => 'reaction',
+                'reaction' => [
+                    'message_id' => $messageId,
+                    'emoji' => $emoji,
+                ],
+            ],
+            operation: 'send_reaction',
+            failureMessage: 'No fue posible enviar la reacción de WhatsApp.',
+        );
+
+        return $this->messageIdFrom($response);
+    }
+
+    public function sendImage(
+        string $number,
+        string $contents,
+        string $fileName,
+        string $mimeType,
+        ?string $caption = null,
+    ): ?string {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $normalizedNumber = $this->normalizePhoneNumber($number);
+
+        if ($normalizedNumber === null || $contents === '') {
+            return null;
+        }
+
+        $mediaId = $this->uploadMedia(
+            contents: $contents,
+            fileName: $fileName,
+            mimeType: $mimeType,
+            operation: 'upload_image',
+            failureMessage: 'No fue posible subir la foto a WhatsApp.',
+        );
+        $image = ['id' => $mediaId];
+
+        if (filled($caption)) {
+            $image['caption'] = trim((string) $caption);
+        }
+
+        $response = $this->sendPayload(
+            payload: [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $normalizedNumber,
+                'type' => 'image',
+                'image' => $image,
+            ],
+            operation: 'send_image',
+            failureMessage: 'No fue posible enviar la foto por WhatsApp.',
+        );
+
+        return $this->messageIdFrom($response);
     }
 
     public function sendCustomerCredential(Customer $customer, CustomerQrCode $qrCode): void
@@ -77,7 +150,7 @@ class WhatsAppCloudService implements WhatsAppService
         }
 
         $fileName = sprintf('credencial-%s.png', Str::slug($customer->name ?: 'cliente'));
-        $mediaId = $this->uploadImage(
+        $mediaId = $this->uploadBase64Image(
             mediaBase64: $this->customerCardRenderer->pngBase64($customer, $qrCode, asset('logotipo.png')),
             fileName: $fileName,
         );
@@ -215,7 +288,7 @@ class WhatsAppCloudService implements WhatsAppService
         );
     }
 
-    protected function uploadImage(string $mediaBase64, string $fileName): string
+    protected function uploadBase64Image(string $mediaBase64, string $fileName): string
     {
         $contents = base64_decode($mediaBase64, true);
 
@@ -226,28 +299,51 @@ class WhatsAppCloudService implements WhatsAppService
             );
         }
 
-        $response = $this->executeRequest(
-            request: fn (): Response => $this->client()
-                ->attach('file', $contents, $fileName, ['Content-Type' => 'image/png'])
-                ->post($this->endpoint('media'), [
-                    'messaging_product' => 'whatsapp',
-                    'type' => 'image/png',
-                ]),
+        return $this->uploadMedia(
+            contents: $contents,
+            fileName: $fileName,
+            mimeType: 'image/png',
             operation: 'upload_media',
             failureMessage: 'No fue posible subir la credencial QR a WhatsApp.',
+        );
+    }
+
+    protected function uploadMedia(
+        string $contents,
+        string $fileName,
+        string $mimeType,
+        string $operation,
+        string $failureMessage,
+    ): string {
+        $response = $this->executeRequest(
+            request: fn (): Response => $this->client()
+                ->attach('file', $contents, $fileName, ['Content-Type' => $mimeType])
+                ->post($this->endpoint('media'), [
+                    'messaging_product' => 'whatsapp',
+                    'type' => $mimeType,
+                ]),
+            operation: $operation,
+            failureMessage: $failureMessage,
         );
 
         $mediaId = $response->json('id');
 
         if (! is_string($mediaId) || $mediaId === '') {
             throw new WhatsAppCloudApiException(
-                message: 'WhatsApp no devolvió el identificador de la credencial QR.',
-                operation: 'upload_media',
+                message: 'WhatsApp no devolvió el identificador del archivo.',
+                operation: $operation,
                 status: $response->status(),
             );
         }
 
         return $mediaId;
+    }
+
+    protected function messageIdFrom(Response $response): ?string
+    {
+        $messageId = $response->json('messages.0.id');
+
+        return is_string($messageId) && $messageId !== '' ? $messageId : null;
     }
 
     /**

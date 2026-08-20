@@ -4,6 +4,7 @@ use App\Http\Controllers\PublicArcoRequestController;
 use App\Http\Controllers\PublicCustomerRegistrationController;
 use App\Http\Controllers\PublicInvoiceRequestController;
 use App\Http\Controllers\PublicPagesController;
+use App\Http\Controllers\WhatsAppMediaController;
 use App\Livewire\AztecSymbols\Form as AztecSymbolForm;
 use App\Livewire\AztecSymbols\Manager as AztecSymbolManager;
 use App\Livewire\Beverages\Create as BeverageCreate;
@@ -56,6 +57,7 @@ Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])-
     Route::livewire('work-session/check-in', CheckIn::class)->name('dashboard.work-session.check-in');
     Route::livewire('/', Dashboard::class)->name('dashboard');
     Route::livewire('whatsapp', WhatsAppInbox::class)->name('dashboard.whatsapp.index');
+    Route::get('whatsapp/messages/{whatsappMessage}/media', WhatsAppMediaController::class)->name('dashboard.whatsapp.media');
     Route::livewire('branches', BranchManager::class)->name('dashboard.branches.index');
     Route::livewire('branches/create', BranchCreate::class)->name('dashboard.branches.create');
     Route::livewire('branches/{branch}/edit', BranchCreate::class)->name('dashboard.branches.edit');

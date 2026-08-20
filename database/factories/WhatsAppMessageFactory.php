@@ -27,6 +27,8 @@ class WhatsAppMessageFactory extends Factory
             'direction' => WhatsAppMessageDirection::Inbound,
             'type' => 'text',
             'body' => fake()->sentence(),
+            'media_path' => null,
+            'media_mime_type' => null,
             'status' => WhatsAppMessageStatus::Received,
             'error_code' => null,
             'sent_at' => now(),

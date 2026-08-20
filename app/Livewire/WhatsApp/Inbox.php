@@ -2,6 +2,8 @@
 
 namespace App\Livewire\WhatsApp;
 
+use App\Actions\WhatsApp\SendWhatsAppImage;
+use App\Actions\WhatsApp\SendWhatsAppReaction;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
 use App\Models\User;
 use App\Models\WhatsAppConversation;
@@ -11,16 +13,21 @@ use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Throwable;
 
 #[Title('WhatsApp')]
 class Inbox extends Component
 {
+    use WithFileUploads;
+
     public string $search = '';
 
     public ?int $selectedConversationId = null;
 
     public string $reply = '';
+
+    public $photo;
 
     public int $messageLimit = 60;
 
@@ -31,6 +38,7 @@ class Inbox extends Component
         $this->selectedConversationId = WhatsAppConversation::query()
             ->whereHas('messages')
             ->latest('last_message_at')
+            ->latest('id')
             ->value('id');
     }
 
@@ -48,6 +56,8 @@ class Inbox extends Component
                 'customer_id',
                 'last_inbound_at',
                 'last_message_at',
+                'bot_paused_at',
+                'bot_paused_by_user_id',
             ])
             ->with([
                 'customer:id,name,phone',
@@ -65,6 +75,7 @@ class Inbox extends Component
                 });
             })
             ->latest('last_message_at')
+            ->latest('id')
             ->limit(30)
             ->get();
     }
@@ -85,7 +96,7 @@ class Inbox extends Component
         }
 
         $messages = $conversation->messages()
-            ->with('sentBy:id,name')
+            ->with(['sentBy:id,name', 'reactions.sentBy:id,name'])
             ->latest('sent_at')
             ->latest('id')
             ->limit($this->messageLimit)
@@ -110,7 +121,7 @@ class Inbox extends Component
             ->findOrFail($conversationId)
             ->id;
         $this->messageLimit = 60;
-        $this->reset(['reply']);
+        $this->reset(['reply', 'photo']);
         $this->resetErrorBag();
         unset($this->selectedConversation);
     }
@@ -118,7 +129,7 @@ class Inbox extends Component
     public function closeConversation(): void
     {
         $this->selectedConversationId = null;
-        $this->reset(['reply']);
+        $this->reset(['reply', 'photo']);
         $this->resetErrorBag();
         unset($this->selectedConversation);
     }
@@ -129,15 +140,35 @@ class Inbox extends Component
         unset($this->selectedConversation);
     }
 
-    public function send(SendWhatsAppTextMessage $sendMessage): void
-    {
+    public function send(
+        SendWhatsAppTextMessage $sendMessage,
+        SendWhatsAppImage $sendImage,
+    ): void {
         $user = $this->authorizeWhatsApp();
         $validated = $this->validate([
-            'reply' => ['required', 'string', 'max:4096'],
+            'reply' => ['nullable', 'string', 'max:4096'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'mimetypes:image/jpeg,image/png', 'max:5120'],
         ], [
-            'reply.required' => 'Escribe un mensaje antes de enviarlo.',
             'reply.max' => 'El mensaje no puede exceder 4096 caracteres.',
+            'photo.image' => 'Selecciona una foto válida.',
+            'photo.mimes' => 'La foto debe ser JPG o PNG.',
+            'photo.mimetypes' => 'La foto debe ser JPG o PNG.',
+            'photo.max' => 'La foto no puede pesar más de 5 MB.',
         ]);
+
+        $body = trim((string) ($validated['reply'] ?? ''));
+
+        if ($this->photo === null && $body === '') {
+            $this->addError('reply', 'Escribe un mensaje o selecciona una foto.');
+
+            return;
+        }
+
+        if ($this->photo !== null && mb_strlen($body) > 1024) {
+            $this->addError('reply', 'El texto de una foto no puede exceder 1024 caracteres.');
+
+            return;
+        }
 
         $conversation = $this->selectedConversation;
 
@@ -154,7 +185,11 @@ class Inbox extends Component
         }
 
         try {
-            $sendMessage->execute($conversation, trim($validated['reply']), $user);
+            if ($this->photo !== null) {
+                $sendImage->execute($conversation, $this->photo, $body !== '' ? $body : null, $user);
+            } else {
+                $sendMessage->execute($conversation, $body, $user);
+            }
         } catch (Throwable $throwable) {
             report($throwable);
 
@@ -164,11 +199,71 @@ class Inbox extends Component
             return;
         }
 
-        $this->reset(['reply']);
+        $this->reset(['reply', 'photo']);
         unset($this->conversations, $this->selectedConversation);
         $this->dispatch('whatsapp-message-sent');
 
         Flux::toast(variant: 'success', text: 'Mensaje enviado por WhatsApp.');
+    }
+
+    public function removePhoto(): void
+    {
+        $this->authorizeWhatsApp();
+        $this->reset('photo');
+        $this->resetValidation('photo');
+    }
+
+    public function toggleBot(): void
+    {
+        $user = $this->authorizeWhatsApp();
+        $conversation = $this->selectedConversation;
+
+        if ($conversation === null) {
+            return;
+        }
+
+        $isPausing = ! $conversation->isBotPaused();
+        $conversation->update([
+            'bot_paused_at' => $isPausing ? now() : null,
+            'bot_paused_by_user_id' => $isPausing ? $user->id : null,
+        ]);
+
+        unset($this->conversations, $this->selectedConversation);
+
+        Flux::toast(
+            variant: $isPausing ? 'warning' : 'success',
+            text: $isPausing ? 'Bot pausado para esta conversación.' : 'Bot reactivado para esta conversación.',
+        );
+    }
+
+    public function react(int $messageId, string $emoji, SendWhatsAppReaction $sendReaction): void
+    {
+        $user = $this->authorizeWhatsApp();
+        $conversation = $this->selectedConversation;
+
+        if ($conversation === null || ! in_array($emoji, SendWhatsAppReaction::EMOJIS, true)) {
+            abort(422);
+        }
+
+        $target = $conversation->messages()->findOrFail($messageId);
+
+        if (! $target->canReceiveReaction()) {
+            Flux::toast(variant: 'danger', text: 'Este mensaje ya no admite reacciones en Meta.');
+
+            return;
+        }
+
+        try {
+            $sendReaction->execute($conversation, $target, $emoji, $user);
+        } catch (Throwable $throwable) {
+            report($throwable);
+            Flux::toast(variant: 'danger', text: 'No fue posible enviar la reacción.');
+
+            return;
+        }
+
+        unset($this->selectedConversation);
+        Flux::toast(variant: 'success', text: 'Reacción enviada.');
     }
 
     public function render(): View

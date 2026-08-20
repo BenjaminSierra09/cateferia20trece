@@ -26,6 +26,8 @@ class WhatsAppConversationFactory extends Factory
             'last_inbound_at' => null,
             'last_outbound_at' => null,
             'last_message_at' => null,
+            'bot_paused_at' => null,
+            'bot_paused_by_user_id' => null,
         ];
     }
 }

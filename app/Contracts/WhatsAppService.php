@@ -12,6 +12,16 @@ interface WhatsAppService
 
     public function sendMessage(string $number, string $text): ?string;
 
+    public function sendReaction(string $number, string $messageId, string $emoji): ?string;
+
+    public function sendImage(
+        string $number,
+        string $contents,
+        string $fileName,
+        string $mimeType,
+        ?string $caption = null,
+    ): ?string;
+
     public function sendCustomerCredential(Customer $customer, CustomerQrCode $qrCode): void;
 
     /**
