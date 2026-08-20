@@ -32,19 +32,19 @@ class WhatsAppCloudService implements WhatsAppService
             && filled(config('services.whatsapp.api_url'));
     }
 
-    public function sendMessage(string $number, string $text): void
+    public function sendMessage(string $number, string $text): ?string
     {
         if (! $this->isConfigured()) {
-            return;
+            return null;
         }
 
         $normalizedNumber = $this->normalizePhoneNumber($number);
 
         if ($normalizedNumber === null || trim($text) === '') {
-            return;
+            return null;
         }
 
-        $this->sendPayload(
+        $response = $this->sendPayload(
             payload: [
                 'messaging_product' => 'whatsapp',
                 'recipient_type' => 'individual',
@@ -58,6 +58,10 @@ class WhatsAppCloudService implements WhatsAppService
             operation: 'send_text',
             failureMessage: 'No fue posible enviar la respuesta de WhatsApp.',
         );
+
+        $messageId = $response->json('messages.0.id');
+
+        return is_string($messageId) && $messageId !== '' ? $messageId : null;
     }
 
     public function sendCustomerCredential(Customer $customer, CustomerQrCode $qrCode): void
@@ -249,9 +253,9 @@ class WhatsAppCloudService implements WhatsAppService
     /**
      * @param  array<string, mixed>  $payload
      */
-    protected function sendPayload(array $payload, string $operation, string $failureMessage): void
+    protected function sendPayload(array $payload, string $operation, string $failureMessage): Response
     {
-        $this->executeRequest(
+        return $this->executeRequest(
             request: fn (): Response => $this->client()->post($this->endpoint('messages'), $payload),
             operation: $operation,
             failureMessage: $failureMessage,

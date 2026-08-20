@@ -85,6 +85,11 @@ class User extends Authenticatable implements PasskeyUser
         return in_array($this->role, [UserRole::Admin, UserRole::Accounting], true);
     }
 
+    public function canManageWhatsApp(): bool
+    {
+        return $this->role === UserRole::Admin;
+    }
+
     public function canViewCashSensitiveData(): bool
     {
         return $this->role !== UserRole::Accounting;

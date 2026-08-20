@@ -2,15 +2,19 @@
 
 namespace App\Jobs;
 
+use App\Actions\WhatsApp\SendWhatsAppTextMessage;
 use App\Ai\Agents\WhatsAppConcierge;
-use App\Contracts\WhatsAppService;
+use App\Enums\WhatsAppMessageDirection;
+use App\Enums\WhatsAppMessageStatus;
 use App\Models\WhatsAppConversation;
 use App\Support\CustomerPhoneMatcher;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 #[Tries(3)]
 #[Backoff([10, 30, 60])]
@@ -27,12 +31,26 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
         public string $text,
         public ?string $pushName = null,
         public ?string $messageId = null,
+        public string $messageType = 'text',
+        public ?int $timestamp = null,
     ) {}
+
+    /**
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('whatsapp:'.$this->phone))
+                ->releaseAfter(5)
+                ->expireAfter(120),
+        ];
+    }
 
     /**
      * Execute the job.
      */
-    public function handle(CustomerPhoneMatcher $matcher, WhatsAppService $whatsApp): void
+    public function handle(CustomerPhoneMatcher $matcher, SendWhatsAppTextMessage $sendMessage): void
     {
         $normalizedPhone = $matcher->normalize($this->phone);
 
@@ -40,36 +58,51 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
             return;
         }
 
+        $customer = $matcher->find($this->phone);
+        $receivedAt = $this->timestamp !== null
+            ? CarbonImmutable::createFromTimestampUTC($this->timestamp)
+            : now();
+
         /** @var WhatsAppConversation $conversation */
         $conversation = WhatsAppConversation::query()->firstOrNew(['phone' => $normalizedPhone]);
+        $conversation->fill([
+            'profile_name' => filled($this->pushName) ? $this->pushName : $conversation->profile_name,
+            'customer_id' => $customer?->id,
+            'last_message_id' => $this->messageId,
+            'last_inbound_at' => $receivedAt,
+            'last_message_at' => $receivedAt,
+        ])->save();
 
-        // Ignore duplicate webhook deliveries of the same inbound message.
-        if ($this->messageId !== null
-            && $conversation->exists
-            && $conversation->last_message_id === $this->messageId) {
-            return;
+        $messageAttributes = [
+            'direction' => WhatsAppMessageDirection::Inbound,
+            'type' => $this->messageType,
+            'body' => $this->text,
+            'status' => WhatsAppMessageStatus::Received,
+            'sent_at' => $receivedAt,
+        ];
+
+        if ($this->messageId !== null) {
+            $message = $conversation->messages()->firstOrCreate(
+                ['provider_message_id' => $this->messageId],
+                $messageAttributes,
+            );
+
+            if (! $message->wasRecentlyCreated) {
+                return;
+            }
+        } else {
+            $conversation->messages()->create($messageAttributes);
         }
 
-        $conversation->fill([
-            'last_message_id' => $this->messageId,
-            'last_inbound_at' => now(),
-        ]);
-
-        $customer = $matcher->find($this->phone);
+        if ($this->messageType !== 'text') {
+            return;
+        }
 
         if ($customer === null) {
-            $conversation->customer_id = null;
-            $conversation->save();
-
-            $whatsApp->sendMessage($this->phone, $this->registrationMessage());
-
-            $conversation->forceFill(['last_outbound_at' => now()])->save();
+            $sendMessage->execute($conversation, $this->registrationMessage());
 
             return;
         }
-
-        $conversation->customer_id = $customer->id;
-        $conversation->save();
 
         $agent = new WhatsAppConcierge($customer);
         $model = config('ai.whatsapp.model');
@@ -80,10 +113,9 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
 
         $conversation->forceFill([
             'conversation_id' => $response->conversationId ?? $conversation->conversation_id,
-            'last_outbound_at' => now(),
         ])->save();
 
-        $whatsApp->sendMessage($this->phone, $response->text);
+        $sendMessage->execute($conversation, $response->text);
     }
 
     /**

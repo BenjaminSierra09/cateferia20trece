@@ -10,7 +10,7 @@ interface WhatsAppService
 {
     public function isConfigured(): bool;
 
-    public function sendMessage(string $number, string $text): void;
+    public function sendMessage(string $number, string $text): ?string;
 
     public function sendCustomerCredential(Customer $customer, CustomerQrCode $qrCode): void;
 

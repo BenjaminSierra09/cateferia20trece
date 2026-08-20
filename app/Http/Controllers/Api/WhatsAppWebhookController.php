@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\WhatsAppMessageDirection;
+use App\Enums\WhatsAppMessageStatus;
 use App\Http\Controllers\Controller;
 use App\Jobs\HandleIncomingWhatsAppMessage;
+use App\Models\WhatsAppMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -109,6 +112,8 @@ class WhatsAppWebhookController extends Controller
                     $this->dispatchMessage($message, $value);
                 }
             }
+
+            $this->updateMessageStatuses($value);
         }
     }
 
@@ -119,23 +124,118 @@ class WhatsAppWebhookController extends Controller
     protected function dispatchMessage(array $message, array $value): void
     {
         $phone = data_get($message, 'from');
-        $text = data_get($message, 'text.body');
         $messageId = data_get($message, 'id');
+        $messageType = data_get($message, 'type');
+        $timestamp = data_get($message, 'timestamp');
 
         if (! is_string($phone)
             || $phone === ''
-            || data_get($message, 'type') !== 'text'
-            || ! is_string($text)
-            || trim($text) === '') {
+            || ! is_string($messageType)
+            || $messageType === '') {
             return;
         }
 
         HandleIncomingWhatsAppMessage::dispatch(
             phone: $phone,
-            text: trim($text),
+            text: $this->messageBody($message, $messageType),
             pushName: $this->contactName($value, $phone),
             messageId: is_string($messageId) ? $messageId : null,
+            messageType: $messageType,
+            timestamp: is_numeric($timestamp) ? (int) $timestamp : null,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $message
+     */
+    protected function messageBody(array $message, string $messageType): string
+    {
+        $body = match ($messageType) {
+            'text' => data_get($message, 'text.body'),
+            'button' => data_get($message, 'button.text'),
+            'interactive' => data_get($message, 'interactive.button_reply.title')
+                ?? data_get($message, 'interactive.list_reply.title'),
+            'document' => data_get($message, 'document.filename'),
+            'reaction' => data_get($message, 'reaction.emoji'),
+            default => null,
+        };
+
+        if (is_string($body) && trim($body) !== '') {
+            return match ($messageType) {
+                'document' => '[Documento] '.trim($body),
+                'reaction' => '[Reacción] '.trim($body),
+                default => trim($body),
+            };
+        }
+
+        return match ($messageType) {
+            'image' => '[Imagen]',
+            'audio' => '[Audio]',
+            'video' => '[Video]',
+            'document' => '[Documento]',
+            'sticker' => '[Sticker]',
+            'location' => '[Ubicación]',
+            'contacts' => '[Contacto]',
+            default => '[Mensaje '.strtolower($messageType).']',
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $value
+     */
+    protected function updateMessageStatuses(array $value): void
+    {
+        $statuses = data_get($value, 'statuses', []);
+
+        if (! is_array($statuses)) {
+            return;
+        }
+
+        foreach ($statuses as $statusPayload) {
+            if (! is_array($statusPayload)) {
+                continue;
+            }
+
+            $providerMessageId = data_get($statusPayload, 'id');
+            $statusValue = data_get($statusPayload, 'status');
+
+            if (! is_string($providerMessageId) || ! is_string($statusValue)) {
+                continue;
+            }
+
+            $status = WhatsAppMessageStatus::tryFrom($statusValue);
+            $message = WhatsAppMessage::query()
+                ->where('provider_message_id', $providerMessageId)
+                ->where('direction', WhatsAppMessageDirection::Outbound)
+                ->first();
+
+            if ($status === null || $message === null || ! $this->canAdvanceStatus($message->status, $status)) {
+                continue;
+            }
+
+            $errorCode = data_get($statusPayload, 'errors.0.code');
+
+            $message->update([
+                'status' => $status,
+                'error_code' => $status === WhatsAppMessageStatus::Failed && (is_string($errorCode) || is_int($errorCode))
+                    ? (string) $errorCode
+                    : $message->error_code,
+            ]);
+        }
+    }
+
+    protected function canAdvanceStatus(WhatsAppMessageStatus $current, WhatsAppMessageStatus $next): bool
+    {
+        $rank = [
+            WhatsAppMessageStatus::Queued->value => 0,
+            WhatsAppMessageStatus::Sent->value => 1,
+            WhatsAppMessageStatus::Delivered->value => 2,
+            WhatsAppMessageStatus::Read->value => 3,
+            WhatsAppMessageStatus::Failed->value => 4,
+            WhatsAppMessageStatus::Received->value => 0,
+        ];
+
+        return $rank[$next->value] >= $rank[$current->value];
     }
 
     /**

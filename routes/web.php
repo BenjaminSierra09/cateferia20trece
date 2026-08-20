@@ -36,6 +36,7 @@ use App\Livewire\Sizes\Create as SizeCreate;
 use App\Livewire\Sizes\Manager as SizeManager;
 use App\Livewire\Team\Create as TeamCreate;
 use App\Livewire\Team\Manager as TeamManager;
+use App\Livewire\WhatsApp\Inbox as WhatsAppInbox;
 use App\Livewire\WorkSession\CheckIn;
 use Illuminate\Support\Facades\Route;
 
@@ -54,6 +55,7 @@ Route::get('qr/{uuid}', [PublicPagesController::class, 'customerPortal'])->name(
 Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])->group(function () {
     Route::livewire('work-session/check-in', CheckIn::class)->name('dashboard.work-session.check-in');
     Route::livewire('/', Dashboard::class)->name('dashboard');
+    Route::livewire('whatsapp', WhatsAppInbox::class)->name('dashboard.whatsapp.index');
     Route::livewire('branches', BranchManager::class)->name('dashboard.branches.index');
     Route::livewire('branches/create', BranchCreate::class)->name('dashboard.branches.create');
     Route::livewire('branches/{branch}/edit', BranchCreate::class)->name('dashboard.branches.edit');

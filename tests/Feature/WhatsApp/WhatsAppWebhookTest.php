@@ -1,6 +1,10 @@
 <?php
 
+use App\Enums\WhatsAppMessageDirection;
+use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\HandleIncomingWhatsAppMessage;
+use App\Models\WhatsAppConversation;
+use App\Models\WhatsAppMessage;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -104,7 +108,9 @@ it('dispatches a job for an inbound text message', function () {
         return $job->phone === '524181878244'
             && $job->text === 'Hola, ¿cuál es mi saldo?'
             && $job->pushName === 'Juan'
-            && $job->messageId === 'wamid.ABC123';
+            && $job->messageId === 'wamid.ABC123'
+            && $job->messageType === 'text'
+            && $job->timestamp === 1758254144;
     });
 });
 
@@ -129,7 +135,7 @@ it('dispatches all text messages from a batched webhook', function () {
     Queue::assertPushed(HandleIncomingWhatsAppMessage::class, 2);
 });
 
-it('ignores non-text messages', function () {
+it('dispatches non-text messages so they remain visible in the inbox', function () {
     postSignedWhatsAppWebhook($this, whatsAppCloudWebhookPayload([
         [
             'from' => '524181878244',
@@ -139,10 +145,22 @@ it('ignores non-text messages', function () {
         ],
     ]))->assertOk();
 
-    Queue::assertNothingPushed();
+    Queue::assertPushed(HandleIncomingWhatsAppMessage::class, function (HandleIncomingWhatsAppMessage $job): bool {
+        return $job->messageId === 'wamid.IMG'
+            && $job->messageType === 'image'
+            && $job->text === '[Imagen]';
+    });
 });
 
-it('ignores delivery status webhooks', function () {
+it('updates outbound delivery statuses', function () {
+    $conversation = WhatsAppConversation::factory()->create();
+    $message = WhatsAppMessage::factory()->create([
+        'whatsapp_conversation_id' => $conversation->id,
+        'provider_message_id' => 'wamid.STATUS',
+        'direction' => WhatsAppMessageDirection::Outbound,
+        'status' => WhatsAppMessageStatus::Sent,
+    ]);
+
     $payload = whatsAppCloudWebhookPayload([]);
     $payload['entry'][0]['changes'][0]['value']['statuses'] = [
         [
@@ -156,6 +174,7 @@ it('ignores delivery status webhooks', function () {
     postSignedWhatsAppWebhook($this, $payload)->assertOk();
 
     Queue::assertNothingPushed();
+    expect($message->refresh()->status)->toBe(WhatsAppMessageStatus::Delivered);
 });
 
 it('rejects webhook payloads with an invalid signature', function () {

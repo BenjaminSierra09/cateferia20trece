@@ -112,6 +112,60 @@
         </div>
     </div>
 
+    @if (auth()->user()->canManageWhatsApp())
+        <flux:card class="space-y-4" wire:poll.15s>
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <flux:heading size="lg">WhatsApp reciente</flux:heading>
+                    <flux:text size="sm">Últimos mensajes recibidos y enviados</flux:text>
+                </div>
+                <flux:button :href="route('dashboard.whatsapp.index')" variant="ghost" size="sm" icon-trailing="arrow-right" wire:navigate>
+                    Abrir inbox
+                </flux:button>
+            </div>
+
+            <div class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                @forelse ($this->recentWhatsAppMessages as $message)
+                    @php($isOutbound = $message->direction === \App\Enums\WhatsAppMessageDirection::Outbound)
+
+                    <a
+                        wire:key="recent-whatsapp-{{ $message->id }}"
+                        href="{{ route('dashboard.whatsapp.index') }}"
+                        wire:navigate
+                        class="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                        <flux:avatar :name="$message->conversation->displayName()" color="auto" size="sm" />
+
+                        <span class="min-w-0 flex-1">
+                            <span class="flex items-center gap-2">
+                                <span class="truncate text-sm font-medium text-zinc-900 dark:text-white">
+                                    {{ $message->conversation->displayName() }}
+                                </span>
+                                <flux:badge size="sm" :color="$isOutbound ? 'sky' : 'emerald'">
+                                    {{ $isOutbound ? 'Enviado' : 'Recibido' }}
+                                </flux:badge>
+                            </span>
+                            <span class="mt-0.5 block truncate text-sm text-zinc-500 dark:text-zinc-400">
+                                {{ $message->body ?? 'Mensaje sin contenido' }}
+                            </span>
+                        </span>
+
+                        <time class="shrink-0 text-xs text-zinc-500" datetime="{{ $message->sent_at?->toIso8601String() }}">
+                            {{ $message->sent_at?->diffForHumans(short: true) }}
+                        </time>
+                    </a>
+                @empty
+                    <div class="flex items-center gap-3 py-3 text-zinc-500">
+                        <span class="grid size-10 place-items-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                            <flux:icon.chat-bubble-left-right class="size-5" />
+                        </span>
+                        <flux:text>Los mensajes nuevos de WhatsApp aparecerán aquí.</flux:text>
+                    </div>
+                @endforelse
+            </div>
+        </flux:card>
+    @endif
+
     <!-- Key Metrics -->
     @island(name: 'dashboard-metrics', defer: true, always: true)
         @placeholder

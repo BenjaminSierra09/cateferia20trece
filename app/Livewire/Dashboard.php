@@ -5,8 +5,11 @@ namespace App\Livewire;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Sale;
+use App\Models\User;
+use App\Models\WhatsAppMessage;
 use App\Services\ReportService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -196,6 +199,25 @@ class Dashboard extends Component
     public function recentCustomers()
     {
         return Customer::query()->latest()->limit(5)->get();
+    }
+
+    /**
+     * @return Collection<int, WhatsAppMessage>
+     */
+    #[Computed]
+    public function recentWhatsAppMessages(): Collection
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User || ! $user->canManageWhatsApp()) {
+            return new Collection;
+        }
+
+        return WhatsAppMessage::query()
+            ->with('conversation.customer:id,name,phone')
+            ->latest('sent_at')
+            ->limit(5)
+            ->get();
     }
 
     /**

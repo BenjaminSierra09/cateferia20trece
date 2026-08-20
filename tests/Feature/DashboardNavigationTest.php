@@ -15,9 +15,13 @@ use Database\Seeders\AztecSymbolSeeder;
 it('renders dashboard modules under the dashboard prefix', function (string $routeName) {
     $user = User::factory()->admin()->create();
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->get(route($routeName))
         ->assertOk();
+
+    if ($routeName === 'dashboard') {
+        $response->assertSee('WhatsApp reciente');
+    }
 })->with([
     'dashboard',
     'dashboard.branches.index',
@@ -31,6 +35,7 @@ it('renders dashboard modules under the dashboard prefix', function (string $rou
     'dashboard.customers.index',
     'dashboard.aztec-symbols.index',
     'dashboard.sales.index',
+    'dashboard.whatsapp.index',
     'dashboard.team.index',
     'dashboard.reports.index',
     'dashboard.reports.shifts',
@@ -108,5 +113,6 @@ it('uses dashboard prefixes in generated urls', function () {
     expect(route('dashboard.aztec-symbols.index'))->toContain('/dashboard/aztec-symbols');
     expect(route('dashboard.aztec-symbols.edit', 1))->toContain('/dashboard/aztec-symbols/1/edit');
     expect(route('dashboard.sales.index'))->toContain('/dashboard/sales');
+    expect(route('dashboard.whatsapp.index'))->toContain('/dashboard/whatsapp');
     expect(route('dashboard.reports.shifts'))->toContain('/dashboard/reports/shifts');
 });

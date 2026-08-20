@@ -84,6 +84,11 @@
                     <flux:sidebar.item icon="users" :href="route('dashboard.customers.index')" :current="request()->routeIs('dashboard.customers.*')" wire:navigate>
                         {{ __('Clientes') }}
                     </flux:sidebar.item>
+                    @if (auth()->user()->canManageWhatsApp())
+                        <flux:sidebar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.*')" wire:navigate>
+                            {{ __('WhatsApp') }}
+                        </flux:sidebar.item>
+                    @endif
                     <flux:sidebar.item icon="sparkles" :href="route('dashboard.aztec-symbols.index')" :current="request()->routeIs('dashboard.aztec-symbols.*')" wire:navigate>
                         {{ __('Símbolos aztecas') }}
                     </flux:sidebar.item>

@@ -1,7 +1,7 @@
 <?php
 
+use App\Actions\WhatsApp\SendWhatsAppTextMessage;
 use App\Ai\Agents\WhatsAppConcierge;
-use App\Contracts\WhatsAppService;
 use App\Jobs\HandleIncomingWhatsAppMessage;
 use App\Models\Customer;
 use App\Models\WhatsAppConversation;
@@ -19,7 +19,7 @@ function configureWhatsAppCloudForConciergeTests(): void
 function runWhatsAppConciergeJob(string $phone, string $text, ?string $pushName = null, ?string $messageId = null): void
 {
     (new HandleIncomingWhatsAppMessage($phone, $text, $pushName, $messageId))
-        ->handle(app(CustomerPhoneMatcher::class), app(WhatsAppService::class));
+        ->handle(app(CustomerPhoneMatcher::class), app(SendWhatsAppTextMessage::class));
 }
 
 it('replies to an unregistered number with the registration link and does not use the AI', function () {
@@ -36,7 +36,8 @@ it('replies to an unregistered number with the registration link and does not us
 
     $conversation = WhatsAppConversation::query()->firstWhere('phone', '5219990001122');
     expect($conversation)->not->toBeNull()
-        ->and($conversation->customer_id)->toBeNull();
+        ->and($conversation->customer_id)->toBeNull()
+        ->and($conversation->messages)->toHaveCount(2);
 });
 
 it('answers a registered customer through the concierge and remembers the conversation', function () {
@@ -55,7 +56,8 @@ it('answers a registered customer through the concierge and remembers the conver
 
     $conversation = WhatsAppConversation::query()->firstWhere('phone', '5214181878244');
     expect($conversation->customer_id)->toBe($customer->id)
-        ->and($conversation->conversation_id)->not->toBeNull();
+        ->and($conversation->conversation_id)->not->toBeNull()
+        ->and($conversation->messages)->toHaveCount(2);
 });
 
 it('continues the same conversation across multiple messages', function () {
@@ -90,4 +92,5 @@ it('ignores duplicate webhook deliveries of the same message', function () {
 
     // The second (duplicate) delivery is skipped, so only one reply is sent.
     Http::assertSentCount(1);
+    expect(WhatsAppConversation::query()->firstWhere('phone', '5214181878244')->messages)->toHaveCount(2);
 });

@@ -18,12 +18,14 @@ class WhatsAppConversationFactory extends Factory
     public function definition(): array
     {
         return [
-            'phone' => (string) fake()->unique()->numerify('521##########'),
+            'phone' => (string) fake()->unique()->numerify('52##########'),
+            'profile_name' => fake()->name(),
             'customer_id' => null,
             'conversation_id' => null,
             'last_message_id' => null,
             'last_inbound_at' => null,
             'last_outbound_at' => null,
+            'last_message_at' => null,
         ];
     }
 }

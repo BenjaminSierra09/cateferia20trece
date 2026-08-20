@@ -25,6 +25,11 @@
                 <flux:navbar.item icon="users" :href="route('dashboard.customers.index')" :current="request()->routeIs('dashboard.customers.*')" wire:navigate>
                     {{ __('Clientes') }}
                 </flux:navbar.item>
+                @if (auth()->user()->canManageWhatsApp())
+                    <flux:navbar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.*')" wire:navigate>
+                        {{ __('WhatsApp') }}
+                    </flux:navbar.item>
+                @endif
             </flux:navbar>
 
             <flux:spacer />
@@ -65,6 +70,11 @@
                     <flux:sidebar.item icon="users" :href="route('dashboard.customers.index')" :current="request()->routeIs('dashboard.customers.*')" wire:navigate>
                         {{ __('Clientes')  }}
                     </flux:sidebar.item>
+                    @if (auth()->user()->canManageWhatsApp())
+                        <flux:sidebar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.*')" wire:navigate>
+                            {{ __('WhatsApp') }}
+                        </flux:sidebar.item>
+                    @endif
                     <flux:sidebar.group expandable :heading="__('Personalizaciones')" class="grid">
                         <flux:sidebar.item icon="squares-2x2" :href="route('dashboard.customizations.types.index')" :current="request()->routeIs('dashboard.customizations.types.*') || request()->routeIs('dashboard.customizations.index') || request()->routeIs('dashboard.customizations.create')" wire:navigate>
                             {{ __('Tipos') }}
