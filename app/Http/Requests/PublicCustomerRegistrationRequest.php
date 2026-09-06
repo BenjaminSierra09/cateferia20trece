@@ -49,6 +49,7 @@ class PublicCustomerRegistrationRequest extends FormRequest
                 Rule::unique(Customer::class, 'email'),
             ],
             'privacy_consent' => ['accepted'],
+            'whatsapp_marketing_consent' => ['sometimes', 'accepted'],
             'recaptcha_token' => ['nullable', 'string'],
         ];
     }
@@ -63,6 +64,15 @@ class PublicCustomerRegistrationRequest extends FormRequest
         return [
             function (Validator $validator): void {
                 if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                if ($this->boolean('whatsapp_marketing_consent') && blank($this->input('phone'))) {
+                    $validator->errors()->add(
+                        'whatsapp_marketing_consent',
+                        'Captura un teléfono para recibir promociones por WhatsApp.',
+                    );
+
                     return;
                 }
 
@@ -91,6 +101,7 @@ class PublicCustomerRegistrationRequest extends FormRequest
             'phone.unique' => 'Este teléfono ya está registrado.',
             'email.unique' => 'Este correo ya está registrado.',
             'privacy_consent.accepted' => 'Necesitas aceptar el aviso de privacidad para continuar.',
+            'whatsapp_marketing_consent.accepted' => 'La autorización de promociones no es válida.',
         ];
     }
 
@@ -106,6 +117,7 @@ class PublicCustomerRegistrationRequest extends FormRequest
             'birthday' => 'fecha de nacimiento',
             'email' => 'correo electrónico',
             'privacy_consent' => 'aviso de privacidad',
+            'whatsapp_marketing_consent' => 'promociones por WhatsApp',
         ];
     }
 }

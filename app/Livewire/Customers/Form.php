@@ -2,15 +2,18 @@
 
 namespace App\Livewire\Customers;
 
+use App\Actions\WhatsApp\RecordWhatsAppMarketingConsent;
 use App\Enums\CustomerDebtMovementType;
 use App\Models\Customer;
 use App\Models\CustomerQrCode;
+use App\Models\User;
 use App\Services\CustomerDebtService;
 use App\Services\WorkSessionService;
 use App\Support\TonalpohualliCalendar;
 use Carbon\CarbonImmutable;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -32,6 +35,8 @@ class Form extends Component
 
     public string $notes = '';
 
+    public bool $whatsapp_marketing_consent = false;
+
     public string $qr_uuid = '';
 
     public string $debt_amount = '';
@@ -48,18 +53,28 @@ class Form extends Component
             $this->birthday = $this->customer->birthday?->toDateString() ?? '';
             $this->email = $this->customer->email ?? '';
             $this->notes = $this->customer->notes ?? '';
+            $this->whatsapp_marketing_consent = $this->customer->hasWhatsAppMarketingConsent();
         }
     }
 
-    public function save(): void
+    public function save(RecordWhatsAppMarketingConsent $recordMarketingConsent): void
     {
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50', 'regex:'.self::PHONE_REGEX],
+            'phone' => [
+                'nullable',
+                Rule::requiredIf($this->whatsapp_marketing_consent),
+                'string',
+                'max:50',
+                'regex:'.self::PHONE_REGEX,
+            ],
             'birthday' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'whatsapp_marketing_consent' => ['boolean'],
         ], $this->messages(), $this->validationAttributes());
+
+        unset($validated['whatsapp_marketing_consent']);
 
         foreach (['phone', 'birthday', 'email', 'notes'] as $field) {
             $value = trim($validated[$field] ?? '');
@@ -72,6 +87,16 @@ class Form extends Component
         );
 
         $this->customer = $customer;
+
+        $user = auth()->user();
+
+        if ($user instanceof User && $user->canManageWhatsApp()) {
+            if ($this->whatsapp_marketing_consent) {
+                $recordMarketingConsent->grant($customer, 'dashboard_customer', $user);
+            } else {
+                $recordMarketingConsent->revoke($customer, 'dashboard_customer', $user);
+            }
+        }
 
         Flux::toast(variant: 'success', text: 'Cliente guardado.');
 

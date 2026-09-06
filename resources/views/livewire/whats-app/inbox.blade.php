@@ -5,7 +5,12 @@
             <flux:text>Consulta las conversaciones recientes y responde desde el Dashboard.</flux:text>
         </div>
 
-        <flux:badge color="emerald" icon="check-circle">API oficial de Meta</flux:badge>
+        <div class="flex flex-wrap items-center gap-2">
+            <flux:button :href="route('dashboard.whatsapp.campaigns')" variant="ghost" icon="paper-airplane" wire:navigate>
+                Campañas
+            </flux:button>
+            <flux:badge color="emerald" icon="check-circle">API oficial de Meta</flux:badge>
+        </div>
     </div>
 
     <div class="grid h-[calc(100dvh-11rem)] min-h-[38rem] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900 lg:grid-cols-[22rem_minmax(0,1fr)]">

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['whatsapp_conversation_id', 'sent_by_user_id', 'provider_message_id', 'direction', 'type', 'body', 'media_path', 'media_mime_type', 'status', 'error_code', 'sent_at'])]
 class WhatsAppMessage extends Model
@@ -48,6 +49,11 @@ class WhatsAppMessage extends Model
     public function reactions(): HasMany
     {
         return $this->hasMany(WhatsAppMessageReaction::class, 'whatsapp_message_id');
+    }
+
+    public function campaignRecipient(): HasOne
+    {
+        return $this->hasOne(WhatsAppCampaignRecipient::class, 'whatsapp_message_id');
     }
 
     public function previewText(): string

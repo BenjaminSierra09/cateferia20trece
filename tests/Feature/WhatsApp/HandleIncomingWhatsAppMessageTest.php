@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\WhatsApp\RecordWhatsAppMarketingConsent;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
 use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
@@ -25,6 +26,7 @@ function runWhatsAppConciergeJob(string $phone, string $text, ?string $pushName 
             app(CustomerPhoneMatcher::class),
             app(SendWhatsAppTextMessage::class),
             app(StoreIncomingWhatsAppReaction::class),
+            app(RecordWhatsAppMarketingConsent::class),
         );
 }
 
@@ -118,6 +120,7 @@ it('stores Meta timestamps in the application timezone', function () {
         app(CustomerPhoneMatcher::class),
         app(SendWhatsAppTextMessage::class),
         app(StoreIncomingWhatsAppReaction::class),
+        app(RecordWhatsAppMarketingConsent::class),
     );
 
     $message = WhatsAppConversation::query()
@@ -173,8 +176,31 @@ it('attaches inbound reactions to their target message', function () {
         app(CustomerPhoneMatcher::class),
         app(SendWhatsAppTextMessage::class),
         app(StoreIncomingWhatsAppReaction::class),
+        app(RecordWhatsAppMarketingConsent::class),
     );
 
     expect($conversation->messages()->count())->toBe(1)
         ->and($target->reactions()->firstOrFail()->emoji)->toBe('❤️');
+});
+
+it('revokes marketing consent when a customer replies BAJA', function () {
+    $customer = Customer::factory()->withWhatsAppMarketingConsent('+524181878244')->create();
+
+    WhatsAppConcierge::fake();
+    configureWhatsAppCloudForConciergeTests();
+    Http::fake([
+        'https://graph.facebook.test/*' => Http::response([
+            'messages' => [['id' => 'wamid.OPTOUT-CONFIRMATION']],
+        ]),
+    ]);
+
+    runWhatsAppConciergeJob('5214181878244', 'BAJA', null, 'MID-OPTOUT');
+
+    WhatsAppConcierge::assertNeverPrompted();
+    expect($customer->refresh()->hasWhatsAppMarketingConsent())->toBeFalse()
+        ->and($customer->whatsappMarketingConsents()->latest('id')->firstOrFail()->status)->toBe('revoked');
+    Http::assertSent(fn ($request): bool => str_contains(
+        (string) $request['text']['body'],
+        'Ya no recibirás promociones',
+    ));
 });

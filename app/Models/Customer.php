@@ -8,14 +8,14 @@ use App\Support\TonalpohualliCalendar;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 #[ObservedBy([CustomerObserver::class])]
-#[Fillable(['name', 'phone', 'birthday', 'email', 'notes', 'reward_balance', 'reward_year', 'annual_drink_count', 'reward_tier', 'is_active'])]
+#[Fillable(['name', 'phone', 'birthday', 'email', 'notes', 'whatsapp_marketing_opted_in_at', 'whatsapp_marketing_opted_out_at', 'whatsapp_marketing_consent_source', 'whatsapp_marketing_consent_version', 'whatsapp_marketing_consented_phone', 'reward_balance', 'reward_year', 'annual_drink_count', 'reward_tier', 'is_active'])]
 class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
@@ -35,6 +35,8 @@ class Customer extends Model
     {
         return [
             'birthday' => 'date',
+            'whatsapp_marketing_opted_in_at' => 'datetime',
+            'whatsapp_marketing_opted_out_at' => 'datetime',
             'reward_balance' => 'decimal:2',
             'is_active' => 'boolean',
             'reward_tier' => RewardTier::class,
@@ -73,6 +75,41 @@ class Customer extends Model
         return $this->hasMany(CustomerDebtMovement::class)
             ->orderByDesc('recorded_at')
             ->orderByDesc('id');
+    }
+
+    public function whatsappMarketingConsents(): HasMany
+    {
+        return $this->hasMany(WhatsAppMarketingConsent::class);
+    }
+
+    public function whatsappCampaignRecipients(): HasMany
+    {
+        return $this->hasMany(WhatsAppCampaignRecipient::class);
+    }
+
+    public function scopeEligibleForWhatsAppMarketing(Builder $query): Builder
+    {
+        return $query
+            ->active()
+            ->whereNotNull('phone')
+            ->whereNotNull('whatsapp_marketing_opted_in_at')
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereNull('whatsapp_marketing_opted_out_at')
+                    ->orWhereColumn('whatsapp_marketing_opted_out_at', '<', 'whatsapp_marketing_opted_in_at');
+            });
+    }
+
+    public function hasWhatsAppMarketingConsent(): bool
+    {
+        if ($this->whatsapp_marketing_opted_in_at === null
+            || ($this->whatsapp_marketing_opted_out_at !== null
+                && $this->whatsapp_marketing_opted_out_at->greaterThanOrEqualTo($this->whatsapp_marketing_opted_in_at))) {
+            return false;
+        }
+
+        return $this->normalizePhone($this->phone) !== ''
+            && $this->normalizePhone($this->phone) === $this->whatsapp_marketing_consented_phone;
     }
 
     /**
@@ -118,6 +155,21 @@ class Customer extends Model
         }
 
         $this->forceFill($this->deactivationAnonymizedAttributes())->save();
+    }
+
+    private function normalizePhone(?string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $phone) ?? '';
+
+        if (mb_strlen($digits) === 10) {
+            return '52'.$digits;
+        }
+
+        if (mb_strlen($digits) === 13 && str_starts_with($digits, '521')) {
+            return '52'.mb_substr($digits, 3);
+        }
+
+        return $digits;
     }
 
     /**

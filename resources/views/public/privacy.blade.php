@@ -120,7 +120,7 @@
                 <li class="flex items-start gap-3"><flux:icon.minus-circle class="mt-0.5 size-5 shrink-0 text-terracotta" /> Encuestas de calidad y satisfacción.</li>
             </ul>
             <p class="mt-5 rounded-2xl border border-coffee/12 bg-vanilla/70 px-4 py-3 text-sm leading-6 text-mocha">
-                Para negar el uso con fines secundarios, escríbenos a
+                Las promociones por WhatsApp requieren una autorización opcional e independiente. Puedes retirarla en cualquier momento respondiendo <strong>BAJA</strong> a un mensaje. También puedes negar el uso con fines secundarios escribiéndonos a
                 <a href="mailto:{{ $privacyEmail }}" class="font-semibold text-terracotta underline underline-offset-4">{{ $privacyEmail }}</a>
                 o usa el formulario al final de esta página.
             </p>

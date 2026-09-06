@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\WhatsAppCampaignRecipientStatus;
 use App\Enums\WhatsAppMessageDirection;
 use App\Enums\WhatsAppMessageStatus;
 use App\Http\Controllers\Controller;
 use App\Jobs\HandleIncomingWhatsAppMessage;
+use App\Models\WhatsAppCampaignRecipient;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppMessageReaction;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -212,6 +215,11 @@ class WhatsAppWebhookController extends Controller
             }
 
             $status = WhatsAppMessageStatus::tryFrom($statusValue);
+
+            if ($status === null) {
+                continue;
+            }
+
             $message = WhatsAppMessage::query()
                 ->where('provider_message_id', $providerMessageId)
                 ->where('direction', WhatsAppMessageDirection::Outbound)
@@ -222,18 +230,18 @@ class WhatsAppWebhookController extends Controller
                 ->where('direction', WhatsAppMessageDirection::Outbound)
                 ->first();
 
-            if ($status === null || $message === null || ! $this->canAdvanceStatus($message->status, $status)) {
-                continue;
-            }
-
             $errorCode = data_get($statusPayload, 'errors.0.code');
 
-            $message->update([
-                'status' => $status,
-                'error_code' => $status === WhatsAppMessageStatus::Failed && (is_string($errorCode) || is_int($errorCode))
-                    ? (string) $errorCode
-                    : $message->error_code,
-            ]);
+            if ($message !== null && $this->canAdvanceStatus($message->status, $status)) {
+                $message->update([
+                    'status' => $status,
+                    'error_code' => $status === WhatsAppMessageStatus::Failed && (is_string($errorCode) || is_int($errorCode))
+                        ? (string) $errorCode
+                        : $message->error_code,
+                ]);
+            }
+
+            $this->updateCampaignRecipientStatus($providerMessageId, $status, $statusPayload);
         }
     }
 
@@ -248,7 +256,114 @@ class WhatsAppWebhookController extends Controller
             WhatsAppMessageStatus::Received->value => 0,
         ];
 
+        if ($current === WhatsAppMessageStatus::Failed) {
+            return in_array($next, [
+                WhatsAppMessageStatus::Sent,
+                WhatsAppMessageStatus::Delivered,
+                WhatsAppMessageStatus::Read,
+            ], true);
+        }
+
+        if ($next === WhatsAppMessageStatus::Failed) {
+            return in_array($current, [
+                WhatsAppMessageStatus::Queued,
+                WhatsAppMessageStatus::Sent,
+            ], true);
+        }
+
         return $rank[$next->value] >= $rank[$current->value];
+    }
+
+    /**
+     * @param  array<string, mixed>  $statusPayload
+     */
+    protected function updateCampaignRecipientStatus(
+        string $providerMessageId,
+        WhatsAppMessageStatus $messageStatus,
+        array $statusPayload,
+    ): void {
+        $nextStatus = match ($messageStatus) {
+            WhatsAppMessageStatus::Sent => WhatsAppCampaignRecipientStatus::Sent,
+            WhatsAppMessageStatus::Delivered => WhatsAppCampaignRecipientStatus::Delivered,
+            WhatsAppMessageStatus::Read => WhatsAppCampaignRecipientStatus::Read,
+            WhatsAppMessageStatus::Failed => WhatsAppCampaignRecipientStatus::Failed,
+            default => null,
+        };
+
+        if ($nextStatus === null) {
+            return;
+        }
+
+        $recipient = WhatsAppCampaignRecipient::query()
+            ->where('provider_message_id', $providerMessageId)
+            ->first();
+
+        if ($recipient === null || ! $this->canAdvanceCampaignStatus($recipient->status, $nextStatus)) {
+            return;
+        }
+
+        $eventTimestamp = data_get($statusPayload, 'timestamp');
+        $eventAt = is_numeric($eventTimestamp)
+            ? CarbonImmutable::createFromTimestampUTC((int) $eventTimestamp)
+                ->setTimezone((string) config('app.timezone'))
+            : now();
+        $errorCode = data_get($statusPayload, 'errors.0.code');
+        $errorMessage = data_get($statusPayload, 'errors.0.error_data.details')
+            ?? data_get($statusPayload, 'errors.0.message')
+            ?? data_get($statusPayload, 'errors.0.title');
+        $attributes = ['status' => $nextStatus];
+
+        if ($nextStatus === WhatsAppCampaignRecipientStatus::Sent) {
+            $attributes['sent_at'] = $eventAt;
+        } elseif ($nextStatus === WhatsAppCampaignRecipientStatus::Delivered) {
+            $attributes['delivered_at'] = $eventAt;
+        } elseif ($nextStatus === WhatsAppCampaignRecipientStatus::Read) {
+            $attributes['read_at'] = $eventAt;
+        } elseif ($nextStatus === WhatsAppCampaignRecipientStatus::Failed) {
+            $attributes['error_code'] = is_string($errorCode) || is_int($errorCode)
+                ? (string) $errorCode
+                : null;
+            $attributes['error_message'] = is_string($errorMessage)
+                ? mb_substr($errorMessage, 0, 255)
+                : 'Meta reportó que no pudo entregar el mensaje.';
+        }
+
+        $recipient->update($attributes);
+    }
+
+    protected function canAdvanceCampaignStatus(
+        WhatsAppCampaignRecipientStatus $current,
+        WhatsAppCampaignRecipientStatus $next,
+    ): bool {
+        if (in_array($current, [
+            WhatsAppCampaignRecipientStatus::Failed,
+            WhatsAppCampaignRecipientStatus::Skipped,
+        ], true)) {
+            return false;
+        }
+
+        if ($current === WhatsAppCampaignRecipientStatus::Uncertain) {
+            return true;
+        }
+
+        if ($next === WhatsAppCampaignRecipientStatus::Failed) {
+            return in_array($current, [
+                WhatsAppCampaignRecipientStatus::Pending,
+                WhatsAppCampaignRecipientStatus::Sending,
+                WhatsAppCampaignRecipientStatus::Sent,
+            ], true);
+        }
+
+        $rank = [
+            WhatsAppCampaignRecipientStatus::Pending->value => 0,
+            WhatsAppCampaignRecipientStatus::Sending->value => 1,
+            WhatsAppCampaignRecipientStatus::Sent->value => 2,
+            WhatsAppCampaignRecipientStatus::Delivered->value => 3,
+            WhatsAppCampaignRecipientStatus::Read->value => 4,
+        ];
+
+        return isset($rank[$current->value], $rank[$next->value])
+            && $rank[$next->value] >= $rank[$current->value];
     }
 
     /**

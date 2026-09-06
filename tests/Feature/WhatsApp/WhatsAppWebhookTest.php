@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\WhatsAppCampaignRecipientStatus;
 use App\Enums\WhatsAppMessageDirection;
 use App\Enums\WhatsAppMessageStatus;
 use App\Jobs\HandleIncomingWhatsAppMessage;
+use App\Models\WhatsAppCampaign;
+use App\Models\WhatsAppCampaignRecipient;
 use App\Models\WhatsAppConversation;
 use App\Models\WhatsAppMessage;
 use App\Models\WhatsAppMessageReaction;
@@ -197,6 +200,33 @@ it('updates outbound delivery statuses', function () {
 
     Queue::assertNothingPushed();
     expect($message->refresh()->status)->toBe(WhatsAppMessageStatus::Delivered);
+});
+
+it('updates campaign recipient delivery tracking', function () {
+    $campaign = WhatsAppCampaign::factory()->create();
+    $message = WhatsAppMessage::factory()->create([
+        'provider_message_id' => 'wamid.CAMPAIGN-STATUS',
+        'direction' => WhatsAppMessageDirection::Outbound,
+        'status' => WhatsAppMessageStatus::Sent,
+    ]);
+    $recipient = WhatsAppCampaignRecipient::factory()->create([
+        'whatsapp_campaign_id' => $campaign->id,
+        'whatsapp_message_id' => $message->id,
+        'provider_message_id' => 'wamid.CAMPAIGN-STATUS',
+        'status' => WhatsAppCampaignRecipientStatus::Sent,
+    ]);
+    $payload = whatsAppCloudWebhookPayload([]);
+    $payload['entry'][0]['changes'][0]['value']['statuses'] = [[
+        'id' => 'wamid.CAMPAIGN-STATUS',
+        'status' => 'read',
+        'timestamp' => '1758254144',
+    ]];
+
+    postSignedWhatsAppWebhook($this, $payload)->assertOk();
+
+    expect($recipient->refresh()->status)->toBe(WhatsAppCampaignRecipientStatus::Read)
+        ->and($recipient->read_at)->not->toBeNull()
+        ->and($message->refresh()->status)->toBe(WhatsAppMessageStatus::Read);
 });
 
 it('updates outbound reaction delivery statuses', function () {

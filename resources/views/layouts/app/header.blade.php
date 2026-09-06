@@ -26,7 +26,7 @@
                     {{ __('Clientes') }}
                 </flux:navbar.item>
                 @if (auth()->user()->canManageWhatsApp())
-                    <flux:navbar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.*')" wire:navigate>
+                    <flux:navbar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.index')" wire:navigate>
                         {{ __('WhatsApp') }}
                     </flux:navbar.item>
                 @endif
@@ -71,8 +71,11 @@
                         {{ __('Clientes')  }}
                     </flux:sidebar.item>
                     @if (auth()->user()->canManageWhatsApp())
-                        <flux:sidebar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.*')" wire:navigate>
+                        <flux:sidebar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.index')" wire:navigate>
                             {{ __('WhatsApp') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="paper-airplane" :href="route('dashboard.whatsapp.campaigns')" :current="request()->routeIs('dashboard.whatsapp.campaigns')" wire:navigate>
+                            {{ __('Campañas WhatsApp') }}
                         </flux:sidebar.item>
                     @endif
                     <flux:sidebar.group expandable :heading="__('Personalizaciones')" class="grid">

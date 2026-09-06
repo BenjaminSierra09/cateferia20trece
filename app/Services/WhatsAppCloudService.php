@@ -137,6 +137,60 @@ class WhatsAppCloudService implements WhatsAppService
         return $this->messageIdFrom($response);
     }
 
+    /**
+     * Marketing sends intentionally do not retry HTTP requests. If the network
+     * response is lost after Meta accepts a message, retrying could duplicate it.
+     *
+     * @param  array<int, string>  $bodyParameters
+     */
+    public function sendMarketingTemplate(
+        string $number,
+        string $templateName,
+        string $language,
+        array $bodyParameters = [],
+    ): ?string {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $normalizedNumber = $this->normalizePhoneNumber($number);
+
+        if ($normalizedNumber === null || blank($templateName) || blank($language)) {
+            return null;
+        }
+
+        $template = [
+            'name' => trim($templateName),
+            'language' => ['code' => trim($language)],
+        ];
+
+        if ($bodyParameters !== []) {
+            $template['components'] = [
+                [
+                    'type' => 'body',
+                    'parameters' => array_map(
+                        fn (string $value): array => ['type' => 'text', 'text' => $value],
+                        array_values($bodyParameters),
+                    ),
+                ],
+            ];
+        }
+
+        $response = $this->executeRequest(
+            request: fn (): Response => $this->baseClient()->post($this->endpoint('messages'), [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $normalizedNumber,
+                'type' => 'template',
+                'template' => $template,
+            ]),
+            operation: 'send_marketing_template',
+            failureMessage: 'No fue posible enviar la plantilla de marketing por WhatsApp.',
+        );
+
+        return $this->messageIdFrom($response);
+    }
+
     public function sendCustomerCredential(Customer $customer, CustomerQrCode $qrCode): void
     {
         if (! $this->isConfigured()) {
@@ -379,12 +433,7 @@ class WhatsAppCloudService implements WhatsAppService
 
     protected function client(): PendingRequest
     {
-        return $this->http
-            ->baseUrl(rtrim((string) config('services.whatsapp.api_url'), '/'))
-            ->withToken((string) config('services.whatsapp.access_token'))
-            ->acceptJson()
-            ->connectTimeout(10)
-            ->timeout(20)
+        return $this->baseClient()
             ->retry(
                 [500, 1000],
                 when: fn (Throwable $exception): bool => $exception instanceof ConnectionException
@@ -392,6 +441,16 @@ class WhatsAppCloudService implements WhatsAppService
                         && ($exception->response->serverError() || $exception->response->tooManyRequests())),
                 throw: false,
             );
+    }
+
+    protected function baseClient(): PendingRequest
+    {
+        return $this->http
+            ->baseUrl(rtrim((string) config('services.whatsapp.api_url'), '/'))
+            ->withToken((string) config('services.whatsapp.access_token'))
+            ->acceptJson()
+            ->connectTimeout(10)
+            ->timeout(20);
     }
 
     protected function endpoint(string $resource): string

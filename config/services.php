@@ -48,6 +48,7 @@ return [
         'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
         'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'marketing_rate_per_minute' => env('WHATSAPP_MARKETING_RATE_PER_MINUTE', 60),
         'templates' => [
             'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'es_MX'),
             'customer_credential' => env('WHATSAPP_CUSTOMER_CREDENTIAL_TEMPLATE', 'customer_credential'),

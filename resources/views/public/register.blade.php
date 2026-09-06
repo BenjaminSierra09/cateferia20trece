@@ -77,6 +77,24 @@
                     <p class="text-sm font-medium text-rose-700">{{ $message }}</p>
                 @enderror
 
+                <div class="flex items-start gap-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-4">
+                    <input
+                        id="whatsapp_marketing_consent"
+                        name="whatsapp_marketing_consent"
+                        type="checkbox"
+                        value="1"
+                        @checked(old('whatsapp_marketing_consent'))
+                        class="mt-1 size-4 rounded border border-emerald-500/50 accent-emerald-700 focus:ring-2 focus:ring-emerald-500/30"
+                    >
+                    <label for="whatsapp_marketing_consent" class="cursor-pointer text-sm leading-7 text-mocha">
+                        Quiero recibir promociones y novedades de Café 20Trece por WhatsApp. Este permiso es opcional y puedo cancelarlo cuando quiera respondiendo <strong>BAJA</strong>.
+                    </label>
+                </div>
+
+                @error('whatsapp_marketing_consent')
+                    <p class="text-sm font-medium text-rose-700">{{ $message }}</p>
+                @enderror
+
                 @error('recaptcha')
                     <p class="text-sm font-medium text-rose-700">{{ $message }}</p>
                 @enderror

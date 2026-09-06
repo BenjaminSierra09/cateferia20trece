@@ -43,8 +43,25 @@ test('public policy and rewards pages are accessible', function () {
         ->assertSee('Obtén tu QR de cliente')
         ->assertSee('Obtener mi QR')
         ->assertSee('for="privacy_consent"', false)
+        ->assertSee('for="whatsapp_marketing_consent"', false)
         ->assertSee('type="checkbox"', false)
         ->assertSee('id="phone_hidden"', false);
+});
+
+test('public registration records optional WhatsApp marketing consent', function () {
+    $this->post(route('public.register.store'), [
+        'name' => 'Cliente Promociones',
+        'phone' => '+524151234577',
+        'email' => 'promociones@example.com',
+        'privacy_consent' => '1',
+        'whatsapp_marketing_consent' => '1',
+    ])->assertRedirect();
+
+    $customer = Customer::query()->where('email', 'promociones@example.com')->firstOrFail();
+
+    expect($customer->hasWhatsAppMarketingConsent())->toBeTrue()
+        ->and($customer->whatsapp_marketing_consent_source)->toBe('public_registration')
+        ->and($customer->whatsappMarketingConsents()->count())->toBe(1);
 });
 
 test('public customer registration creates a customer and redirects to the qr portal', function () {

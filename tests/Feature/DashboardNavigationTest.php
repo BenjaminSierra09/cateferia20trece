@@ -36,6 +36,7 @@ it('renders dashboard modules under the dashboard prefix', function (string $rou
     'dashboard.aztec-symbols.index',
     'dashboard.sales.index',
     'dashboard.whatsapp.index',
+    'dashboard.whatsapp.campaigns',
     'dashboard.team.index',
     'dashboard.reports.index',
     'dashboard.reports.shifts',
@@ -114,5 +115,6 @@ it('uses dashboard prefixes in generated urls', function () {
     expect(route('dashboard.aztec-symbols.edit', 1))->toContain('/dashboard/aztec-symbols/1/edit');
     expect(route('dashboard.sales.index'))->toContain('/dashboard/sales');
     expect(route('dashboard.whatsapp.index'))->toContain('/dashboard/whatsapp');
+    expect(route('dashboard.whatsapp.campaigns'))->toContain('/dashboard/whatsapp/campaigns');
     expect(route('dashboard.reports.shifts'))->toContain('/dashboard/reports/shifts');
 });

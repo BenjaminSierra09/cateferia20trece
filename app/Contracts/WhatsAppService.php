@@ -22,6 +22,16 @@ interface WhatsAppService
         ?string $caption = null,
     ): ?string;
 
+    /**
+     * @param  array<int, string>  $bodyParameters
+     */
+    public function sendMarketingTemplate(
+        string $number,
+        string $templateName,
+        string $language,
+        array $bodyParameters = [],
+    ): ?string;
+
     public function sendCustomerCredential(Customer $customer, CustomerQrCode $qrCode): void;
 
     /**

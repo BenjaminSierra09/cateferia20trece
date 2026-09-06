@@ -85,8 +85,11 @@
                         {{ __('Clientes') }}
                     </flux:sidebar.item>
                     @if (auth()->user()->canManageWhatsApp())
-                        <flux:sidebar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.*')" wire:navigate>
+                        <flux:sidebar.item icon="chat-bubble-left-right" :href="route('dashboard.whatsapp.index')" :current="request()->routeIs('dashboard.whatsapp.index')" wire:navigate>
                             {{ __('WhatsApp') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="paper-airplane" :href="route('dashboard.whatsapp.campaigns')" :current="request()->routeIs('dashboard.whatsapp.campaigns')" wire:navigate>
+                            {{ __('Campañas WhatsApp') }}
                         </flux:sidebar.item>
                     @endif
                     <flux:sidebar.item icon="sparkles" :href="route('dashboard.aztec-symbols.index')" :current="request()->routeIs('dashboard.aztec-symbols.*')" wire:navigate>

@@ -37,6 +37,7 @@ use App\Livewire\Sizes\Create as SizeCreate;
 use App\Livewire\Sizes\Manager as SizeManager;
 use App\Livewire\Team\Create as TeamCreate;
 use App\Livewire\Team\Manager as TeamManager;
+use App\Livewire\WhatsApp\Campaigns as WhatsAppCampaigns;
 use App\Livewire\WhatsApp\Inbox as WhatsAppInbox;
 use App\Livewire\WorkSession\CheckIn;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,7 @@ Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])-
     Route::livewire('work-session/check-in', CheckIn::class)->name('dashboard.work-session.check-in');
     Route::livewire('/', Dashboard::class)->name('dashboard');
     Route::livewire('whatsapp', WhatsAppInbox::class)->name('dashboard.whatsapp.index');
+    Route::livewire('whatsapp/campaigns', WhatsAppCampaigns::class)->name('dashboard.whatsapp.campaigns');
     Route::get('whatsapp/messages/{whatsappMessage}/media', WhatsAppMediaController::class)->name('dashboard.whatsapp.media');
     Route::livewire('branches', BranchManager::class)->name('dashboard.branches.index');
     Route::livewire('branches/create', BranchCreate::class)->name('dashboard.branches.create');

@@ -135,6 +135,32 @@ it('uploads the credential image and sends an approved template', function () {
     });
 });
 
+it('sends an approved marketing template with ordered body parameters', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://graph.facebook.test/v23.0/123456789/messages' => Http::response([
+            'messages' => [['id' => 'wamid.MARKETING']],
+        ]),
+    ]);
+
+    $messageId = app(WhatsAppService::class)->sendMarketingTemplate(
+        number: '+52 415 123 4567',
+        templateName: 'promo_septiembre',
+        language: 'es_MX',
+        bodyParameters: ['María', '2x1'],
+    );
+
+    expect($messageId)->toBe('wamid.MARKETING');
+    Http::assertSent(fn (Request $request): bool => $request['to'] === '524151234567'
+        && $request['type'] === 'template'
+        && $request['template']['name'] === 'promo_septiembre'
+        && $request['template']['language']['code'] === 'es_MX'
+        && $request['template']['components'][0]['parameters'] === [
+            ['type' => 'text', 'text' => 'María'],
+            ['type' => 'text', 'text' => '2x1'],
+        ]);
+});
+
 it('does not make requests when the Cloud API is not configured', function () {
     config()->set('services.whatsapp.access_token');
 

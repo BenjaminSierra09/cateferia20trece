@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\WhatsApp\RecordWhatsAppMarketingConsent;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
 use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
@@ -17,6 +18,7 @@ use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 #[Tries(3)]
@@ -58,6 +60,7 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
         CustomerPhoneMatcher $matcher,
         SendWhatsAppTextMessage $sendMessage,
         StoreIncomingWhatsAppReaction $storeReaction,
+        RecordWhatsAppMarketingConsent $recordMarketingConsent,
     ): void {
         $normalizedPhone = $matcher->normalize($this->phone);
 
@@ -127,6 +130,18 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
             return;
         }
 
+        if ($customer !== null
+            && $customer->hasWhatsAppMarketingConsent()
+            && $this->isMarketingOptOut($this->text)) {
+            $recordMarketingConsent->revoke($customer, 'whatsapp_keyword');
+            $sendMessage->execute(
+                $conversation,
+                'Listo. Ya no recibirás promociones de Café 20Trece por WhatsApp.',
+            );
+
+            return;
+        }
+
         if ($conversation->refresh()->isBotPaused()) {
             return;
         }
@@ -175,5 +190,24 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
             .'Todavía no encuentro tu número en nuestro programa de clientes. '
             .'Regístrate aquí para consultar tu saldo, ver tus bebidas favoritas y hacer pedidos: '
             .route('public.register');
+    }
+
+    private function isMarketingOptOut(string $text): bool
+    {
+        $normalized = Str::of($text)
+            ->ascii()
+            ->lower()
+            ->squish()
+            ->toString();
+
+        return in_array($normalized, [
+            'baja',
+            'baja promociones',
+            'stop',
+            'alto',
+            'salir',
+            'cancelar promociones',
+            'no quiero promociones',
+        ], true);
     }
 }

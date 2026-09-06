@@ -22,6 +22,21 @@
             <flux:input wire:model="email" label="Correo" type="email" class="md:col-span-2" />
             <flux:textarea wire:model="notes" label="Notas" rows="4" class="md:col-span-2" />
 
+            @if (auth()->user()->canManageWhatsApp())
+                <div class="md:col-span-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="space-y-1">
+                            <flux:heading size="sm">Promociones por WhatsApp</flux:heading>
+                            <flux:text class="text-sm">
+                                Actívalo únicamente si el cliente autorizó recibir ofertas de Café 20Trece en este número. Puede darse de baja en cualquier momento.
+                            </flux:text>
+                        </div>
+                        <flux:switch wire:model="whatsapp_marketing_consent" aria-label="Autorizó promociones por WhatsApp" />
+                    </div>
+                    <flux:error name="whatsapp_marketing_consent" />
+                </div>
+            @endif
+
             <div class="md:col-span-2 flex justify-end">
                 <flux:button type="submit" variant="primary">Guardar cliente</flux:button>
             </div>
