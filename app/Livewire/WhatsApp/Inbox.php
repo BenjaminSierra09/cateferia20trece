@@ -31,15 +31,29 @@ class Inbox extends Component
 
     public int $messageLimit = 60;
 
-    public function mount(): void
+    public function mount(?int $conversation = null): void
     {
         $this->authorizeWhatsApp();
 
+        $requestedConversationId = $conversation ?? request()->integer('conversation');
+
         $this->selectedConversationId = WhatsAppConversation::query()
             ->whereHas('messages')
+            ->when(
+                $requestedConversationId > 0,
+                fn ($query) => $query->whereKey($requestedConversationId),
+            )
             ->latest('last_message_at')
             ->latest('id')
             ->value('id');
+
+        if ($this->selectedConversationId === null && $requestedConversationId > 0) {
+            $this->selectedConversationId = WhatsAppConversation::query()
+                ->whereHas('messages')
+                ->latest('last_message_at')
+                ->latest('id')
+                ->value('id');
+        }
     }
 
     /**
@@ -268,7 +282,7 @@ class Inbox extends Component
 
     public function render(): View
     {
-        return view('livewire.whats-app.inbox')->layout('layouts.app');
+        return view('livewire.whats-app.inbox', ['standalone' => false])->layout('layouts.app');
     }
 
     protected function authorizeWhatsApp(): User

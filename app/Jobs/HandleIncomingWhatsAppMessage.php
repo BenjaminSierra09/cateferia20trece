@@ -6,9 +6,12 @@ use App\Actions\WhatsApp\RecordWhatsAppMarketingConsent;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
 use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
+use App\Enums\UserRole;
 use App\Enums\WhatsAppMessageDirection;
 use App\Enums\WhatsAppMessageStatus;
+use App\Models\User;
 use App\Models\WhatsAppConversation;
+use App\Notifications\IncomingWhatsAppMessageNotification;
 use App\Support\CustomerPhoneMatcher;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,6 +21,7 @@ use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -123,8 +127,10 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
                 return;
             }
         } else {
-            $conversation->messages()->create($messageAttributes);
+            $message = $conversation->messages()->create($messageAttributes);
         }
+
+        $this->notifyWhatsAppAdministrators($conversation, $message->previewText());
 
         if ($this->messageType !== 'text') {
             return;
@@ -209,5 +215,24 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
             'cancelar promociones',
             'no quiero promociones',
         ], true);
+    }
+
+    private function notifyWhatsAppAdministrators(WhatsAppConversation $conversation, string $messagePreview): void
+    {
+        $administrators = User::query()
+            ->where('role', UserRole::Admin)
+            ->where('is_active', true)
+            ->whereHas('pushSubscriptions')
+            ->get();
+
+        if ($administrators->isEmpty()) {
+            return;
+        }
+
+        Notification::send($administrators, new IncomingWhatsAppMessageNotification(
+            conversationId: $conversation->id,
+            contactName: $conversation->displayName(),
+            messagePreview: Str::limit($messagePreview, 140),
+        ));
     }
 }

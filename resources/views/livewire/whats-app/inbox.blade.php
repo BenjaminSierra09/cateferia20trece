@@ -1,19 +1,21 @@
-<div class="space-y-4" wire:poll.10s>
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-            <flux:heading size="xl">WhatsApp</flux:heading>
-            <flux:text>Consulta las conversaciones recientes y responde desde el Dashboard.</flux:text>
-        </div>
+<div class="{{ $standalone ? 'h-full' : 'space-y-4' }}" wire:poll.10s>
+    @unless ($standalone)
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <flux:heading size="xl">WhatsApp</flux:heading>
+                <flux:text>Consulta las conversaciones recientes y responde desde el Dashboard.</flux:text>
+            </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-            <flux:button :href="route('dashboard.whatsapp.campaigns')" variant="ghost" icon="paper-airplane" wire:navigate>
-                Campañas
-            </flux:button>
-            <flux:badge color="emerald" icon="check-circle">API oficial de Meta</flux:badge>
+            <div class="flex flex-wrap items-center gap-2">
+                <flux:button :href="route('dashboard.whatsapp.campaigns')" variant="ghost" icon="paper-airplane" wire:navigate>
+                    Campañas
+                </flux:button>
+                <flux:badge color="emerald" icon="check-circle">API oficial de Meta</flux:badge>
+            </div>
         </div>
-    </div>
+    @endunless
 
-    <div class="grid h-[calc(100dvh-11rem)] min-h-[38rem] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900 lg:grid-cols-[22rem_minmax(0,1fr)]">
+    <div class="grid overflow-hidden border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900 lg:grid-cols-[22rem_minmax(0,1fr)] {{ $standalone ? 'h-full border-0' : 'h-[calc(100dvh-11rem)] min-h-[38rem] rounded-2xl border shadow-sm' }}">
         <aside class="{{ $selectedConversationId ? 'hidden lg:flex' : 'flex' }} min-h-0 flex-col border-zinc-200 dark:border-zinc-700 lg:flex lg:border-e">
             <div class="space-y-3 border-b border-zinc-200 p-4 dark:border-zinc-700">
                 <div class="flex items-center justify-between gap-3">

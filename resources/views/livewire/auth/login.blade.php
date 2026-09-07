@@ -1,6 +1,9 @@
 <x-layouts::auth :title="__('Iniciar sesión')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Inicia sesión en tu cuenta')" :description="__('Ingresa tu usuario y contraseña para continuar')" />
+        <x-auth-header
+            :title="request()->routeIs('whatsapp.pwa.login') ? __('Abre WhatsApp 20Trece') : __('Inicia sesión en tu cuenta')"
+            :description="request()->routeIs('whatsapp.pwa.login') ? __('Ingresa una vez y mantendremos tu sesión en este dispositivo') : __('Ingresa tu usuario y contraseña para continuar')"
+        />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -40,7 +43,14 @@
             </div>
 
             <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Recordarme')" :checked="old('remember')" />
+            @if (request()->routeIs('whatsapp.pwa.login'))
+                <input type="hidden" name="remember" value="1" />
+                <flux:callout icon="shield-check" color="emerald">
+                    Tu sesión permanecerá iniciada en este dispositivo hasta que cierres sesión.
+                </flux:callout>
+            @else
+                <flux:checkbox name="remember" :label="__('Recordarme')" :checked="old('remember')" />
+            @endif
 
             <div class="flex items-center justify-end">
                 <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
@@ -48,28 +58,30 @@
                 </flux:button>
             </div>
 
-            <flux:separator text="o" />
+            @unless (request()->routeIs('whatsapp.pwa.login'))
+                <flux:separator text="o" />
 
-            <flux:button
-                variant="outline"
-                type="button"
-                class="w-full"
-                x-bind:disabled="loadingPasskey"
-                x-on:click="
-                    passkeyError = '';
-                    loadingPasskey = true;
-                    window.passkeysLogin()
-                        .catch((error) => passkeyError = error?.message ?? 'No se pudo iniciar sesión con passkey.')
-                        .finally(() => loadingPasskey = false);
-                "
-            >
-                <span x-show="!loadingPasskey">Entrar con passkey</span>
-                <span x-show="loadingPasskey">Verificando passkey...</span>
-            </flux:button>
+                <flux:button
+                    variant="outline"
+                    type="button"
+                    class="w-full"
+                    x-bind:disabled="loadingPasskey"
+                    x-on:click="
+                        passkeyError = '';
+                        loadingPasskey = true;
+                        window.passkeysLogin()
+                            .catch((error) => passkeyError = error?.message ?? 'No se pudo iniciar sesión con passkey.')
+                            .finally(() => loadingPasskey = false);
+                    "
+                >
+                    <span x-show="!loadingPasskey">Entrar con passkey</span>
+                    <span x-show="loadingPasskey">Verificando passkey...</span>
+                </flux:button>
 
-            <template x-if="passkeyError !== ''">
-                <flux:callout color="red" icon="x-circle" x-text="passkeyError"></flux:callout>
-            </template>
+                <template x-if="passkeyError !== ''">
+                    <flux:callout color="red" icon="x-circle" x-text="passkeyError"></flux:callout>
+                </template>
+            @endunless
         </form>
     </div>
 </x-layouts::auth>

@@ -1,0 +1,26 @@
+{
+  "id": "/whatsapp-app",
+  "name": "WhatsApp Café 20Trece",
+  "short_name": "WhatsApp 20Trece",
+  "description": "Inbox privado de WhatsApp para Café 20Trece",
+  "start_url": "/whatsapp-app",
+  "scope": "/whatsapp-app",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f4f5",
+  "theme_color": "#075e54",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

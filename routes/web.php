@@ -5,6 +5,8 @@ use App\Http\Controllers\PublicCustomerRegistrationController;
 use App\Http\Controllers\PublicInvoiceRequestController;
 use App\Http\Controllers\PublicPagesController;
 use App\Http\Controllers\WhatsAppMediaController;
+use App\Http\Controllers\WhatsAppPushSubscriptionController;
+use App\Http\Controllers\WhatsAppPwaLoginController;
 use App\Livewire\AztecSymbols\Form as AztecSymbolForm;
 use App\Livewire\AztecSymbols\Manager as AztecSymbolManager;
 use App\Livewire\Beverages\Create as BeverageCreate;
@@ -39,6 +41,7 @@ use App\Livewire\Team\Create as TeamCreate;
 use App\Livewire\Team\Manager as TeamManager;
 use App\Livewire\WhatsApp\Campaigns as WhatsAppCampaigns;
 use App\Livewire\WhatsApp\Inbox as WhatsAppInbox;
+use App\Livewire\WhatsApp\PwaInbox as WhatsAppPwaInbox;
 use App\Livewire\WorkSession\CheckIn;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +56,20 @@ Route::post('registro-cliente', [PublicCustomerRegistrationController::class, 's
 Route::get('facturacion', [PublicInvoiceRequestController::class, 'create'])->name('public.invoice');
 Route::post('facturacion', [PublicInvoiceRequestController::class, 'store'])->name('public.invoice.store');
 Route::get('qr/{uuid}', [PublicPagesController::class, 'customerPortal'])->name('public.qr.show');
+
+Route::get('whatsapp-app/login', WhatsAppPwaLoginController::class)
+    ->middleware('guest')
+    ->name('whatsapp.pwa.login');
+
+Route::prefix('whatsapp-app')->middleware(['auth', 'verified', 'whatsapp.admin'])->group(function () {
+    Route::livewire('/', WhatsAppPwaInbox::class)->name('whatsapp.pwa');
+    Route::post('push-subscription', [WhatsAppPushSubscriptionController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('whatsapp.pwa.push-subscription.store');
+    Route::delete('push-subscription', [WhatsAppPushSubscriptionController::class, 'destroy'])
+        ->middleware('throttle:20,1')
+        ->name('whatsapp.pwa.push-subscription.destroy');
+});
 
 Route::prefix('dashboard')->middleware(['auth', 'verified', 'dashboard.admin'])->group(function () {
     Route::livewire('work-session/check-in', CheckIn::class)->name('dashboard.work-session.check-in');
