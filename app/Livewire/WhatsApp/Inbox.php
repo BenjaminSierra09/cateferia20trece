@@ -2,6 +2,7 @@
 
 namespace App\Livewire\WhatsApp;
 
+use App\Actions\WhatsApp\SendWhatsAppAudio;
 use App\Actions\WhatsApp\SendWhatsAppImage;
 use App\Actions\WhatsApp\SendWhatsAppReaction;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
@@ -28,6 +29,8 @@ class Inbox extends Component
     public string $reply = '';
 
     public $photo;
+
+    public $audio;
 
     public int $messageLimit = 60;
 
@@ -135,7 +138,7 @@ class Inbox extends Component
             ->findOrFail($conversationId)
             ->id;
         $this->messageLimit = 60;
-        $this->reset(['reply', 'photo']);
+        $this->reset(['reply', 'photo', 'audio']);
         $this->resetErrorBag();
         unset($this->selectedConversation);
     }
@@ -143,7 +146,7 @@ class Inbox extends Component
     public function closeConversation(): void
     {
         $this->selectedConversationId = null;
-        $this->reset(['reply', 'photo']);
+        $this->reset(['reply', 'photo', 'audio']);
         $this->resetErrorBag();
         unset($this->selectedConversation);
     }
@@ -157,23 +160,47 @@ class Inbox extends Component
     public function send(
         SendWhatsAppTextMessage $sendMessage,
         SendWhatsAppImage $sendImage,
+        SendWhatsAppAudio $sendAudio,
     ): void {
         $user = $this->authorizeWhatsApp();
         $validated = $this->validate([
             'reply' => ['nullable', 'string', 'max:4096'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'mimetypes:image/jpeg,image/png', 'max:5120'],
+            'audio' => [
+                'nullable',
+                'file',
+                'mimes:aac,amr,mp3,m4a,mp4,ogg,oga',
+                'mimetypes:audio/aac,audio/amr,audio/mpeg,audio/mp4,audio/ogg,application/ogg',
+                'max:12288',
+            ],
         ], [
             'reply.max' => 'El mensaje no puede exceder 4096 caracteres.',
             'photo.image' => 'Selecciona una foto válida.',
             'photo.mimes' => 'La foto debe ser JPG o PNG.',
             'photo.mimetypes' => 'La foto debe ser JPG o PNG.',
             'photo.max' => 'La foto no puede pesar más de 5 MB.',
+            'audio.file' => 'Selecciona un audio válido.',
+            'audio.mimes' => 'El audio debe ser AAC, AMR, MP3, M4A u OGG con Opus.',
+            'audio.mimetypes' => 'El formato del audio no es compatible con WhatsApp.',
+            'audio.max' => 'El audio no puede pesar más de 12 MB.',
         ]);
 
         $body = trim((string) ($validated['reply'] ?? ''));
 
-        if ($this->photo === null && $body === '') {
-            $this->addError('reply', 'Escribe un mensaje o selecciona una foto.');
+        if ($this->photo === null && $this->audio === null && $body === '') {
+            $this->addError('reply', 'Escribe un mensaje o selecciona una foto o audio.');
+
+            return;
+        }
+
+        if ($this->photo !== null && $this->audio !== null) {
+            $this->addError('audio', 'Envía la foto y el audio por separado.');
+
+            return;
+        }
+
+        if ($this->audio !== null && $body !== '') {
+            $this->addError('reply', 'Los audios no admiten texto. Envíalos por separado.');
 
             return;
         }
@@ -199,7 +226,9 @@ class Inbox extends Component
         }
 
         try {
-            if ($this->photo !== null) {
+            if ($this->audio !== null) {
+                $sendAudio->execute($conversation, $this->audio, $user);
+            } elseif ($this->photo !== null) {
                 $sendImage->execute($conversation, $this->photo, $body !== '' ? $body : null, $user);
             } else {
                 $sendMessage->execute($conversation, $body, $user);
@@ -213,7 +242,7 @@ class Inbox extends Component
             return;
         }
 
-        $this->reset(['reply', 'photo']);
+        $this->reset(['reply', 'photo', 'audio']);
         unset($this->conversations, $this->selectedConversation);
         $this->dispatch('whatsapp-message-sent');
 
@@ -225,6 +254,13 @@ class Inbox extends Component
         $this->authorizeWhatsApp();
         $this->reset('photo');
         $this->resetValidation('photo');
+    }
+
+    public function removeAudio(): void
+    {
+        $this->authorizeWhatsApp();
+        $this->reset('audio');
+        $this->resetValidation('audio');
     }
 
     public function toggleBot(): void

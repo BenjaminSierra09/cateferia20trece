@@ -2,6 +2,7 @@
 
 use App\Actions\WhatsApp\RecordWhatsAppMarketingConsent;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
+use App\Actions\WhatsApp\StoreIncomingWhatsAppAudio;
 use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
 use App\Jobs\HandleIncomingWhatsAppMessage;
@@ -10,6 +11,7 @@ use App\Models\WhatsAppConversation;
 use App\Support\CustomerPhoneMatcher;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 function configureWhatsAppCloudForConciergeTests(): void
 {
@@ -27,6 +29,7 @@ function runWhatsAppConciergeJob(string $phone, string $text, ?string $pushName 
             app(SendWhatsAppTextMessage::class),
             app(StoreIncomingWhatsAppReaction::class),
             app(RecordWhatsAppMarketingConsent::class),
+            app(StoreIncomingWhatsAppAudio::class),
         );
 }
 
@@ -121,6 +124,7 @@ it('stores Meta timestamps in the application timezone', function () {
         app(SendWhatsAppTextMessage::class),
         app(StoreIncomingWhatsAppReaction::class),
         app(RecordWhatsAppMarketingConsent::class),
+        app(StoreIncomingWhatsAppAudio::class),
     );
 
     $message = WhatsAppConversation::query()
@@ -177,10 +181,63 @@ it('attaches inbound reactions to their target message', function () {
         app(SendWhatsAppTextMessage::class),
         app(StoreIncomingWhatsAppReaction::class),
         app(RecordWhatsAppMarketingConsent::class),
+        app(StoreIncomingWhatsAppAudio::class),
     );
 
     expect($conversation->messages()->count())->toBe(1)
         ->and($target->reactions()->firstOrFail()->emoji)->toBe('❤️');
+});
+
+it('downloads and stores an inbound audio before making it visible', function () {
+    Storage::fake('local');
+    WhatsAppConcierge::fake();
+    configureWhatsAppCloudForConciergeTests();
+    $contents = 'ogg-opus-audio';
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://graph.facebook.test/v23.0/MEDIA-AUDIO*' => Http::response([
+            'id' => 'MEDIA-AUDIO',
+            'url' => 'https://lookaside.facebook.test/audio-file',
+            'mime_type' => 'audio/ogg; codecs=opus',
+            'file_size' => strlen($contents),
+            'sha256' => hash('sha256', $contents),
+        ]),
+        'https://lookaside.facebook.test/audio-file' => Http::response(
+            $contents,
+            headers: ['Content-Type' => 'audio/ogg'],
+        ),
+    ]);
+
+    $job = new HandleIncomingWhatsAppMessage(
+        phone: '5219990001122',
+        text: '[Audio]',
+        pushName: 'Ana',
+        messageId: 'wamid.AUDIO',
+        messageType: 'audio',
+        mediaId: 'MEDIA-AUDIO',
+        mediaMimeType: 'audio/ogg',
+    );
+
+    $job->handle(
+        app(CustomerPhoneMatcher::class),
+        app(SendWhatsAppTextMessage::class),
+        app(StoreIncomingWhatsAppReaction::class),
+        app(RecordWhatsAppMarketingConsent::class),
+        app(StoreIncomingWhatsAppAudio::class),
+    );
+
+    $message = WhatsAppConversation::query()
+        ->firstWhere('phone', '5219990001122')
+        ->messages()
+        ->where('provider_message_id', 'wamid.AUDIO')
+        ->firstOrFail();
+
+    expect($message->type)->toBe('audio')
+        ->and($message->media_mime_type)->toBe('audio/ogg')
+        ->and(Storage::disk('local')->get($message->media_path))->toBe($contents);
+
+    Http::assertSentCount(2);
 });
 
 it('revokes marketing consent when a customer replies BAJA', function () {

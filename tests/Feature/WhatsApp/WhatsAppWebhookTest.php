@@ -152,7 +152,32 @@ it('dispatches non-text messages so they remain visible in the inbox', function 
     Queue::assertPushed(HandleIncomingWhatsAppMessage::class, function (HandleIncomingWhatsAppMessage $job): bool {
         return $job->messageId === 'wamid.IMG'
             && $job->messageType === 'image'
-            && $job->text === '[Imagen]';
+            && $job->text === '[Imagen]'
+            && $job->mediaId === 'MEDIA-ID'
+            && $job->mediaMimeType === 'image/jpeg';
+    });
+});
+
+it('passes inbound audio metadata to the processing job', function () {
+    postSignedWhatsAppWebhook($this, whatsAppCloudWebhookPayload([
+        [
+            'from' => '524181878244',
+            'id' => 'wamid.AUDIO',
+            'audio' => [
+                'id' => 'MEDIA-AUDIO',
+                'mime_type' => 'audio/ogg; codecs=opus',
+                'voice' => true,
+            ],
+            'type' => 'audio',
+        ],
+    ]))->assertOk();
+
+    Queue::assertPushed(HandleIncomingWhatsAppMessage::class, function (HandleIncomingWhatsAppMessage $job): bool {
+        return $job->messageId === 'wamid.AUDIO'
+            && $job->messageType === 'audio'
+            && $job->text === '[Audio]'
+            && $job->mediaId === 'MEDIA-AUDIO'
+            && $job->mediaMimeType === 'audio/ogg; codecs=opus';
     });
 });
 

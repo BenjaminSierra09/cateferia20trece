@@ -166,9 +166,31 @@
                                             @endif
                                         @endif
 
-                                        @if (filled($message->body))
+                                        @if ($message->type === 'audio')
+                                            @if ($message->media_path)
+                                                <audio
+                                                    controls
+                                                    preload="metadata"
+                                                    class="mb-1 block h-10 w-72 max-w-full"
+                                                    aria-label="Audio de WhatsApp"
+                                                >
+                                                    <source
+                                                        src="{{ route('dashboard.whatsapp.media', $message) }}"
+                                                        type="{{ $message->media_mime_type ?? 'application/octet-stream' }}"
+                                                    />
+                                                    Tu navegador no puede reproducir este audio.
+                                                </audio>
+                                            @else
+                                                <div class="mb-1 flex items-center gap-2 text-sm">
+                                                    <flux:icon.speaker-wave class="size-4" />
+                                                    <span>Audio no disponible</span>
+                                                </div>
+                                            @endif
+                                        @endif
+
+                                        @if (filled($message->body) && $message->type !== 'audio')
                                             <p class="whitespace-pre-wrap break-words text-sm leading-relaxed">{{ $message->body }}</p>
-                                        @elseif ($message->type !== 'image')
+                                        @elseif (! in_array($message->type, ['image', 'audio'], true))
                                             <p class="text-sm leading-relaxed">Mensaje sin contenido</p>
                                         @endif
 
@@ -245,7 +267,11 @@
                         </flux:callout>
                     @endif
 
-                    <form wire:submit="send">
+                    <form
+                        wire:submit="send"
+                        x-data="whatsappAudioRecorder($wire)"
+                        x-on:livewire:navigating.window="dispose"
+                    >
                         @if ($photo)
                             <div class="mb-2 flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-800">
                                 <img src="{{ $photo->temporaryUrl() }}" alt="Foto seleccionada" class="size-16 rounded-lg object-cover" />
@@ -257,6 +283,50 @@
                             </div>
                         @endif
 
+                        @if ($audio)
+                            <div class="mb-2 flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-800">
+                                <span class="grid size-11 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                    <flux:icon.speaker-wave class="size-5" />
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $audio->getClientOriginalName() }}</p>
+                                    <p class="text-xs text-zinc-500">Audio listo para enviar</p>
+                                </div>
+                                <flux:button type="button" wire:click="removeAudio" variant="ghost" size="sm" icon="x-mark" aria-label="Quitar audio" />
+                            </div>
+                        @endif
+
+                        <div
+                            x-cloak
+                            x-show="recording || uploading || error"
+                            class="mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                        >
+                            <template x-if="recording">
+                                <div class="flex min-w-0 flex-1 items-center gap-2">
+                                    <span class="size-2.5 animate-pulse rounded-full bg-red-500"></span>
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-100">Grabando</span>
+                                    <span class="tabular-nums text-zinc-500" x-text="formattedDuration"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="uploading">
+                                <div class="flex min-w-0 flex-1 items-center gap-2">
+                                    <flux:icon.arrow-path class="size-4 animate-spin text-emerald-600" />
+                                    <span class="text-zinc-600 dark:text-zinc-300">Preparando audio...</span>
+                                    <span class="tabular-nums text-zinc-500" x-text="`${progress}%`"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="error">
+                                <p class="min-w-0 flex-1 text-red-600 dark:text-red-400" x-text="error"></p>
+                            </template>
+
+                            <div x-show="recording" class="ms-auto flex items-center gap-1">
+                                <flux:button type="button" x-on:click="cancel" variant="ghost" size="sm" icon="trash" aria-label="Cancelar grabación" />
+                                <flux:button type="button" x-on:click="stop" variant="primary" size="sm" icon="stop" aria-label="Terminar grabación" />
+                            </div>
+                        </div>
+
                         <flux:composer
                             wire:model="reply"
                             name="reply"
@@ -267,16 +337,40 @@
                             :disabled="! $selectedConversation->hasOpenCustomerServiceWindow()"
                         >
                             <x-slot name="actionsLeading">
-                                <flux:file-upload wire:model="photo" accept="image/jpeg,image/png">
+                                <div class="flex items-center">
+                                    <flux:file-upload wire:model="photo" accept="image/jpeg,image/png">
+                                        <flux:button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            icon="photo"
+                                            aria-label="Adjuntar foto"
+                                            :disabled="! $selectedConversation->hasOpenCustomerServiceWindow()"
+                                        />
+                                    </flux:file-upload>
+
+                                    <flux:file-upload wire:model="audio" accept=".aac,.amr,.mp3,.m4a,.mp4,.ogg,audio/aac,audio/amr,audio/mpeg,audio/mp4,audio/ogg">
+                                        <flux:button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            icon="paper-clip"
+                                            aria-label="Adjuntar audio"
+                                            :disabled="! $selectedConversation->hasOpenCustomerServiceWindow()"
+                                        />
+                                    </flux:file-upload>
+
                                     <flux:button
                                         type="button"
+                                        x-on:click="start"
+                                        x-bind:disabled="recording || uploading"
                                         variant="ghost"
                                         size="sm"
-                                        icon="photo"
-                                        aria-label="Adjuntar foto"
+                                        icon="microphone"
+                                        aria-label="Grabar audio"
                                         :disabled="! $selectedConversation->hasOpenCustomerServiceWindow()"
                                     />
-                                </flux:file-upload>
+                                </div>
                             </x-slot>
 
                             <x-slot name="actionsTrailing">
@@ -294,6 +388,7 @@
                         </flux:composer>
                         <flux:error name="reply" />
                         <flux:error name="photo" />
+                        <flux:error name="audio" />
                     </form>
                 </footer>
             @else

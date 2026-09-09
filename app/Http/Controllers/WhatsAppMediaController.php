@@ -6,14 +6,14 @@ use App\Models\User;
 use App\Models\WhatsAppMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class WhatsAppMediaController extends Controller
 {
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request, WhatsAppMessage $whatsappMessage): StreamedResponse
+    public function __invoke(Request $request, WhatsAppMessage $whatsappMessage): BinaryFileResponse
     {
         $user = $request->user();
 
@@ -24,9 +24,12 @@ class WhatsAppMediaController extends Controller
             404,
         );
 
-        return Storage::disk('local')->response(
-            $whatsappMessage->media_path,
-            headers: ['Content-Type' => $whatsappMessage->media_mime_type ?? 'application/octet-stream'],
-        );
+        return response()->file(Storage::disk('local')->path($whatsappMessage->media_path), [
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'private, no-store',
+            'Content-Disposition' => 'inline',
+            'Content-Type' => $whatsappMessage->media_mime_type ?? 'application/octet-stream',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

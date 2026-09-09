@@ -149,6 +149,12 @@ class WhatsAppWebhookController extends Controller
             reactionToMessageId: is_string(data_get($message, 'reaction.message_id'))
                 ? data_get($message, 'reaction.message_id')
                 : null,
+            mediaId: is_string(data_get($message, $messageType.'.id'))
+                ? data_get($message, $messageType.'.id')
+                : null,
+            mediaMimeType: is_string(data_get($message, $messageType.'.mime_type'))
+                ? data_get($message, $messageType.'.mime_type')
+                : null,
         );
     }
 

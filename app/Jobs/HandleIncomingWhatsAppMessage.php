@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Actions\WhatsApp\RecordWhatsAppMarketingConsent;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
+use App\Actions\WhatsApp\StoreIncomingWhatsAppAudio;
 use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
 use App\Enums\UserRole;
@@ -22,6 +23,7 @@ use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -43,6 +45,8 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
         public string $messageType = 'text',
         public ?int $timestamp = null,
         public ?string $reactionToMessageId = null,
+        public ?string $mediaId = null,
+        public ?string $mediaMimeType = null,
     ) {}
 
     /**
@@ -65,6 +69,7 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
         SendWhatsAppTextMessage $sendMessage,
         StoreIncomingWhatsAppReaction $storeReaction,
         RecordWhatsAppMarketingConsent $recordMarketingConsent,
+        StoreIncomingWhatsAppAudio $storeIncomingAudio,
     ): void {
         $normalizedPhone = $matcher->normalize($this->phone);
 
@@ -109,25 +114,52 @@ class HandleIncomingWhatsAppMessage implements ShouldQueue
             return;
         }
 
-        $messageAttributes = [
+        if ($this->messageId !== null
+            && $conversation->messages()->where('provider_message_id', $this->messageId)->exists()) {
+            return;
+        }
+
+        $storedMedia = [];
+
+        if ($this->messageType === 'audio' && filled($this->mediaId)) {
+            $storedMedia = $storeIncomingAudio->execute(
+                conversation: $conversation,
+                mediaId: $this->mediaId,
+                webhookMimeType: $this->mediaMimeType,
+            );
+        }
+
+        $messageAttributes = array_merge([
             'direction' => WhatsAppMessageDirection::Inbound,
             'type' => $this->messageType,
             'body' => $this->text,
             'status' => WhatsAppMessageStatus::Received,
             'sent_at' => $receivedAt,
-        ];
+        ], $storedMedia);
 
-        if ($this->messageId !== null) {
-            $message = $conversation->messages()->firstOrCreate(
-                ['provider_message_id' => $this->messageId],
-                $messageAttributes,
-            );
+        try {
+            if ($this->messageId !== null) {
+                $message = $conversation->messages()->firstOrCreate(
+                    ['provider_message_id' => $this->messageId],
+                    $messageAttributes,
+                );
 
-            if (! $message->wasRecentlyCreated) {
-                return;
+                if (! $message->wasRecentlyCreated) {
+                    if (isset($storedMedia['media_path'])) {
+                        Storage::disk('local')->delete($storedMedia['media_path']);
+                    }
+
+                    return;
+                }
+            } else {
+                $message = $conversation->messages()->create($messageAttributes);
             }
-        } else {
-            $message = $conversation->messages()->create($messageAttributes);
+        } catch (Throwable $throwable) {
+            if (isset($storedMedia['media_path'])) {
+                Storage::disk('local')->delete($storedMedia['media_path']);
+            }
+
+            throw $throwable;
         }
 
         $this->notifyWhatsAppAdministrators($conversation, $message->previewText());

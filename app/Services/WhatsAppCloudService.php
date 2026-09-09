@@ -137,6 +137,124 @@ class WhatsAppCloudService implements WhatsAppService
         return $this->messageIdFrom($response);
     }
 
+    public function sendAudio(
+        string $number,
+        string $contents,
+        string $fileName,
+        string $mimeType,
+    ): ?string {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $normalizedNumber = $this->normalizePhoneNumber($number);
+
+        if ($normalizedNumber === null || $contents === '') {
+            return null;
+        }
+
+        $mediaId = $this->uploadMedia(
+            contents: $contents,
+            fileName: $fileName,
+            mimeType: $mimeType,
+            operation: 'upload_audio',
+            failureMessage: 'No fue posible subir el audio a WhatsApp.',
+        );
+
+        $response = $this->sendPayload(
+            payload: [
+                'messaging_product' => 'whatsapp',
+                'recipient_type' => 'individual',
+                'to' => $normalizedNumber,
+                'type' => 'audio',
+                'audio' => ['id' => $mediaId],
+            ],
+            operation: 'send_audio',
+            failureMessage: 'No fue posible enviar el audio por WhatsApp.',
+        );
+
+        return $this->messageIdFrom($response);
+    }
+
+    /**
+     * @return array{contents: string, mime_type: string, size: int, sha256: string|null}
+     */
+    public function downloadMedia(string $mediaId): array
+    {
+        if (! $this->isConfigured() || trim($mediaId) === '') {
+            throw new WhatsAppCloudApiException(
+                message: 'No fue posible identificar el audio recibido.',
+                operation: 'download_media',
+            );
+        }
+
+        $metadataResponse = $this->executeRequest(
+            request: fn (): Response => $this->client()->get(
+                sprintf('%s/%s', $this->graphVersion(), rawurlencode($mediaId)),
+                ['phone_number_id' => (string) config('services.whatsapp.phone_number_id')],
+            ),
+            operation: 'retrieve_media',
+            failureMessage: 'No fue posible consultar el audio recibido en WhatsApp.',
+        );
+
+        $mediaUrl = $metadataResponse->json('url');
+        $reportedSize = $metadataResponse->json('file_size');
+
+        if (! is_string($mediaUrl)
+            || parse_url($mediaUrl, PHP_URL_SCHEME) !== 'https'
+            || ! is_string(parse_url($mediaUrl, PHP_URL_HOST))) {
+            throw new WhatsAppCloudApiException(
+                message: 'WhatsApp devolvió una URL de audio inválida.',
+                operation: 'retrieve_media',
+                status: $metadataResponse->status(),
+            );
+        }
+
+        if (is_numeric($reportedSize) && (int) $reportedSize > 16 * 1024 * 1024) {
+            throw new WhatsAppCloudApiException(
+                message: 'El audio recibido excede el límite de 16 MB.',
+                operation: 'download_media',
+            );
+        }
+
+        $mediaResponse = $this->executeRequest(
+            request: fn (): Response => $this->authenticatedClient()
+                ->accept('*/*')
+                ->retry(
+                    [500, 1000],
+                    when: fn (Throwable $exception): bool => $exception instanceof ConnectionException
+                        || ($exception instanceof RequestException
+                            && ($exception->response->serverError() || $exception->response->tooManyRequests())),
+                    throw: false,
+                )
+                ->get($mediaUrl),
+            operation: 'download_media',
+            failureMessage: 'No fue posible descargar el audio recibido de WhatsApp.',
+        );
+        $contents = $mediaResponse->body();
+        $size = strlen($contents);
+
+        if ($contents === '' || $size > 16 * 1024 * 1024) {
+            throw new WhatsAppCloudApiException(
+                message: $contents === ''
+                    ? 'WhatsApp devolvió un audio vacío.'
+                    : 'El audio recibido excede el límite de 16 MB.',
+                operation: 'download_media',
+                status: $mediaResponse->status(),
+            );
+        }
+
+        $mimeType = $metadataResponse->json('mime_type');
+        $sha256 = $metadataResponse->json('sha256');
+
+        return [
+            'contents' => $contents,
+            'mime_type' => is_string($mimeType) ? $mimeType : (string) $mediaResponse->header('Content-Type'),
+            'size' => $size,
+            'sha256' => is_string($sha256) && $sha256 !== '' ? $sha256 : null,
+        ];
+    }
+
     /**
      * Marketing sends intentionally do not retry HTTP requests. If the network
      * response is lost after Meta accepts a message, retrying could duplicate it.
@@ -445,8 +563,13 @@ class WhatsAppCloudService implements WhatsAppService
 
     protected function baseClient(): PendingRequest
     {
+        return $this->authenticatedClient()
+            ->baseUrl(rtrim((string) config('services.whatsapp.api_url'), '/'));
+    }
+
+    protected function authenticatedClient(): PendingRequest
+    {
         return $this->http
-            ->baseUrl(rtrim((string) config('services.whatsapp.api_url'), '/'))
             ->withToken((string) config('services.whatsapp.access_token'))
             ->acceptJson()
             ->connectTimeout(10)

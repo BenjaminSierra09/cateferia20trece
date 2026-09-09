@@ -2,6 +2,7 @@
 
 use App\Actions\WhatsApp\RecordWhatsAppMarketingConsent;
 use App\Actions\WhatsApp\SendWhatsAppTextMessage;
+use App\Actions\WhatsApp\StoreIncomingWhatsAppAudio;
 use App\Actions\WhatsApp\StoreIncomingWhatsAppReaction;
 use App\Ai\Agents\WhatsAppConcierge;
 use App\Jobs\HandleIncomingWhatsAppMessage;
@@ -42,6 +43,7 @@ function handlePushNotificationTestMessage(string $messageId): void
         app(SendWhatsAppTextMessage::class),
         app(StoreIncomingWhatsAppReaction::class),
         app(RecordWhatsAppMarketingConsent::class),
+        app(StoreIncomingWhatsAppAudio::class),
     );
 }
 

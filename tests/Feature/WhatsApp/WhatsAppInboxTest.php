@@ -241,3 +241,78 @@ it('uploads and sends a private photo during the customer service window', funct
         ->assertOk()
         ->assertHeader('content-type', 'image/jpeg');
 });
+
+it('uploads sends and plays a private audio during the customer service window', function () {
+    Storage::fake('local');
+    $admin = User::factory()->admin()->create();
+    $conversation = WhatsAppConversation::factory()->create([
+        'phone' => '524181878244',
+        'last_inbound_at' => now()->subHour(),
+        'last_message_at' => now()->subHour(),
+    ]);
+    WhatsAppMessage::factory()->create(['whatsapp_conversation_id' => $conversation->id]);
+    $audioContents = hex2bin(
+        'ffe318c40000000348000000004c414d45342e3055555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555ffe318c43b00000348000000005555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555ffe318c47600000348000000005555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555',
+    );
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://graph.facebook.test/v23.0/PHONE-ID/media' => Http::response(['id' => 'MEDIA-AUDIO']),
+        'https://graph.facebook.test/v23.0/PHONE-ID/messages' => Http::response([
+            'messages' => [['id' => 'wamid.AUDIO']],
+        ]),
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(Inbox::class)
+        ->set('selectedConversationId', $conversation->id)
+        ->set('audio', UploadedFile::fake()->createWithContent('respuesta.mp3', $audioContents))
+        ->call('send')
+        ->assertHasNoErrors()
+        ->assertSet('audio', null)
+        ->assertSee('<audio', escape: false);
+
+    $message = $conversation->messages()->where('provider_message_id', 'wamid.AUDIO')->firstOrFail();
+
+    expect($message->type)->toBe('audio')
+        ->and($message->body)->toBeNull()
+        ->and($message->media_mime_type)->toBe('audio/mpeg')
+        ->and($message->previewText())->toBe('🎙️ Audio');
+    Storage::disk('local')->assertExists($message->media_path);
+
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/messages')
+        && $request['type'] === 'audio'
+        && $request['audio']['id'] === 'MEDIA-AUDIO'
+        && ! isset($request['audio']['caption']));
+
+    $this->actingAs($admin)
+        ->get(route('dashboard.whatsapp.media', $message))
+        ->assertOk()
+        ->assertHeader('content-type', 'audio/mpeg')
+        ->assertHeader('content-disposition', 'inline');
+
+    $this->actingAs($admin)
+        ->withHeader('Range', 'bytes=0-31')
+        ->get(route('dashboard.whatsapp.media', $message))
+        ->assertStatus(206)
+        ->assertHeader('accept-ranges', 'bytes');
+});
+
+it('rejects audio files that WhatsApp does not support', function () {
+    $admin = User::factory()->admin()->create();
+    $conversation = WhatsAppConversation::factory()->create([
+        'last_inbound_at' => now()->subHour(),
+    ]);
+    WhatsAppMessage::factory()->create(['whatsapp_conversation_id' => $conversation->id]);
+
+    Http::fake();
+
+    Livewire::actingAs($admin)
+        ->test(Inbox::class)
+        ->set('selectedConversationId', $conversation->id)
+        ->set('audio', UploadedFile::fake()->createWithContent('audio.wav', 'not-a-supported-audio'))
+        ->call('send')
+        ->assertHasErrors(['audio']);
+
+    Http::assertNothingSent();
+});

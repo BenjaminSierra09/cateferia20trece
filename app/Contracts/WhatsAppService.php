@@ -22,6 +22,18 @@ interface WhatsAppService
         ?string $caption = null,
     ): ?string;
 
+    public function sendAudio(
+        string $number,
+        string $contents,
+        string $fileName,
+        string $mimeType,
+    ): ?string;
+
+    /**
+     * @return array{contents: string, mime_type: string, size: int, sha256: string|null}
+     */
+    public function downloadMedia(string $mediaId): array;
+
     /**
      * @param  array<int, string>  $bodyParameters
      */

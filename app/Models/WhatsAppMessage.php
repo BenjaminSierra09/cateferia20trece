@@ -60,6 +60,7 @@ class WhatsAppMessage extends Model
     {
         return match ($this->type) {
             'image' => filled($this->body) ? '📷 '.$this->body : '📷 Foto',
+            'audio' => '🎙️ Audio',
             default => $this->body ?? 'Mensaje sin contenido',
         };
     }
