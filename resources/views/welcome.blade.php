@@ -128,7 +128,7 @@
                         <flux:icon.map-pin class="size-6 shrink-0 text-terracotta" />
                         <span class="leading-tight">
                             <span class="block text-xs font-semibold uppercase tracking-[0.16em] text-mocha">Ubicación</span>
-                            <span class="block text-lg font-bold text-espresso">Juárez 21, Centro</span>
+                            <span class="block text-lg font-bold text-espresso">San Francisco 3, Centro</span>
                         </span>
                     </div>
                     <div class="flex items-center gap-4 bg-vanilla/90 px-6 py-6">
@@ -192,7 +192,7 @@
                             </span>
                             <h3 class="mt-5 text-lg font-bold text-espresso">Dirección</h3>
                             <p class="mt-2 text-sm leading-7 text-mocha">
-                                Juárez 21, Zona Centro<br>
+                                San Francisco 3, Zona Centro<br>
                                 37700 San Miguel de Allende, Gto.
                             </p>
                         </div>

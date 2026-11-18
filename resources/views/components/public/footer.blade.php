@@ -44,7 +44,7 @@
             <ul class="mt-5 space-y-3 text-sm text-sand/75">
                 <li class="flex items-start gap-3">
                     <flux:icon.map-pin class="mt-0.5 size-4 shrink-0 text-caramel" />
-                    <span>Juárez 21, Zona Centro<br>37700 San Miguel de Allende, Gto.</span>
+                    <span>San Francisco 3, Zona Centro<br>37700 San Miguel de Allende, Gto.</span>
                 </li>
                 <li>
                     <a href="tel:+524151194612" class="inline-flex items-center gap-3 transition hover:text-vanilla">

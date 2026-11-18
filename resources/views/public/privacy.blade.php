@@ -48,7 +48,7 @@
             </div>
             <div class="rounded-2xl border border-coffee/12 bg-vanilla/70 p-5">
                 <dt class="text-xs font-semibold uppercase tracking-[0.16em] text-mocha">Domicilio</dt>
-                <dd class="mt-1 text-sm leading-6 text-espresso">Juárez 21, Zona Centro,<br>37700 San Miguel de Allende, Guanajuato, México.</dd>
+                <dd class="mt-1 text-sm leading-6 text-espresso">San Francisco 3, Zona Centro,<br>37700 San Miguel de Allende, Guanajuato, México.</dd>
             </div>
             <div class="rounded-2xl border border-coffee/12 bg-vanilla/70 p-5">
                 <dt class="text-xs font-semibold uppercase tracking-[0.16em] text-mocha">Correo de privacidad</dt>
