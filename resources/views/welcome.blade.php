@@ -147,27 +147,28 @@
                     <div class="u-reveal mx-auto mb-9 max-w-2xl text-center">
                         <h2 class="font-serif text-3xl font-semibold tracking-tight text-espresso sm:text-4xl">Momentos y rincones de 20Trece</h2>
                         <p class="mt-3 text-base leading-7 text-mocha">
-                            Bebidas, ambiente y los pequeños detalles que acompañan cada visita.
+                            Conoce nuestro café en San Francisco 3, desde la entrada hasta la barra.
                         </p>
                     </div>
 
                     @php
-                        $galleryLoop = array_merge($galleryImages, $galleryImages);
+                        $galleryFiles = array_keys($galleryImages);
+                        $galleryLoop = array_merge($galleryFiles, $galleryFiles);
                     @endphp
 
                     <div class="home-gallery-marquee space-y-4 overflow-hidden">
                         <div class="home-gallery-track home-gallery-track--left flex gap-4 pr-4">
-                            @foreach ($galleryLoop as $index => $image)
+                            @foreach ($galleryLoop as $filename)
                                 <div class="h-40 w-32 shrink-0 overflow-hidden rounded-[1.5rem] border border-white/60 shadow-[0_24px_40px_-30px_rgba(36,23,18,0.5)] sm:h-48 sm:w-40 lg:h-56 lg:w-44">
-                                    <img src="{{ $image }}" alt="Galería Café 20Trece {{ $index + 1 }}" class="h-full w-full object-cover" loading="lazy">
+                                    <img src="{{ asset('gallery/'.$filename) }}" alt="{{ $loop->index < count($galleryFiles) ? $galleryImages[$filename] : '' }}" class="h-full w-full object-cover" loading="lazy">
                                 </div>
                             @endforeach
                         </div>
 
-                        <div class="home-gallery-track home-gallery-track--right flex gap-4 pr-4">
-                            @foreach (array_reverse($galleryLoop) as $index => $image)
+                        <div class="home-gallery-track home-gallery-track--right flex gap-4 pr-4" aria-hidden="true">
+                            @foreach (array_reverse($galleryLoop) as $filename)
                                 <div class="h-32 w-40 shrink-0 overflow-hidden rounded-[1.5rem] border border-white/60 shadow-[0_24px_40px_-30px_rgba(36,23,18,0.5)] sm:h-40 sm:w-48 lg:h-44 lg:w-56">
-                                    <img src="{{ $image }}" alt="Galería Café 20Trece, vista {{ $index + 1 }}" class="h-full w-full object-cover" loading="lazy">
+                                    <img src="{{ asset('gallery/'.$filename) }}" alt="" class="h-full w-full object-cover" loading="lazy">
                                 </div>
                             @endforeach
                         </div>

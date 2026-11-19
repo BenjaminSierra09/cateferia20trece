@@ -17,7 +17,9 @@ test('public policy and rewards pages are accessible', function () {
         ->assertOk()
         ->assertSee('Momentos y rincones de 20Trece')
         ->assertSee('Mi cuenta QR')
-        ->assertSee('/gallery/coffe-shop-1.jpg', false);
+        ->assertSee('/gallery/san-francisco-storefront.webp', false)
+        ->assertSee('/gallery/san-francisco-counter.webp', false)
+        ->assertDontSee('/gallery/coffe-shop-19.jpg', false);
 
     $this->get(route('public.terms'))
         ->assertOk()

@@ -7,7 +7,6 @@ use App\Models\CustomerQrCode;
 use App\Services\CustomerCardRenderer;
 use App\Services\CustomerFavoriteBeverageService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\File;
 
 class PublicPagesController extends Controller
 {
@@ -16,15 +15,19 @@ class PublicPagesController extends Controller
      */
     public function home(): View
     {
-        $galleryImages = collect(File::files(public_path('gallery')))
-            ->filter(fn ($file): bool => in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'webp']))
-            ->sortBy(fn ($file): string => $file->getFilename())
-            ->map(fn ($file): string => asset('gallery/'.$file->getFilename()))
-            ->values()
-            ->all();
-
         return view('welcome', [
-            'galleryImages' => $galleryImages,
+            'galleryImages' => [
+                'san-francisco-storefront.webp' => 'Entrada de Café 20Trece en San Francisco 3, con una bicicleta frente a la fachada',
+                'san-francisco-hallway.webp' => 'Pasillo de entrada al café, con cuadros y plantas',
+                'coffe-shop-22.jpg' => 'Cappuccino con un corazón dibujado en la espuma',
+                'san-francisco-street.webp' => 'Fachada del edificio sobre la calle San Francisco',
+                'coffe-shop-17.jpg' => 'Café servido junto a una bolsa de Café 20Trece',
+                'coffe-shop-4.jpg' => 'Vitrina con pan dulce',
+                'coffe-shop-26.jpg' => 'Bebida fría en un vaso de Café 20Trece',
+                'san-francisco-interior.webp' => 'Salón interior con puertas arqueadas y piso de mosaico',
+                'san-francisco-courtyard.webp' => 'Escalones y arcos junto al patio del café',
+                'san-francisco-counter.webp' => 'Barra y menú de Café 20Trece bajo un techo de vidrio',
+            ],
         ]);
     }
 
